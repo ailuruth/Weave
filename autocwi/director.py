@@ -252,6 +252,89 @@ def assign_cues(words: list[dict], max_chars: int = CUE_MAX_CHARS) -> list[dict]
 # Speakers
 # ---------------------------------------------------------------------------
 
+def soften(
+    words: list[dict],
+    *,
+    below_db: float = 6.0,
+    quiet_edge: float = 0.14,
+    min_run: int = 2,
+) -> list[dict]:
+    """Only a voice that STAYS soft draws small type.
+
+    The quiet half of the size range was opened so that "softer" could
+    shrink, and it then shrank everything quiet: watched over the whole PR
+    film, 29 of 173 words (17%) were drawn small -- "so", "as", "text",
+    "you", "the", the whole of "I'll show you." -- and every caption that
+    ended on one stayed shrunk. The film shrinks one phrase. An unstressed
+    word is quieter than its neighbours in ordinary speech; that is rhythm,
+    not a speaker dropping their voice. (This is the deadband the live stage
+    already learned it needed, at 48% of words; opening the range again
+    without one reproduced the same instability.)
+
+    What "or softer" has that the others do not is that the drop is
+    SUSTAINED: two words in a row, each well under the sentence. So a word
+    is drawn soft only when it sits in a run of `min_run` or more
+    consecutive words that are each `below_db` under their sentence's median
+    level and below `quiet_edge` on the normalised channel -- and the run is
+    less than half the sentence, because a sentence that is quiet throughout
+    is a quiet speaker or a quiet scene, not a contrast. On the film that
+    leaves exactly "or softer." (-12 and -7 dB). Run it AFTER `assign_cues`:
+    a run does not cross from one caption line into the next.
+
+    Every other word below the 2.3.5 baseline is raised to it. The
+    measurement stays in `loudness_measured`.
+    """
+
+    out = list(words)
+    i = 0
+    while i < len(words):
+        j = i
+        while j < len(words) and words[j].get("utterance") == words[i].get("utterance"):
+            j += 1
+        group = words[i:j]
+        levels = sorted(float(w["loudness_db"]) for w in group
+                        if w.get("loudness_db") is not None)
+        median = levels[len(levels) // 2] if levels else None
+
+        def hushed(word: dict) -> bool:
+            return (median is not None
+                    and word.get("loudness") is not None
+                    and word.get("loudness_db") is not None
+                    and float(word["loudness"]) < quiet_edge
+                    and float(word["loudness_db"]) <= median - below_db)
+
+        soft: set[int] = set()
+        k = 0
+        while k < len(group):
+            if not hushed(group[k]):
+                k += 1
+                continue
+            # A run stays on ONE caption line. "…text animation, / so captions…"
+            # is one spoken sentence on two captions; its last word and the
+            # next line's first are both unstressed, and across the break
+            # they made a "run" of two that shrank the end of one caption and
+            # the start of the next.
+            m = k
+            while (m + 1 < len(group) and hushed(group[m + 1])
+                   and group[m + 1].get("cue") == group[k].get("cue")):
+                m += 1
+            if m - k + 1 >= min_run and (m - k + 1) * 2 < len(group):
+                soft.update(range(k, m + 1))
+            k = m + 1
+        for n, word in enumerate(group):
+            level = word.get("loudness")
+            if n in soft:
+                out[i + n] = {**word, "soft": True}
+            elif level is not None and float(level) < LOUDNESS_PIVOT:
+                out[i + n] = {
+                    **word,
+                    "loudness": round(LOUDNESS_PIVOT, 4),
+                    "loudness_measured": word.get("loudness_measured", float(level)),
+                }
+        i = j
+    return out
+
+
 def settle_speakers(words: list[dict], min_share: float = 0.6) -> list[dict]:
     """One sentence, one speaker -- where the sentence clearly has one.
 
@@ -284,4 +367,34 @@ def settle_speakers(words: list[dict], min_share: float = 0.6) -> list[dict]:
                         out[k] = {**out[k], "speaker": top, "speaker_known": True,
                                   "speaker_status": "corrected"}
         i = j
+    # A SENTENCE NOBODY WAS HEARD SAYING takes its neighbour's speaker. The
+    # film's first caption, "Synchronization.", is one word before the tracker
+    # has anyone enrolled; it stayed in read-ahead white for its whole life.
+    # The sentence after it, if it follows closely, is the same voice.
+    spans: list[tuple[int, int]] = []
+    i = 0
+    while i < len(out):
+        j = i
+        while j < len(out) and out[j].get("utterance") == out[i].get("utterance"):
+            j += 1
+        spans.append((i, j))
+        i = j
+    for n, (a0, b0) in enumerate(spans):
+        if any(w.get("speaker") for w in out[a0:b0]):
+            continue
+        donor = None
+        if n + 1 < len(spans):
+            nxt = out[spans[n + 1][0]]
+            if (nxt.get("speaker") and float(nxt.get("t", 0.0))
+                    - float(out[b0 - 1].get("t", 0.0)) <= 4.0):
+                donor = nxt["speaker"]
+        if donor is None and n > 0:
+            prev = out[spans[n - 1][1] - 1]
+            if (prev.get("speaker") and float(out[a0].get("t", 0.0))
+                    - float(prev.get("t", 0.0)) <= 4.0):
+                donor = prev["speaker"]
+        if donor:
+            for k in range(a0, b0):
+                out[k] = {**out[k], "speaker": donor, "speaker_known": True,
+                          "speaker_status": "corrected"}
     return out

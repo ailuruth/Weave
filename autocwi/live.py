@@ -51,7 +51,9 @@ from urllib.parse import parse_qs, urlsplit
 import numpy as np
 
 from autocwi import haptics, netaudio
-from autocwi.director import assign_cues, direct_recording, settle_speakers
+from autocwi.director import (
+    assign_cues, direct_recording, settle_speakers, soften,
+)
 
 SR = 16_000
 BLOCK = 1024  # samples per audio block (~64 ms)
@@ -7636,9 +7638,9 @@ def run_live(args, cfg: dict, device: str) -> None:
                         f"analysing {round(done * 100)}%", lang),
                     ready=_listening,
                     cancelled=language_session.restart_pending,
-                    direct=lambda words: assign_cues(direct_recording(
+                    direct=lambda words: soften(assign_cues(direct_recording(
                         settle_speakers(words),
-                        live_cfg.get("import_director"))),
+                        live_cfg.get("import_director")))),
                 )
         events_path = out / "live_events.jsonl"
 

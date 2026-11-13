@@ -378,7 +378,15 @@ const MotionWord = memo(function MotionWord({
           "--group-lift-em": groupLift,
           "--char-group": waveLead[index] ?? index,
           /* THE TWO SCOPES TRADE OFF. */
-          "--char-wave": (waveSuppression * clamp(
+          /* Over a picture, a word that changes size does only that. The
+             motion-design checklist's simplicity rule -- one property is
+             direct, two polished, three or more overwhelming -- and a word
+             growing to twice its size was also stretching and tilting each
+             letter, popping, thickening and pushing. The letter wave belongs
+             to the words that stay their size and lift. */
+          "--char-wave": ((runtime.filmMotion
+              && Math.abs(motion.voice.scale - 1) > 0.12 ? 0 : 1)
+            * waveSuppression * clamp(
             0.85 + ((characterTypes[index]?.scale ?? 1) - motion.voice.scale) * 1.6,
             0.45,
             1.30,
@@ -614,8 +622,8 @@ const MotionWord = memo(function MotionWord({
        upward while it got smaller. And a word that grows big keeps its feet
        on the line -- the film's pops move the baseline by under 2 px; only
        the words that stay their size lift. */
-    "--sync-pop": (film && motion.voice.scale < 0.98 ? 1 : motion.sync.scale)
-      .toFixed(3),
+    "--sync-pop": (film && Math.abs(motion.voice.scale - 1) > 0.12
+      ? 1 : motion.sync.scale).toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
     "--word-lift-em": `${(film
       ? runtime.wordLiftEmEnhanced * filmLiftShare
