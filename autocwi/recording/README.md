@@ -128,11 +128,13 @@ ffmpeg parses the `.srt` and `.vtt`. `autocwi cc` replays the spec.
 
 ### 7. The captioned video
 
-`--render` writes `NAME.captioned.mp4`: the recording with the studio's own captions drawn on it. It is the studio that draws them, so the video carries the same motion the stage shows, to the frame.
+`--render`, or **Export → Captioned video** in the studio, writes `NAME.captioned.mp4`: the recording with the studio's own captions drawn on it. It is the studio that draws them, so the video carries the same motion the stage shows, to the frame.
+
+Both routes run one job (`render_score`). The analysed score is kept with the session, and the job replays it on a channel of its own (`/events?channel=render`), so a session someone is watching is not disturbed. The renderer's page asks for `/session?render=1`, which is read-only: a plain `GET /session` is the reload signal and would return a running session to the picker. Checked by driving the studio as a person would: a 22 s clip imported at the picker was drawn in 37 s, the browser downloaded it, and the watching session never returned to the picker.
 
 How it works (`render.py`):
 
-1. The server replays the recording to the studio on a `StepClock`, which only moves when the renderer moves it.
+1. The server replays the score to the studio on a `StepClock`, which only moves when the renderer moves it.
 2. Headless Chrome opens the studio with its page clock paused. The renderer advances that clock and the replay clock together, stopping at every frame time and at every moment the replay has something to send.
 3. Before each frame the page script sets every animation's time from the page clock. Chrome's animation clock keeps ticking in real time while the page clock is paused. Measured on a test page, it ran 1.41 to 1.57 times fast with 60 ms of idle per step, and the first render drew "louder" a second early.
 4. Each frame is captured as a PNG with a transparent background, at the recording's own resolution. ffmpeg lays the frames over the original picture and copies the audio.
@@ -178,7 +180,6 @@ What watching the film against ours changed, each confirmed in frames first:
 ## Limits
 
 - No pause or seek.
-- The captioned video is made from the command line. The studio's Export menu does not offer it yet.
 - "louder" reaches about 2× where the film's is nearly 3×.
 - The film rests a line at its speaker's weight. Weave rests every word at Regular 400 (`docs/MOTION.md`, "Return to normal").
 - Speakers, timing and sizes have no standard benchmark run yet.

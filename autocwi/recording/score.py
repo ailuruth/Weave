@@ -54,6 +54,30 @@ def build_media_score(events: Iterable[dict]) -> list[tuple[float, dict]]:
     return [(release, ev) for release, _, ev in timeline]
 
 
+def replay_score(
+    score: list[tuple[float, dict]],
+    *,
+    paced: bool = True,
+    cancelled: Callable[[], bool] | None = None,
+    _clock=None,
+    _sleep=None,
+):
+    """Yield a score's events, each at its own moment on the source clock."""
+
+    clock = _clock or time.monotonic
+    sleep = _sleep or time.sleep
+    started = clock()
+    for release, ev in score:
+        while paced:
+            if cancelled is not None and cancelled():
+                return
+            wait_s = started + release - clock()
+            if wait_s <= 0:
+                break
+            sleep(min(wait_s, 0.2))
+        yield ev
+
+
 def analysed_events(
     events: Iterable[dict],
     *,
@@ -63,14 +87,13 @@ def analysed_events(
     cancelled: Callable[[], bool] | None = None,
     direct: Callable[[list[dict]], list[dict]] | None = None,
     on_score: Callable[[list[dict]], None] | None = None,
+    on_timeline: Callable[[list[tuple[float, dict]]], None] | None = None,
     paced: bool = True,
     _clock=None,
     _sleep=None,
 ):
     """Hear the whole recording first, then play it back on the source clock."""
 
-    clock = _clock or time.monotonic
-    sleep = _sleep or time.sleep
     heard: list[dict] = []
     reported = -1.0
     try:
@@ -105,15 +128,9 @@ def analysed_events(
             score = [score[k] for k in order]
     if on_score is not None:
         on_score([ev for _, ev in score if ev.get("type") == "word"])
+    if on_timeline is not None:
+        on_timeline(list(score))
     if ready is not None:
         ready()
-    started = clock()
-    for release, ev in score:
-        while paced:
-            if cancelled is not None and cancelled():
-                return
-            wait_s = started + release - clock()
-            if wait_s <= 0:
-                break
-            sleep(min(wait_s, 0.2))
-        yield ev
+    yield from replay_score(
+        score, paced=paced, cancelled=cancelled, _clock=_clock, _sleep=_sleep)

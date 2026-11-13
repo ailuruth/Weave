@@ -47,13 +47,17 @@ PAGE_SETUP = r"""
   const Native = window.EventSource;
   window.__renderLastId = "";
   window.EventSource = class extends Native {
-    constructor(...args) {
-      super(...args);
+    constructor(url, ...rest) {
+      super(`${url}?channel=render`, ...rest);
       this.addEventListener("message", (event) => {
         window.__renderLastId = event.lastEventId;
       });
     }
   };
+  const nativeFetch = window.fetch;
+  window.fetch = (input, ...rest) => nativeFetch(
+    typeof input === "string" && /\/session$/.test(input) ? `${input}?render=1` : input,
+    ...rest);
   HTMLMediaElement.prototype.play = function play() { return Promise.resolve(); };
   Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
     configurable: true,
@@ -279,6 +283,40 @@ def _encoder(media: Path, picture: Picture, out: Path) -> subprocess.Popen:
         stdin=subprocess.PIPE)
 
 
+def render_score(
+    score: list[tuple[float, dict]],
+    media: Path,
+    out: Path,
+    *,
+    studio_url: str,
+    publish: Callable[[dict], None],
+    last_event_id: Callable[[], int],
+    progress: Callable[[float], None] | None = None,
+) -> dict:
+    """Replay `score` to the studio's render channel and write the captioned recording."""
+    from .score import replay_score
+
+    clock = StepClock()
+
+    def replay() -> None:
+        try:
+            for ev in replay_score(score, _clock=clock.now, _sleep=clock.sleep):
+                publish(ev)
+        finally:
+            clock.finish()
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    thread = threading.Thread(target=replay, daemon=True)
+    thread.start()
+    try:
+        return render_recording(
+            media, out, studio_url=studio_url, clock=clock,
+            last_event_id=last_event_id, progress=progress)
+    finally:
+        clock.finish()
+        thread.join()
+
+
 def render_recording(
     media: Path,
     out: Path,
@@ -290,8 +328,9 @@ def render_recording(
 ) -> dict:
     """Play the recording through the studio on `clock` and write it out with its captions drawn on.
 
-    The caller replays the recording to the studio on the same clock; this
-    steps that clock and the page's together, one frame at a time.
+    The caller replays the recording to the studio's render channel on the
+    same clock; this steps that clock and the page's together, one frame at a
+    time. The page asks for the session without counting as a reload.
     """
     from websockets.sync.client import connect
 

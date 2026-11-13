@@ -1819,6 +1819,63 @@ function StageSound({
   );
 }
 
+type VideoExport = "idle" | "drawing" | "failed";
+
+function ExportMenu() {
+  const [video, setVideo] = useState<VideoExport>("idle");
+  const drawVideo = async () => {
+    if (video === "drawing") return;
+    setVideo("drawing");
+    try {
+      const response = await fetch("/session/captions.mp4");
+      if (!response.ok) throw new Error(String(response.status));
+      const named = /filename="([^"]+)"/.exec(
+        response.headers.get("Content-Disposition") ?? "");
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = named?.[1] ?? "captioned.mp4";
+      link.click();
+      URL.revokeObjectURL(url);
+      setVideo("idle");
+    } catch {
+      setVideo("failed");
+    }
+  };
+  return (
+    <details className="export-menu" data-busy={video === "drawing"}>
+      <summary>{video === "drawing" ? "Drawing video…" : "Export"}</summary>
+      <div role="menu">
+        <a role="menuitem" href="/session/captions.srt" download>
+          SubRip <span>.srt</span>
+        </a>
+        <a role="menuitem" href="/session/captions.vtt" download>
+          WebVTT <span>.vtt</span>
+        </a>
+        <a role="menuitem" href="/session/captions.jsx" download>
+          After Effects script <span>.jsx</span>
+        </a>
+        <a role="menuitem" href="/session/captions.json" download>
+          Caption spec <span>.cwi.json</span>
+        </a>
+        <button
+          role="menuitem"
+          type="button"
+          onClick={drawVideo}
+          disabled={video === "drawing"}
+        >
+          {video === "drawing"
+            ? "Drawing every frame…"
+            : video === "failed"
+              ? "Could not draw it. Try again"
+              : "Captioned video"}
+          <span>.mp4</span>
+        </button>
+      </div>
+    </details>
+  );
+}
+
 function LanguageGate({
   session,
   error,
@@ -2381,23 +2438,7 @@ export function LiveStudio() {
             {number(level.rms_db, -72).toFixed(1)} dBFS
           </span>
           {activeMedia && session.state === "listening" && (
-            <details className="export-menu">
-              <summary>Export</summary>
-              <div role="menu">
-                <a role="menuitem" href="/session/captions.srt" download>
-                  SubRip <span>.srt</span>
-                </a>
-                <a role="menuitem" href="/session/captions.vtt" download>
-                  WebVTT <span>.vtt</span>
-                </a>
-                <a role="menuitem" href="/session/captions.jsx" download>
-                  After Effects script <span>.jsx</span>
-                </a>
-                <a role="menuitem" href="/session/captions.json" download>
-                  Caption spec <span>.cwi.json</span>
-                </a>
-              </div>
-            </details>
+            <ExportMenu />
           )}
           {activeLanguage && (
             <span className="language-pill">

@@ -22,6 +22,7 @@ class RecordingHooks:
     ready: Callable[[], None]
     cancelled: Callable[[], bool]
     exported: Callable[[dict[str, Path], str], None]
+    scored: Callable[[list[tuple[float, dict]]], None] | None = None
 
 
 def media_duration_s(path: Path) -> float:
@@ -43,8 +44,6 @@ def recording_events(
     hooks: RecordingHooks,
     paced: bool = True,
     cache: dict | None = None,
-    clock: Callable[[], float] | None = None,
-    sleep: Callable[[float], None] | None = None,
 ) -> Iterator[dict]:
     """Yield the studio events for one recording, analysed and then replayed."""
 
@@ -89,7 +88,6 @@ def recording_events(
         cancelled=hooks.cancelled,
         direct=lambda words: direct(words, live_cfg.get("import_director")),
         on_score=export,
+        on_timeline=hooks.scored,
         paced=paced,
-        _clock=clock,
-        _sleep=sleep,
     )

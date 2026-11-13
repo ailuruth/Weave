@@ -63,7 +63,7 @@ To export without opening the studio:
 .venv/bin/python -m autocwi live --import clip.mp4 --lang en --once --out out
 ```
 
-To get the recording back with the captions drawn on it, exactly as the studio moves them:
+To get the recording back with the captions drawn on it, exactly as the studio moves them, choose **Export → Captioned video** in the studio, or:
 
 ```bash
 .venv/bin/python -m autocwi live --import clip.mp4 --lang en --render --out out

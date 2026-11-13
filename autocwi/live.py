@@ -34,6 +34,7 @@ import platform
 import queue
 import re
 import socket
+import shutil
 import threading
 import time
 import unicodedata
@@ -55,10 +56,9 @@ from autocwi.recording import (
     MEDIA_MAX_BYTES,
     MEDIA_SUFFIXES,
     RecordingHooks,
-    StepClock,
     media_has_audio,
     recording_events,
-    render_recording,
+    render_score,
     video_motion,
 )
 
@@ -6020,6 +6020,9 @@ class LiveLanguageSession:
         self._restart = threading.Event()
         self._media: Path | None = None
         self._media_name: str | None = None
+        self._video_lock = threading.Lock()
+        self._video_job: Callable[[], Path] | None = None
+        self._video: Path | None = None
         if language:
             self._selected.set()
 
@@ -6066,6 +6069,26 @@ class LiveLanguageSession:
             path = getattr(self, "_exports", {}).get(kind)
         return (path, path.name) if path is not None and path.is_file() else None
 
+    def set_video_job(self, job: Callable[[], Path] | None) -> None:
+        """How to draw this session's recording with its captions on it."""
+        with self._lock:
+            self._video_job, self._video = job, None
+
+    def video(self) -> Path | None:
+        """The captioned recording, drawn on first request. Blocks while it is drawn."""
+        with self._video_lock:
+            with self._lock:
+                job, done = self._video_job, self._video
+            if done is not None and done.is_file():
+                return done
+            if job is None:
+                return None
+            drawn = job()
+            with self._lock:
+                if self._video_job is job:
+                    self._video = drawn
+            return drawn
+
     def served_media(self) -> Path | None:
         """The file the studio may fetch as this session's picture."""
         with self._lock:
@@ -6094,6 +6117,7 @@ class LiveLanguageSession:
             self._selected.clear()
             self._restart.set()
             stale, self._media, self._media_name = self._media, None, None
+            self._video_job = self._video = None
             snapshot = self._snapshot_locked()
         if stale is not None:
             stale.unlink(missing_ok=True)
@@ -6420,8 +6444,31 @@ def make_handler(
             elif path == "/session" and language_session is not None:
                 # NOT `snapshot()`: this GET is the one honest signal that the
                 # browser was reloaded, and on a restartable session that
-                # returns the studio to the language picker.
-                self._send_json(language_session.begin_page_load())
+                # returns the studio to the language picker. The renderer's
+                # own page says so and is only read to.
+                rendering = "render" in parse_qs(urlsplit(self.path).query)
+                self._send_json(
+                    language_session.snapshot() if rendering
+                    else language_session.begin_page_load())
+            elif path == "/session/captions.mp4" and language_session is not None:
+                try:
+                    target = language_session.video()
+                except Exception as exc:  # noqa: BLE001 - reported to the studio
+                    print(f"[live] captioned video failed: {exc}")
+                    self.send_error(500, "could not draw the captioned video")
+                    return
+                if target is None:
+                    self.send_error(404)
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp4")
+                self.send_header("Content-Disposition",
+                                 f'attachment; filename="{target.name}"')
+                self.send_header("Content-Length", str(target.stat().st_size))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                with open(target, "rb") as handle:
+                    shutil.copyfileobj(handle, self.wfile, 1 << 18)
             elif path == "/session/media-file" and language_session is not None:
                 self._send_media(language_session.served_media())
             elif (path.startswith("/session/captions.")
@@ -6468,7 +6515,12 @@ def make_handler(
                     last_event_id = int(self.headers.get("Last-Event-ID", "0"))
                 except ValueError:
                     last_event_id = 0
-                q = broadcaster.register(last_event_id)
+                channel = broadcaster
+                if "channel" in parse_qs(urlsplit(self.path).query):
+                    channel = getattr(self.server, "render_broadcaster", None)
+                    if channel is None:
+                        return
+                q = channel.register(last_event_id)
                 try:
                     self.wfile.write(b"retry: 500\n: connected\n\n")
                     self.wfile.flush()
@@ -6484,7 +6536,7 @@ def make_handler(
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     pass
                 finally:
-                    broadcaster.unregister(q)
+                    channel.unregister(q)
             elif static_root is not None:
                 candidate = (static_root / path.lstrip("/")).resolve()
                 if (
@@ -7389,13 +7441,34 @@ def run_live(args, cfg: dict, device: str) -> None:
                     onset_detector=onset,
                 )
 
-            render_clock = None
             if imported is None:
                 _listening()
                 events = _caption_pass()
             else:
-                if getattr(args, "render", False):
-                    render_clock = StepClock()
+                media_name = (
+                    language_session.snapshot().get("media") or imported.name)
+                captioned = (
+                    out / "exports" / f"{Path(media_name).stem}.captioned.mp4")
+
+                def _video_job(score, media=imported, target=captioned):
+                    def draw() -> Path:
+                        channel = Broadcaster()
+                        server.render_broadcaster = channel
+                        report = render_score(
+                            score, media, target,
+                            studio_url=(
+                                f"http://127.0.0.1:{server.server_address[1]}/"),
+                            publish=channel.publish,
+                            last_event_id=channel.last_event_id,
+                            progress=lambda done: print(
+                                f"[live] drawing captions {round(done * 100)}%",
+                                flush=True),
+                        )
+                        print(f"[live] captioned video: {target} "
+                              f"{json.dumps(report)}")
+                        return target
+                    return draw
+
                 events = recording_events(
                     imported,
                     language_session.snapshot().get("media") or imported.name,
@@ -7408,11 +7481,14 @@ def run_live(args, cfg: dict, device: str) -> None:
                         ready=_listening,
                         cancelled=language_session.restart_pending,
                         exported=language_session.set_exports,
+                        scored=(
+                            (lambda score: language_session.set_video_job(
+                                _video_job(score)))
+                            if server is not None else None),
                     ),
-                    paced=not getattr(args, "once", False),
+                    paced=not (getattr(args, "once", False)
+                               or getattr(args, "render", False)),
                     cache=recording_cache,
-                    clock=render_clock.now if render_clock else None,
-                    sleep=render_clock.sleep if render_clock else None,
                 )
         events_path = out / "live_events.jsonl"
 
@@ -7448,31 +7524,6 @@ def run_live(args, cfg: dict, device: str) -> None:
         )
         cue_seq = 0
 
-        render_report: dict = {}
-        render_thread = None
-        if render_clock is not None:
-            media_name = language_session.snapshot().get("media") or imported.name
-            captioned = out / "exports" / f"{Path(media_name).stem}.captioned.mp4"
-
-            def _render() -> None:
-                try:
-                    render_report.update(render_recording(
-                        imported, captioned,
-                        studio_url=f"http://127.0.0.1:{server.server_address[1]}/",
-                        clock=render_clock,
-                        last_event_id=broadcaster.last_event_id,
-                        progress=lambda done: print(
-                            f"[live] drawing captions {round(done * 100)}%",
-                            flush=True),
-                    ))
-                except Exception as exc:  # noqa: BLE001 - reported below
-                    render_report["error"] = f"{type(exc).__name__}: {exc}"
-                finally:
-                    render_clock.finish()
-
-            render_thread = threading.Thread(target=_render, daemon=True)
-            render_thread.start()
-
         try:
             with open(events_path, "w", encoding="utf-8") as f:
                 for ev in events:
@@ -7492,15 +7543,11 @@ def run_live(args, cfg: dict, device: str) -> None:
                                 node_link.send_cue(cue.flag, cue.direction_deg,
                                                    cue.intensity, cue_seq)
                 else:
-                    if render_thread is not None:
-                        render_clock.finish()
-                        render_thread.join()
-                        server.shutdown()
-                        if "error" in render_report:
-                            raise SystemExit(
-                                f"[live] render failed: {render_report['error']}")
-                        print(f"[live] captioned video: {captioned} "
-                              f"{json.dumps(render_report)}")
+                    if getattr(args, "render", False) and imported is not None:
+                        try:
+                            language_session.video()
+                        finally:
+                            server.shutdown()
                         return
                     print("[live] audio source finished — server still running "
                           "(Ctrl-C to quit)")

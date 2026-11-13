@@ -2921,7 +2921,8 @@ button {
   background: var(--bg);
 }
 
-.export-menu a {
+.export-menu a,
+.export-menu button {
   display: flex;
   justify-content: space-between;
   gap: 18px;
@@ -2933,10 +2934,32 @@ button {
   text-decoration: none;
 }
 
-.export-menu a:active {
+.export-menu button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.export-menu a:active,
+.export-menu button:active,
+.export-menu button:disabled {
   opacity: .6;
 }
 
-.export-menu a span {
+.export-menu button:disabled {
+  cursor: progress;
+}
+
+.export-menu a span,
+.export-menu button span {
   color: var(--muted);
+}
+
+.export-menu[data-busy="true"] summary {
+  border-color: var(--accent);
+  color: var(--accent);
 }
