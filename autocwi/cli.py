@@ -91,6 +91,16 @@ def build_parser() -> argparse.ArgumentParser:
     tn.add_argument("--media", default=None)
     tn.add_argument("--no-open", dest="no_open", action="store_true")
 
+    cp = sub.add_parser(
+        "caption", help="a recording in, its captioned video and caption "
+                        "files out (OUT/exports/)")
+    cp.add_argument("file")
+    cp.add_argument("--lang", required=True, choices=["en", "ko", "multi"],
+                    help="the language spoken in the recording")
+    cp.add_argument("--out", default="out")
+    cp.add_argument("--no-video", dest="no_video", action="store_true",
+                    help="write the caption files only")
+
     ck = sub.add_parser(
         "check", help="check a caption file (spec.json / NAME.cwi.json) "
                       "against the design system; exits 1 on an error")
@@ -337,6 +347,10 @@ def stage_fuse(args, cfg, _device) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if args.cmd == "caption":
+        args = build_parser().parse_args([
+            "live", "--import", args.file, "--lang", args.lang, "--out", args.out,
+            "--once" if args.no_video else "--render"])
     if args.cmd == "check":
         from .check import check_file, report
 

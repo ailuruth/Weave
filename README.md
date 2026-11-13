@@ -29,7 +29,15 @@ First run loads models for ~8 s. macOS asks for microphone permission once per t
 
 ## Caption a video
 
-Start `python -m autocwi live` with no `--lang`, choose **Import a video** under the language buttons, then pick the language spoken in it. The file never leaves the machine.
+One command turns a recording into its captioned video and its caption files:
+
+```bash
+.venv/bin/python -m autocwi caption clip.mp4 --lang en     # or ko, multi
+```
+
+`out/exports/` then holds `clip.captioned.mp4` beside `clip.srt`, `clip.vtt`, `clip.aftereffects.jsx` and `clip.cwi.json`. A sound-only file (a podcast, a voice memo) comes back as captions on a black frame. `--no-video` writes the caption files alone.
+
+To watch it in the studio instead, start `python -m autocwi live` with no `--lang`, choose **Import a video** under the language buttons, then pick the language spoken in it. The file never leaves the machine.
 
 A recording is not streamed. It is transcribed whole (Whisper `large-v3-turbo`, a one-time ~1.6 GB download), run through the same prosody, speaker and motion pipeline as a live session, and only then played, with the picture held on the caption playhead. Each word appears once, in its final text and colour.
 
@@ -155,14 +163,20 @@ Caption with Intention is published as a design system and an After Effects temp
 
 | | |
 |---|---|
+| [broomva/opencaptions](https://github.com/broomva/opencaptions) | video in, CWI captions out: faster-whisper, pyannote, Praat; exports WebVTT, ASS, After Effects and Premiere; burn-in through ffmpeg. Weave's `check` command follows its validator |
 | [mjkang-estrella/caption-with-intention](https://github.com/mjkang-estrella/caption-with-intention) | browser editor: per-word motion inspector, SRT/WebVTT import, CWI JSON round-trip |
+| [Voxsama/Caption-with-intention](https://github.com/Voxsama/Caption-with-intention) | manual caption studio with an After Effects build script |
 | [samadon1/sightline](https://github.com/samadon1/sightline) | Fire TV runtime over an approved WebVTT track, with a person confirming every proposal |
 | [Segyun/Alive-Caption](https://github.com/Segyun/Alive-Caption) | iOS app, live and file-based, on-device |
 | [jutopia03/CIG](https://github.com/jutopia03/CIG-Caption-with-Intention-Generator-) | upload-a-video generator on cloud speech recognition |
+| Google, [Expressive Captions](https://blog.google/products/android/google-android-expressive-captions) | Android Live Caption, on device: capitals for loud speech, labels for vocal sounds. Not the CWI type system |
+| Dementyev et al., [SpeechCompass, CHI 2025](https://arxiv.org/abs/2502.08848) | speaker direction beside mobile captions, from a four-microphone phone case |
 | de Lacerda Pataca et al., [CHI 2023](https://dl.acm.org/doi/10.1145/3544548.3581511) | DHH viewers: captions showing emotion beat conventional ones for emphasis; prosody alone did not |
 | de Lacerda Pataca et al., [Caption Royale, CHI 2024](https://dl.acm.org/doi/10.1145/3613904.3642258) | the design space of affective captions, from DHH viewers |
 
-What Weave adds is the automatic path: local models, live or from a file, with every figure measured against the film. What the editors above have and Weave does not is a person in the loop — which word a captioner enlarges is a judgement, not something in the audio.
+What Weave adds is the automatic path: local models, live or from a file, with every figure measured against the film. Its motion is fitted to pixel measurements of the film and returns every word to normal; opencaptions, read from its source, sets a word's size and weight once and animates a fixed 15% bounce. Two of its rules were tried here against the film's measured sizes and not adopted: never emphasising function words took the correlation from +0.676 to +0.657, and correcting for a sentence's falling loudness to +0.634. And the captioned video is drawn by the studio itself, frame by frame, so it carries the motion the stage shows.
+
+What the editors above have and Weave does not is a person in the loop — which word a captioner enlarges is a judgement, not something in the audio.
 
 ## Future work
 
