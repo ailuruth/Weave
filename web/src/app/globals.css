@@ -2763,3 +2763,21 @@ button {
     1 + var(--voice-phase) * (var(--voice-scale, 1) - 1)
   );
 }
+
+/* A WORD IN MOTION IS DRAWN OVER ITS NEIGHBOURS, AND A VERY BIG ONE MOVES
+   THEM. The pop overlaps the words beside it -- in the film too -- and
+   without an order the three sets of letters were simply printed through one
+   another. `--film-push` is half the width the word gains (or, negative,
+   loses), set once from its resting box; riding `--voice-phase` it opens and
+   closes with the size it makes room for. */
+.studio-shell[data-cues="true"] .caption-word {
+  z-index: calc(1 + var(--voice-phase) * 10);
+  /* On top of the word's own .30em space, which `margin-inline` alone would
+     have replaced -- and the last word of a line has none to keep. */
+  margin-left: calc(var(--voice-phase) * var(--film-push, 0px));
+  margin-right: calc(.30em + var(--voice-phase) * var(--film-push, 0px));
+}
+
+.studio-shell[data-cues="true"] .caption-word:last-child {
+  margin-right: calc(var(--voice-phase) * var(--film-push, 0px));
+}

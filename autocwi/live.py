@@ -7092,10 +7092,12 @@ def _studio_runtime_config(
             "holdMaxMs": (live_sync.get("video_motion") or {}).get("hold_max_ms", 700),
             "holdFromScale": (live_sync.get("video_motion") or {}).get("hold_from_scale", 1.15),
             "holdFullScale": (live_sync.get("video_motion") or {}).get("hold_full_scale", 1.45),
-            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.6, 2.0]),
+            "pushFromScale": (live_sync.get("video_motion") or {}).get("push_from_scale", 1.5),
+            "pushFullScale": (live_sync.get("video_motion") or {}).get("push_full_scale", 1.9),
+            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.55, 2.0]),
             "scalePoints": (live_sync.get("video_motion") or {}).get("scale_points", [
-                [0.0, -0.4], [0.06, -0.3], [0.12, 0.0], [0.26, 0.0],
-                [0.45, 0.15], [0.75, 0.45], [1.0, 0.9]]),
+                [0.0, -0.45], [0.08, -0.35], [0.14, 0.0], [0.26, 0.0],
+                [0.45, 0.15], [0.75, 0.36], [1.0, 0.8]]),
         },
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),

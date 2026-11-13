@@ -318,19 +318,27 @@ motion:
         # a picture has all the room the film uses. CWI 2.3.6: 3%..12% of the
         # screen height on a 5% baseline, i.e. 0.6x..2.4x. The film's footage
         # tops out near 1.9x ("wow" 1.87x) and its titles reach 2.9x.
-        scale_range: [0.6, 2.0]
+        # THE LINE MAKES ROOM FOR A VERY BIG WORD, AND CLOSES UP ROUND A SMALL
+        # ONE. The film's "louder" pushes the rest of its line apart and its
+        # "or softer" draws it together; its ordinary pops (to ~1.5x) only
+        # overlap their neighbours. Faded in between these two sizes.
+        push_from_scale: 1.5
+        push_full_scale: 1.9
+        scale_range: [0.55, 2.0]
         # loudness (0..1, baseline 0.222) -> size above 1.0. Flat across
-        # ordinary speech (0.12..0.26); "softer" (0.04) lands near 0.67x and
+        # ordinary speech (0.14..0.26); "softer" (0.08) lands near 0.65x and
         # the loudest word of a line at 1.9x. A drill-sergeant line, raised to
         # 0.75 by the sentence director, lands at 1.45x (film: 1.34-1.60x).
         scale_points:
-          - [0.00, -0.40]
-          - [0.06, -0.30]
-          - [0.12, 0.00]
+          - [0.00, -0.45]
+          - [0.08, -0.35]
+          - [0.14, 0.00]
           - [0.26, 0.00]
           - [0.45, 0.15]
-          - [0.75, 0.45]
-          - [1.00, 0.90]
+          # Seen beside the film, 0.45 / 0.90 here drew the sergeant's words
+          # at ~1.7x against its 1.35-1.60x, covering their neighbours.
+          - [0.75, 0.36]
+          - [1.00, 0.80]
       # A WORD THAT WAITS RISES, AND LANDS AS IT TURNS.
       character_wave_falloff: 1.0
       # ...and no floor, for the same reason.

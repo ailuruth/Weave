@@ -487,9 +487,12 @@ const MotionWord = memo(function MotionWord({
       sweepMs: sweep,
       // The crest is the SLOW clock -- emphasis, not speech rate.
       crestMs: crest,
+      /* A quiet word is barely voiced, so its voiced length says nothing
+         about how long it lasts: a shrunk word holds for its whole span. */
       filmHoldMs: filmMotion
         ? holdGate * clamp(
-            spokenMs * voicedFraction(word) - filmMotion.holdTrimMs,
+            spokenMs * (motion.voice.scale < 1 ? 1 : voicedFraction(word))
+              - filmMotion.holdTrimMs,
             0, filmMotion.holdMaxMs)
         : 0,
     };
@@ -508,6 +511,31 @@ const MotionWord = memo(function MotionWord({
      quiet "softer" the BOLDEST word of its line -- seen side by side with the
      reference, the opposite of it. So over a picture the crest weight follows
      the crest size, through the same range. */
+  const filmLiftShare = !film ? 1
+    : motion.voice.scale < 0.98 ? 0
+      : 1 - clamp((motion.voice.scale - 1.1) / 0.2, 0, 1);
+  /* HOW FAR THE NEIGHBOURS MOVE, for a word that changes size a lot. The
+     film makes room for "louder" at three times its size and closes up
+     around "softer"; its ordinary pops (up to ~1.5x) just overlap. Half the
+     width the word gains or loses, per side, faded in over `pushFromScale`
+     .. `pushFullScale`; shrinking always closes up. Measured from the word's
+     own resting box, once. */
+  const filmPushShare = !film ? 0
+    : motion.voice.scale < 1 ? 1
+      : clamp((motion.voice.scale - film.pushFromScale)
+          / Math.max(1e-6, film.pushFullScale - film.pushFromScale), 0, 1);
+  useLayoutEffect(() => {
+    const element = wordRef.current;
+    if (!element || !film || element.style.getPropertyValue("--film-push")) return;
+    /* A word that grows also goes heavy, and heavy type is wider: Roboto
+       Flex at 800 sets ~14% wider than at 400. Without it "gets" still
+       touched the bold "l" of "louder". */
+    const widening = motion.voice.scale > 1
+      ? 1 + 0.14 * clamp((motion.voice.scale - 1) / 0.9, 0, 1)
+      : 1;
+    const half = element.offsetWidth * (motion.voice.scale * widening - 1) / 2;
+    element.style.setProperty("--film-push", `${(half * filmPushShare).toFixed(2)}px`);
+  }, [film, filmPushShare, motion.voice.scale]);
   const [filmQuiet, filmLoud] = film ? film.scaleRange : [1, 1];
   const filmWeight = !film ? 400 : motion.voice.scale >= 1
     ? 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
@@ -539,13 +567,19 @@ const MotionWord = memo(function MotionWord({
        proportional now (`sync_pop_floor_enhanced`) and there is nothing left
        for a gate to decide. `quietWord` still governs WEIGHT, which the film
        really does withhold, per line rather than per word. */
-    "--sync-pop": motion.sync.scale.toFixed(3),
+    /* Over a picture a word that SHRINKS does nothing else: no pop on top of
+       the shrink, no lift, no crouch. Seen beside the film, "softer" floated
+       upward while it got smaller. And a word that grows big keeps its feet
+       on the line -- the film's pops move the baseline by under 2 px; only
+       the words that stay their size lift. */
+    "--sync-pop": (film && motion.voice.scale < 0.98 ? 1 : motion.sync.scale)
+      .toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
-    "--word-lift-em": `${runtime.wordLiftEmEnhanced}em`,
+    "--word-lift-em": `${(runtime.wordLiftEmEnhanced * filmLiftShare).toFixed(4)}em`,
     "--motion-duration": `${(film ? film.riseMs + film.fallMs : duration).toFixed(0)}ms`,
     ...(film ? {
       "--film-lead": `${film.leadMs}ms`,
-      "--film-crouch-em": `${film.crouchEm}em`,
+      "--film-crouch-em": `${motion.voice.scale < 0.98 ? 0 : film.crouchEm}em`,
       "--film-crouch-ms": `${film.crouchMs}ms`,
       "--film-hold": `${filmHoldMs.toFixed(0)}ms`,
     } : {}),
@@ -1304,7 +1338,12 @@ function CaptionFeed({
 
   /* THE BOX OPENS SIDEWAYS OVER A NEWLY APPENDED WORD. */
   useLayoutEffect(() => {
-    if (transcript || reducedMotion) {
+    /* NOT OVER A PICTURE. A caption line arrives whole there, so there is
+       nothing to open -- and the clip this animates CUTS THE ROW TO ITS OWN
+       BOX. A word growing changes the row's width, which restarted the clip
+       under it: "louder" at twice its size was drawn with its ascenders and
+       descenders sliced off. */
+    if (transcript || reducedMotion || runtime.filmMotion) {
       for (const animation of rowGrowAnimations.current.values()) {
         animation.cancel();
       }
@@ -1346,7 +1385,7 @@ function CaptionFeed({
         }
       }, {once: true});
     });
-  }, [paragraphs, reducedMotion, transcript]);
+  }, [paragraphs, reducedMotion, runtime.filmMotion, transcript]);
 
   useEffect(() => () => {
     for (const animation of rowGrowAnimations.current.values()) {

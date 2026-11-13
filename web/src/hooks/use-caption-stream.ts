@@ -71,6 +71,9 @@ export interface FilmMotion {
   holdMaxMs: number;
   holdFromScale: number;
   holdFullScale: number;
+  /** A word this much bigger starts moving its neighbours aside. */
+  pushFromScale: number;
+  pushFullScale: number;
   /** CWI 2.3.6's own size range and mapping, for one line over a picture. */
   scaleRange: [number, number];
   scalePoints: Array<[number, number]>;
@@ -243,9 +246,10 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   videoMotion: {
     leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130,
     holdTrimMs: 100, holdMaxMs: 700, holdFromScale: 1.15, holdFullScale: 1.45,
-    scaleRange: [0.6, 2.0],
-    scalePoints: [[0, -0.4], [0.06, -0.3], [0.12, 0], [0.26, 0],
-                  [0.45, 0.15], [0.75, 0.45], [1, 0.9]],
+    pushFromScale: 1.5, pushFullScale: 1.9,
+    scaleRange: [0.55, 2.0],
+    scalePoints: [[0, -0.45], [0.08, -0.35], [0.14, 0], [0.26, 0],
+                  [0.45, 0.15], [0.75, 0.36], [1, 0.8]],
   },
   voiceScaleDeadbandEnhanced: 0.1,
   voiceScaleResponseEnhanced: 0.5,
