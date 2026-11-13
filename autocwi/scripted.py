@@ -92,6 +92,39 @@ def snap_onsets(
 
 _ALIGN_CHARS = set("abcdefghijklmnopqrstuvwxyz'")
 
+# Hangul syllable = initial x 588 + medial x 28 + final, from U+AC00. Spelled
+# the way the aligner's training text was romanised (close to Revised
+# Romanization); a silent initial ieung is nothing, a final one is "ng".
+_HANGUL_INITIAL = ("g", "kk", "n", "d", "tt", "r", "m", "b", "pp", "s", "ss",
+                   "", "j", "jj", "ch", "k", "t", "p", "h")
+_HANGUL_MEDIAL = ("a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa",
+                  "wae", "oe", "yo", "u", "wo", "we", "wi", "yu", "eu", "ui", "i")
+_HANGUL_FINAL = ("", "g", "kk", "gs", "n", "nj", "nh", "d", "l", "lg", "lm",
+                 "lb", "ls", "lt", "lp", "lh", "m", "b", "bs", "s", "ss", "ng",
+                 "j", "ch", "k", "t", "p", "h")
+
+
+def romanize_hangul(text: str) -> str:
+    """Spell Hangul syllables in Latin letters; leave everything else alone.
+
+    The aligner (MMS_FA) hears any language but only READS Latin. Without
+    this a Korean word had no letters it knew, became a wildcard, and every
+    Korean window fell back to Whisper's own word times -- the 0.7 s errors
+    the aligner exists to fix, left in place for exactly the language the
+    English fix did not cover.
+    """
+
+    out = []
+    for ch in text:
+        code = ord(ch) - 0xAC00
+        if 0 <= code < 11172:
+            out.append(_HANGUL_INITIAL[code // 588]
+                       + _HANGUL_MEDIAL[(code % 588) // 28]
+                       + _HANGUL_FINAL[code % 28])
+        else:
+            out.append(ch)
+    return "".join(out)
+
 
 def _align_token(text: str) -> str:
     """A word as the aligner's alphabet spells it; "*" when it has no letters
@@ -100,7 +133,8 @@ def _align_token(text: str) -> str:
 
     import unicodedata
 
-    plain = unicodedata.normalize("NFKD", text).lower().replace("\u2019", "'")
+    plain = unicodedata.normalize(
+        "NFKD", romanize_hangul(text)).lower().replace("\u2019", "'")
     token = "".join(ch for ch in plain if ch in _ALIGN_CHARS).strip("'")
     return token or "*"
 
@@ -132,9 +166,10 @@ def align_words(
     linear in the recording's length, and one bad passage cannot shift the
     rest.
 
-    A word the alphabet cannot spell is still placed (as a wildcard). A window
-    that is mostly such words -- Hangul, until romanisation is added -- keeps
-    Whisper's times, and so does any window the aligner fails on.
+    A word the alphabet cannot spell is still placed (as a wildcard). Hangul
+    is romanised first (`romanize_hangul`). A window that is mostly words with
+    no spelling at all -- a script not yet handled -- keeps Whisper's times,
+    and so does any window the aligner fails on.
     Returns ``(words, aligner)`` so the loaded model can be reused.
     """
 
@@ -236,6 +271,24 @@ def lead_in(
     return out
 
 
+# THE PROMPT IS IN THE LANGUAGE BEING SPOKEN, AND THAT IS MEASURED. A prompt
+# is text the model treats as what came before, so an English one tells it
+# the recording is English: on 120 Korean FLEURS clips it inserted English
+# words into Korean sentences ("advantage", "tie break") and scored 14.21%
+# CER, where the Korean prompt scores 4.55% (the live Korean recognizer:
+# 7.52%). A language with no entry here gets no prompt at all rather than
+# somebody else's.
+STYLE_PROMPTS = {
+    "en": "Hello. This is a transcript, with punctuation and capital letters.",
+    "ko": "안녕하세요. 문장 부호를 넣은 받아쓰기입니다.",
+}
+
+
+def _style_prompt(settings: dict, language: str | None) -> str | None:
+    prompts = {**STYLE_PROMPTS, **(settings.get("initial_prompts") or {})}
+    return prompts.get(language or "")
+
+
 def transcribe_recording(
     path: str | Path,
     cfg: dict,
@@ -280,9 +333,7 @@ def transcribe_recording(
         # RUN WITH NO PUNCTUATION, and sentences are what caption lines are
         # cut from: "louder or softer character identification" was shown as
         # one caption. A punctuated prompt sets the style for the transcript.
-        initial_prompt=settings.get(
-            "initial_prompt",
-            "Hello. This is a transcript, with punctuation and capital letters."),
+        initial_prompt=_style_prompt(settings, language),
     )
     words: list[ScriptWord] = []
     for segment in segments:
