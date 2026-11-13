@@ -4,7 +4,7 @@
 [![sherpa-onnx](https://img.shields.io/badge/sherpa--onnx-1.13-005CED?style=flat&logo=onnx&logoColor=white)](https://github.com/k2-fsa/sherpa-onnx)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-000000?style=flat&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 
-[Project Page](https://nobel2040ne.github.io/Weave/)
+[Project Page](https://ailuruth.github.io/Weave/)
 
 Weave captions a video with [Caption with Intention](https://captionwithintention.org), the caption design system for Deaf and hard of hearing viewers. Each speaker gets a colour. Each word turns to that colour as it is spoken. The type grows and shrinks with the voice.
 
@@ -27,7 +27,7 @@ This writes the captioned video to `out/exports/`, with the captions as `.srt`, 
 You need Python 3.11, Node.js, ffmpeg and Chrome, on macOS (Apple Silicon) or Linux.
 
 ```bash
-git clone https://github.com/nobel2040ne/Weave.git
+git clone https://github.com/ailuruth/Weave.git
 cd Weave
 ./install.sh
 ```
@@ -50,7 +50,7 @@ In the studio you can also choose **Import a video** to watch a recording being 
 
 ## Documentation
 
-* [The project page](https://nobel2040ne.github.io/Weave/) shows what a caption does.
+* [The project page](https://ailuruth.github.io/Weave/) shows what a caption does.
 * [ARCHITECTURE.md](ARCHITECTURE.md) describes the modules and the data format.
 * [CONTRIBUTING.md](CONTRIBUTING.md) has the rules for changing the code.
 * [autocwi/recording/README.md](autocwi/recording/README.md) covers captioning a video.
