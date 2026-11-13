@@ -56,8 +56,7 @@ export interface LanguageSession {
   media?: string | null;
 }
 
-/** Pop and lift timing read off the PR film -- see `video_motion` in
-   config.yaml for the per-frame measurement. */
+/** Pop and lift timing read off the PR film -- see `video_motion` in config.yaml for the per-frame measurement. */
 export interface FilmMotion {
   /** How long before the colour wipe starts the motion begins. */
   leadMs: number;
@@ -153,8 +152,7 @@ export interface RuntimeConfig {
   crestLagMs: number;
   /** The film's measured motion clock, served for captioned video. */
   videoMotion: FilmMotion;
-  /** Set by the studio, never served: the clock above, switched on for a
-     recording shown one caption line at a time. */
+  /** Set by the studio, never served: the clock above, switched on for a recording shown one caption line at a time. */
   filmMotion?: FilmMotion | null;
   /** Enhanced: narrower 2.3 size deadband. */
   voiceScaleDeadbandEnhanced: number;
@@ -414,10 +412,6 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     useState<ConnectionState>("connecting");
   const [runtime, setRuntime] =
     useState<RuntimeConfig>(DEFAULT_RUNTIME_CONFIG);
-  /* Flips once, when the first `/runtime-config.json` request settles either
-     way. A word freezes its motion at first sight, so one replayed before the
-     served config arrives keeps `DEFAULT_RUNTIME_CONFIG`'s amplitudes for
-     good. The stream waits on this. */
   const [runtimeKnown, setRuntimeKnown] = useState(false);
   const [session, setSession] = useState<LanguageSession>({
     state: "checking",
@@ -702,10 +696,6 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     }
   }, [backendOrigin]);
 
-  /* IMPORT A RECORDING. The file goes to the local server as a raw body, the
-     server keeps it for exactly one session, and the language pick that
-     follows starts that session on it instead of the microphone. Resolves
-     false when the import was refused, so the caller can drop its own copy. */
   const importMedia = useCallback(async (file: File, language: string) => {
     setLanguageError(null);
     try {

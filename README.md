@@ -44,6 +44,8 @@ Measured on the bundled PR film against a hand transcript of its captions from 0
 
 Speaker changes land on 8 of the film's 10, with 2 more where the film has none. There is no pause or seek yet.
 
+How it works, with every measurement behind it: [`autocwi/recording/README.md`](autocwi/recording/README.md).
+
 ### Export for a captioner
 
 Once a recording is analysed, **Export** in the top bar downloads the captions, and they are also written to `OUT/exports/`:

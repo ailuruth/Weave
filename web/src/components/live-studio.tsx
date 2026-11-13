@@ -378,12 +378,6 @@ const MotionWord = memo(function MotionWord({
           "--group-lift-em": groupLift,
           "--char-group": waveLead[index] ?? index,
           /* THE TWO SCOPES TRADE OFF. */
-          /* Over a picture, a word that changes size does only that. The
-             motion-design checklist's simplicity rule -- one property is
-             direct, two polished, three or more overwhelming -- and a word
-             growing to twice its size was also stretching and tilting each
-             letter, popping, thickening and pushing. The letter wave belongs
-             to the words that stay their size and lift. */
           "--char-wave": ((runtime.filmMotion
               && Math.abs(motion.voice.scale - 1) > 0.12 ? 0 : 1)
             * waveSuppression * clamp(
@@ -414,11 +408,6 @@ const MotionWord = memo(function MotionWord({
      reason than either. */
   /* ...AND THE FREEZE IS AT THE TURN, NOT AT THE MOUNT (2026-08-05).
      Freezing is right -- see above. */
-  /* THE FILM'S CLOCK, for a captioned video: one short bell on every word,
-     with no tail stretched to the next word -- and NO GAP-HOLD. On the live
-     stage a word that follows a pause floats instead of growing; in the film
-     the word after the pause is "louder", and it grows to three times its
-     size. Seen side by side, ours only lifted. */
   const film = runtime.filmMotion ?? null;
   const holdTarget = film ? 0 : clamp(
     (holdGapS - runtime.holdMinS) /
@@ -450,8 +439,6 @@ const MotionWord = memo(function MotionWord({
   /* How long this word takes to come back down: long enough to reach the
      next word's turn, so the stage is never still while anyone is talking. */
   const fallRef = useRef<number | null>(null);
-  /* Set by the effect below the arm effect, which is where the turn moment
-     is known. */
 
   const [{duration, sweepMs, crestMs, filmHoldMs, filmHeld, filmSlow}] = useState(() => {
     /* Frozen the first time this WORD was drawn, not this component -- they
@@ -485,13 +472,7 @@ const MotionWord = memo(function MotionWord({
           crestWindowMs(push, runtime, spokenMs * voicedFraction(word)),
           push, runtime.wordMotionMaxMs,
         );
-    /* The film clock's hold: a big word stays up while it is spoken, an
-       ordinary one not at all. `end` runs to the next onset, so the voiced
-       fraction is what makes the span speech. */
     const filmMotion = runtime.filmMotion ?? null;
-    /* Symmetric: a word that shrinks stays small while it is spoken, for the
-       same reason a big one stays big -- "softer" is soft for its whole
-       length, not for a quarter of a second. */
     const departure = Math.max(motion.voice.scale - 1, (1 - motion.voice.scale) * 1.5);
     const holdGate = filmMotion
       ? clamp(
@@ -499,9 +480,6 @@ const MotionWord = memo(function MotionWord({
             / Math.max(1e-6, filmMotion.holdFullScale - filmMotion.holdFromScale),
           0, 1)
       : 0;
-    /* A WORD THE SPEAKER DRAWS OUT. Voiced length beyond what its letters
-       account for -- "is" said for 0.8 s is held; "louder" at 0.6 s is just
-       six letters long. */
     const voicedMs = spokenMs * voicedFraction(word);
     const letters = Math.max(1, word.text.replace(/[^\p{L}\p{N}]/gu, "").length);
     const held = filmMotion
@@ -518,9 +496,6 @@ const MotionWord = memo(function MotionWord({
       sweepMs: sweep,
       // The crest is the SLOW clock -- emphasis, not speech rate.
       crestMs: crest,
-      /* A quiet word is barely voiced, so its voiced length says nothing
-         about how long it lasts: a shrunk word holds for its whole span.
-         A drawn-out word floats until it has been said. */
       filmHoldMs: filmMotion
         ? Math.max(
             holdGate * clamp(
@@ -532,9 +507,6 @@ const MotionWord = memo(function MotionWord({
       filmHeld: held,
       filmSlow: slow,
     };
-    /* A QUIET WORD MOVES WITH ITS RUN, not on its own: it starts shrinking
-       with the first quiet word beside it and comes back with the last --
-       or stays small, when the run ends the caption line. */
     if (filmMotion && quietRun && motion.voice.scale < 0.98) {
       clock.filmHoldMs = quietRun.stays
         ? 600000
@@ -549,26 +521,12 @@ const MotionWord = memo(function MotionWord({
      emphasis only where the film would have bolded it. Everything below is a
      target for the motion to rise to -- the word still RETURNS to Regular
      400 / 100% / the face's default proportions (docs/MOTION.md). */
-  /* IN THE FILM, WEIGHT GOES WITH SIZE. Its "louder" is heavy while it is
-     big and its "softer" is light while it is small; a word that only lifts
-     keeps the line's weight. Driving weight from pitch instead made the low,
-     quiet "softer" the BOLDEST word of its line -- seen side by side with the
-     reference, the opposite of it. So over a picture the crest weight follows
-     the crest size, through the same range. */
-  /* A HELD WORD TURNS COLOUR WHEN IT LANDS, as the film's "is" does: white
-     while it floats, coloured as it comes back to the line. */
   const filmTurnLagMs = film && filmHeld > 0.5
     ? film.riseMs * filmSlow + filmHoldMs + film.fallMs * filmSlow * 0.4
     : 0;
   const filmLiftShare = !film ? 1
     : motion.voice.scale < 0.98 ? 0
       : 1 - clamp((motion.voice.scale - 1.1) / 0.2, 0, 1);
-  /* HOW FAR THE NEIGHBOURS MOVE, for a word that changes size a lot. The
-     film makes room for "louder" at three times its size and closes up
-     around "softer"; its ordinary pops (up to ~1.5x) just overlap. Half the
-     width the word gains or loses, per side, faded in over `pushFromScale`
-     .. `pushFullScale`; shrinking always closes up. Measured from the word's
-     own resting box, once. */
   const filmPushShare = !film ? 0
     : motion.voice.scale < 1 ? 1
       : clamp((motion.voice.scale - film.pushFromScale)
@@ -576,9 +534,6 @@ const MotionWord = memo(function MotionWord({
   useLayoutEffect(() => {
     const element = wordRef.current;
     if (!element || !film || element.style.getPropertyValue("--film-push")) return;
-    /* A word that grows also goes heavy, and heavy type is wider: Roboto
-       Flex at 800 sets ~14% wider than at 400. Without it "gets" still
-       touched the bold "l" of "louder". */
     const widening = motion.voice.scale > 1
       ? 1 + 0.14 * clamp((motion.voice.scale - 1) / 0.9, 0, 1)
       : 1;
@@ -586,9 +541,6 @@ const MotionWord = memo(function MotionWord({
     element.style.setProperty("--film-push", `${(half * filmPushShare).toFixed(2)}px`);
   }, [film, filmPushShare, motion.voice.scale]);
   const filmLoud = film ? film.scaleRange[1] : 1;
-  /* ...and a word that SHRINKS keeps its weight. Thinned to 245 as well as
-     shrunk it turned to hairlines; the film's small "or softer" is the same
-     face, smaller. */
   const filmWeight = !film || motion.voice.scale < 1 ? 400
     : 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
         * (runtime.weightRange[1] - 400);
@@ -617,11 +569,6 @@ const MotionWord = memo(function MotionWord({
        proportional now (`sync_pop_floor_enhanced`) and there is nothing left
        for a gate to decide. `quietWord` still governs WEIGHT, which the film
        really does withhold, per line rather than per word. */
-    /* Over a picture a word that SHRINKS does nothing else: no pop on top of
-       the shrink, no lift, no crouch. Seen beside the film, "softer" floated
-       upward while it got smaller. And a word that grows big keeps its feet
-       on the line -- the film's pops move the baseline by under 2 px; only
-       the words that stay their size lift. */
     "--sync-pop": (film && Math.abs(motion.voice.scale - 1) > 0.12
       ? 1 : motion.sync.scale).toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
@@ -773,12 +720,6 @@ const MotionWord = memo(function MotionWord({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clockEpoch, crestMs, id, scheduleWord, sweepMs, word, characters.length]);
 
-  /* THE FALL TAKES ITS NEIGHBOUR ONCE, AND ONLY BEFORE THE TURN. The gap is
-     tested against the CLOCK at the moment it arrives. It used to be tested
-     against a flag the arm effect set, and nothing re-runs that effect at the
-     turn, so a neighbour arriving later rewrote `--fall-ms` under the running
-     fall: 19 of 108 sample words, each jumping mid-return. Written here as
-     well as through the style prop because this render already happened. */
   useLayoutEffect(() => {
     const element = wordRef.current;
     const armed = armedRef.current;
@@ -1393,11 +1334,6 @@ function CaptionFeed({
 
   /* THE BOX OPENS SIDEWAYS OVER A NEWLY APPENDED WORD. */
   useLayoutEffect(() => {
-    /* NOT OVER A PICTURE. A caption line arrives whole there, so there is
-       nothing to open -- and the clip this animates CUTS THE ROW TO ITS OWN
-       BOX. A word growing changes the row's width, which restarted the clip
-       under it: "louder" at twice its size was drawn with its ascenders and
-       descenders sliced off. */
     if (transcript || reducedMotion || runtime.filmMotion) {
       for (const animation of rowGrowAnimations.current.values()) {
         animation.cancel();
@@ -1465,8 +1401,6 @@ function CaptionFeed({
   /* ...AND HOW LONG THE MOTION LASTS, WHICH IS ONE WORD AT THE CURRENT
      SPEECH RATE. */
   const paceGaps = new Map<string, number>();
-  /* Over a picture, which words shrink together. "Quiet" is whatever the
-     size mapping draws below 1x -- everything left of its first zero. */
   const film = runtime.filmMotion ?? null;
   const quietEdge = film
     ? (film.scalePoints.find(([, above]) => above >= 0)?.[0] ?? 0)
@@ -1815,8 +1749,7 @@ function SignalWaveform({values}: {values: number[]}) {
   );
 }
 
-/** A recording the viewer imported, as the browser holds it. The server has
-   its own copy for the recognizer; this one is the picture. */
+/** A recording the viewer imported, as the browser holds it. */
 interface ImportedMedia {
   url: string;
   name: string;
@@ -1824,9 +1757,6 @@ interface ImportedMedia {
   video: boolean;
 }
 
-/* THE PICTURE UNDER THE CAPTIONS. Slaved to the caption playhead, never to
-   the wall clock -- see `media-sync.ts`. It carries the recording's own sound:
-   the captions are an addition to the film, not a replacement for it. */
 function MediaBackdrop({
   media,
   playheadMs,
@@ -1853,15 +1783,12 @@ function MediaBackdrop({
     player.playbackRate = 1;
     player.currentTime = action.atS;
     if (action.kind !== "play") return;
-    // A browser may refuse sound it did not see a gesture for. The picture
-    // still has to run on time, so it starts muted rather than not at all.
+    // Browsers refuse playback with sound until the page has had a gesture.
     player.play().catch(() => {
       player.muted = true;
       player.play().catch(() => undefined);
     });
   }, [playheadMs]);
-  /* ...and the sound comes back on the first click or key anywhere, which is
-     the gesture the browser was waiting for. */
   useEffect(() => {
     const unmute = () => {
       if (ref.current) ref.current.muted = false;
@@ -1873,11 +1800,6 @@ function MediaBackdrop({
       window.removeEventListener("keydown", unmute);
     };
   }, []);
-  /* WHERE THE PICTURE ACTUALLY IS. The video is letterboxed inside the stage,
-     and a caption is placed against the FRAME -- 91% of the way down the
-     picture, sized at 4.2% of its height -- not against the stage around it.
-     Published as CSS variables on the stage so the caption feed, a sibling,
-     can use them. */
   useEffect(() => {
     const player = ref.current;
     const stage = player?.parentElement;
@@ -1919,9 +1841,6 @@ function MediaBackdrop({
   );
 }
 
-/* CWI 2.4.4, ON THE PICTURE. With a recording on the stage the bracketed
-   label belongs with the film, where a captioned film puts it; the compass
-   keeps its own copy for the live room. */
 function StageSound({
   sound,
 }: {
@@ -1956,9 +1875,6 @@ function LanguageGate({
     (language) => language.id === session.language,
   );
   const unavailable = session.state === "unavailable";
-  /* A recording waiting for its language. The pick below is still a language
-     pick -- the recognizer is chosen before capture either way -- so the file
-     is held here until one is made, and the pair is sent together. */
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
@@ -2039,10 +1955,6 @@ function LanguageGate({
           </div>
         )}
 
-        {/* IMPORT A RECORDING (2026-11-13, at the user's request: the studio
-            should caption a video, not only a room). One quiet text action
-            under the three pills -- they stay the screen. Choosing a file
-            changes what the pills mean, so the line above them says so. */}
         {selecting && (
           <div className="media-import">
             <input
@@ -2293,11 +2205,6 @@ export function LiveStudio() {
     setMedia(null);
     void selectLanguage(language);
   }, [selectLanguage]);
-  // The picker being up means no session is running, whatever was imported
-  // for the last one.
-  /* A recording started from the command line was never picked in this
-     browser, so there is no local copy: its picture comes from the server
-     that is captioning it. */
   const servedMedia = useMemo<ImportedMedia | null>(() => (session.media ? {
     url: "/session/media-file",
     name: session.media,
@@ -2343,8 +2250,6 @@ export function LiveStudio() {
     paragraphs.length > 0,
     settings.captionScale,
     view,
-    // The picture changes how much of the stage the captions may take, which
-    // is a row-count change the resize observer cannot see either.
     `${settings.lightStage ? "light" : "dark"}:${mediaMode}`,
   );
   const stageParagraphs = view === "stage"
@@ -2369,9 +2274,6 @@ export function LiveStudio() {
       },
     )
     : paragraphs;
-  /* A RECORDING SHOWS ONE CAPTION LINE AT A TIME, the way a captioned film
-     does -- see `caption-cues.ts`. The rolling stack above is still computed
-     (its memory must not skip words) but is not what is drawn. */
   const cues = useMemo(() => buildCues(timingWords), [timingWords]);
   const cue = cues.length
     ? activeCue(cues, playheadMs, {leadMs: CUE_LEAD_MS, holdMs: CUE_HOLD_MS})
@@ -2383,9 +2285,6 @@ export function LiveStudio() {
     utterance: Number(cue.words[0]?.word.utterance ?? 0),
     words: cue.words,
   }] : []), [cue]);
-  /* Keyed on the WORDS carrying a caption line, not on a picture being up:
-     a sound-only recording, or one run from the command line for a probe, is
-     presented the same way. A live session's words carry none. */
   const cueMode = cues.length > 0;
   const stageRuntime = useMemo(
     () => (cueMode ? {
@@ -2397,8 +2296,6 @@ export function LiveStudio() {
     [cueMode, runtime],
   );
   const shownParagraphs = cueMode ? cueParagraphs : stageParagraphs;
-  /* The film's caption is white on a black plate whatever the studio's
-     theme, so the light-stage substitutions do not apply over a picture. */
   const lightCaptions = settings.lightStage && !cueMode;
   /* CWI 2.4.4/2.4.5: sound labels yield to speech. */
   const speechEndMs = useMemo(() => {
@@ -2518,10 +2415,6 @@ export function LiveStudio() {
             <Mic2 size={14} />
             {number(level.rms_db, -72).toFixed(1)} dBFS
           </span>
-          {/* EXPORT, for the person who finishes the captions by hand. Shown
-              once a recording has been analysed -- the files are written
-              before the first caption is. Plain links: the server names the
-              download after the recording. */}
           {activeMedia && session.state === "listening" && (
             <details className="export-menu">
               <summary>Export</summary>

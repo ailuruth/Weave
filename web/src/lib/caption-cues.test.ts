@@ -67,10 +67,8 @@ test("quiet words in a row shrink together, before the first is spoken", () => {
   ]);
   const runs = quietRuns(cues, quiet, 200);
   assert.deepEqual([...runs.keys()], ["or", "softer"]);
-  // both begin at the same moment: 200 ms before "or"
   assert.equal(runs.get("or")?.leadMs, 200);
   assert.equal(runs.get("softer")?.leadMs, 500);
-  // ...and share one window, to the end of "softer"
   assert.equal(runs.get("or")?.spanMs, 1000);
   assert.equal(runs.get("softer")?.spanMs, 1000);
 });

@@ -1,42 +1,14 @@
-"""Hand an analysed recording's captions to a person, in files they can open.
-
-Three files, because three different readers:
-
-  .srt        SubRip. Every caption tool, editor and player reads it. Text
-              and line timing only -- the lowest common denominator, and the
-              one a captioner will actually load first.
-  .vtt        WebVTT, the web's caption format. Same lines, plus what SubRip
-              cannot hold: who is speaking (`<v S1>`, coloured in a STYLE
-              block with the CWI palette), when each WORD starts (inline
-              timestamps, which is how WebVTT spells CWI 2.2.2's word sync),
-              and which words are loud or soft (`<c.loud>`, `<c.soft>`).
-  .cwi.json   This project's own CaptionSpec (`autocwi/schema.py`): every
-              word with its measurements. The file to keep, re-edit, and play
-              back with `autocwi cc`.
-  .jsx        A script for Adobe After Effects, for the Caption with
-              Intention template the design system ships -- which is where a
-              CWI captioner actually works. See `to_ae_jsx`.
-
-The first two are exports: information is dropped on purpose so the file
-stays valid for tools that know nothing about CWI. The third drops nothing.
-
-Lines are the caption lines the stage showed (`word.cue`), so what a
-captioner opens is what was on screen.
-"""
+"""Hand an analysed recording's captions to a person, in files they can open."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from .schema import AxisMapping, CaptionSpec, Mapping, Media, Speaker, Word
+from ..schema import AxisMapping, CaptionSpec, Mapping, Media, Speaker, Word
 
-# A caption stays up this long past its last word, unless the next one is due.
 TAIL_S = 0.4
-# ...and the next caption gets this much air before it.
 GAP_S = 0.04
-# What an unattributed word is filed under: CaptionSpec needs a speaker, and
-# inventing one would be a claim about who spoke (CWI 2.1).
 UNKNOWN = "unknown"
 UNKNOWN_COLOR = "#FFFFFF"
 LOUD = 0.6
@@ -47,14 +19,12 @@ def _start(word: dict) -> float:
 
 
 def _end(word: dict) -> float:
-    # `end` runs to the next word's onset; a trailing pause is not the word.
     return _start(word) + min(
         1.2, max(0.05, float(word.get("end", 0.0)) - float(word.get("start", 0.0))))
 
 
 def caption_lines(words: list[dict]) -> list[dict]:
     """Group words into the caption lines the stage showed, with line times."""
-
     lines: list[dict] = []
     for word in words:
         cue = word.get("cue")
@@ -90,7 +60,6 @@ def to_srt(words: list[dict]) -> str:
 
 def speaker_colors(words: list[dict], palette: list[str]) -> dict[str, str]:
     """Speaker -> colour by order of first appearance, as `fuse.py` does."""
-
     colors: dict[str, str] = {}
     for word in words:
         speaker = word.get("speaker")
@@ -126,7 +95,6 @@ def to_vtt(words: list[dict], palette: list[str]) -> str:
                 if speaker:
                     piece += f"<v {speaker}>"
                 voice = speaker
-            # The first word starts with the cue; every later one says when.
             if k:
                 piece += f"<{_clock(_start(word), False)}>"
             text = _vtt_escape(str(word.get("text", "")).strip())
@@ -274,16 +242,7 @@ def _rgb(hex_color: str) -> list[float]:
 
 
 def to_ae_jsx(words: list[dict], palette: list[str], media_name: str) -> str:
-    """An ExtendScript that builds the template's caption layers.
-
-    The design system's After Effects template is one text layer per caption
-    (`LINE n`) with a `BOX LINE n` under it, animated between two layer
-    markers and coloured by a `COLOR_01` control. A captioner fills that in by
-    hand, line by line; this hands them every line already timed and
-    coloured. See the header of the script itself for what it does and does
-    not do -- including that it has not been run in After Effects.
-    """
-
+    """An ExtendScript that builds the template's caption layers."""
     colors = speaker_colors(words, palette)
     lines = []
     for line in caption_lines(words):

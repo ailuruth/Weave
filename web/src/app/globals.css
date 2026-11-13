@@ -1209,9 +1209,6 @@ button {
   color: var(--caption-unknown);
 }
 
-/* The label's motion is per category now -- see "A SOUND HAS ITS OWN STYLE"
-   at the end of this file, which both this label and the stage's share. */
-
 /* AN UNMEASURED BEARING IS DRAWN, BUT NOT CLAIMED. */
 .voice-compass[data-measured="false"] .compass-direction b,
 .voice-compass[data-measured="false"] .compass-direction i {
@@ -1800,7 +1797,6 @@ button {
   92% { --voice-phase: 0; }
 }
 
-
 @keyframes word-color-turn {
   from {
     color: var(--read-ahead-color, #fff);
@@ -1937,10 +1933,6 @@ button {
   }
 }
 
-
-
-
-
 /* HANGUL-SHAPED CHARACTER MOTION — wide script, toggle only (2026-08-11). */
 @keyframes character-wave-hangul {
   0%, 100% {
@@ -1985,9 +1977,6 @@ button {
 
 /* THE INTONATION LAYER -- CWI 2.3. */
 /* The layout half of the cue: the word's own cell, on the glyph's clock. */
-
-
-
 
 /* Language is a session-level model decision, so this gate owns the entire
    viewport until Python confirms that the selected recognizer is listening. */
@@ -2240,11 +2229,6 @@ button {
 }
 
 /* THE TAIL HOLDS ITS AMPLITUDE LONGER THAN THE FILM'S OWN RETURN DOES. */
-/* ...AND IT LANDS AT ZERO SPEED. The stops this replaces traced 1 - t^2,
-   which holds the amplitude as asked and then reaches rest at its fastest:
-   the word stopped dead. One easing keeps the same hold (.80 at 48%, half
-   amplitude at 70%) with no faster a peak speed, and it has no corners -- the
-   stops were joined by straight lines, so the speed stepped at each one. */
 @keyframes voice-phase-film-fall {
   0% {
     --voice-phase: 1;
@@ -2396,9 +2380,6 @@ button {
     transform:
       translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
       scale(var(--sync-pop));
-    /* Leaves the peak at zero speed, to meet the rise's own ease-out, and
-       reaches the dip at zero speed too: it is a turning point. As straight
-       segments the word hit the dip at its fastest and reversed in one frame. */
     animation-timing-function: cubic-bezier(.7, 0, .84, 1);
   }
   82% {
@@ -2426,11 +2407,6 @@ button {
   }
 }
 
-/* ── AN IMPORTED RECORDING ───────────────────────────────────────────────
-   The studio captions a film as well as a room. The picture fills the stage
-   and the captions take the foot of it, which is where a captioned film puts
-   them. Everything here is keyed on `data-media`, so a live session renders
-   exactly as it did. */
 .stage-media {
   position: absolute;
   z-index: 1;
@@ -2441,26 +2417,10 @@ button {
   background: #000;
 }
 
-/* A sound-only import is heard and has nothing to draw: the stage stays the
-   caption stage. `display: none` does not stop a media element playing. */
 .studio-shell[data-media="audio"] .stage-media {
   display: none;
 }
 
-/* ONE CAPTION LINE, WHERE THE FILM PUTS IT (2026-11-13, at the user's
-   request: the video caption must match the reference in size, style and
-   position so the two can be measured against each other).
-
-   Every number here was read off PR_Flim.mp4 (1280x720), as a fraction of the
-   FRAME, which `MediaBackdrop` publishes as --frame-*:
-     type size   x-height 16 px -> 30 px type      4.2% of the frame height
-     plate       rows 624-675, 52 px tall          top 86.67%, height 7.22%
-     baseline    row 657.5                         91.3% of the frame height
-     side pad    ~11 px                            .37em
-     plate ink   ~88-90% black, square corners     CWI 2.4.1's box
-     alignment   centred on the frame
-   The rolling stack, its history, the two rules and the gradient field are
-   all the LIVE stage's; none of them is drawn here. */
 .studio-shell[data-cues="true"] .caption-feed {
   left: var(--frame-left, 0px);
   right: auto;
@@ -2470,8 +2430,6 @@ button {
   height: calc(var(--frame-h, 100cqh) * .0722);
   max-height: none;
   padding: 0;
-  /* A popped word rises out of the plate over the picture. It does in the
-     film too -- clipping it at the plate is what would be wrong. */
   overflow: visible;
   align-items: center;
   justify-content: center;
@@ -2504,9 +2462,6 @@ button {
   white-space: nowrap;
 }
 
-/* CWI 2.4.4, on the picture: white, bracketed, on its own plate, at the top
-   so it can never sit on a caption row. Chrome type scale is not used -- this
-   is a caption, so it takes the caption face. */
 .stage-sound {
   position: absolute;
   z-index: 6;
@@ -2532,24 +2487,6 @@ button {
   font-style: normal;
 }
 
-/* ── A SOUND HAS ITS OWN STYLE ───────────────────────────────────────────
-   Read off the PR film, which treats its non-speech cues differently from
-   each other: `[Toy music]` and `[Beep]` vibrate for as long as they sound,
-   `[GASP]` pops, and the shouted `WHOOOOOA!!` pops slowly through a rainbow.
-   One treatment per detector category, shared by the compass label and the
-   stage label:
-
-     environmental  vibrates while it is up      (the film's [Beep])
-     music          holds still                  (CWI 2.4.5: "don't need to be
-                                                  animated and don't change
-                                                  color")
-     reaction       one pop                      (the film's [GASP])
-     vocal          one slow pop through colour  (the film's WHOOOOOA!!)
-
-   THE POPS RUN ONCE AND CARRY NO FILL, so the label is back at its own size
-   and its own white when they finish: none -> effect -> none, the same rule
-   every word follows. Only the vibration repeats, because the film's does --
-   it says the sound is still going. */
 .compass-sound[data-category="environmental"] i,
 .stage-sound[data-category="environmental"] i {
   animation: sound-vibrate 190ms linear infinite;
@@ -2573,8 +2510,6 @@ button {
   100% { transform: scale(1); }
 }
 
-/* Every stop names its colour, and the last one is the label's own: with no
-   fill the animation then hands back exactly what it left. */
 @keyframes sound-rainbow-pop {
   0% { transform: scale(1); color: #fff; }
   14% { color: #ff5a5a; }
@@ -2586,8 +2521,6 @@ button {
   100% { transform: scale(1); color: #fff; }
 }
 
-/* Reduced motion drops the geometry and the colour run; the label still
-   appears, bracketed and white. */
 @media (prefers-reduced-motion: reduce) {
   .compass-sound i,
   .stage-sound i { animation: none !important; }
@@ -2598,9 +2531,6 @@ button {
   animation: none !important;
 }
 
-/* ── IMPORT, AT THE PICKER ───────────────────────────────────────────────
-   Chrome, so it takes the UI face and the one accent: a text action under
-   the three pills, never a fourth pill competing with them. */
 .media-import {
   display: grid;
   justify-items: center;
@@ -2641,18 +2571,6 @@ button {
   letter-spacing: -.224px;
 }
 
-/* ── THE FILM'S MOTION CLOCK, for a captioned video ──────────────────────
-   Keyframes fitted to the per-frame measurement in config.yaml
-   (`video_motion`): one short bell, starting `--film-lead` before the colour
-   wipe, the same for every word. Rise and fall are separate animations so the
-   two durations stay independent, exactly as on the live clock.
-
-   Stops are the film's own samples, re-expressed as fractions of each half:
-     rise  (163 ms, from -40 ms)  .19 at 23%  .59 at 49%  .86 at 75%  1 at 100%
-     fall  (209 ms)               .87 at 20%  .62 at 40%  .23 at 60%  .05 at 80%
-   The fall is the mean of the film's pop and lift returns, which differ by
-   less than one 24 fps sample can resolve. NO UNDERSHOOT and no tail: the
-   film's words come straight back to rest, and every one of them does. */
 .studio-shell[data-cues="true"][data-motion="enhanced"]
   .caption-word[data-tail="extended"] {
   animation:
@@ -2663,9 +2581,6 @@ button {
            + var(--film-hold, 0ms)) forwards;
 }
 
-/* The crouch is listed FIRST so the rise, which fills forwards, owns the
-   transform from the moment it starts; before that the crouch's own forwards
-   fill holds the dip the rise's first stop picks up from. */
 .studio-shell[data-cues="true"][data-motion="enhanced"]
   .caption-word[data-tail="extended"] .word-glyph {
   animation-name: reel-crouch, reel-lift-rise, reel-lift-fall;
@@ -2679,10 +2594,6 @@ button {
   animation-fill-mode: forwards, forwards, forwards;
 }
 
-/* TWENTY STEPS, NOT FOUR. The first version drew straight lines between the
-   film's four samples, and on a word going to twice its size the corners
-   between them showed as a stutter. These are a monotone curve through the
-   same samples, so the size changes speed gradually. */
 @keyframes reel-phase-rise {
   0% { --voice-phase: 0.000; }
   5% { --voice-phase: 0.029; }
@@ -2948,26 +2859,14 @@ button {
   }
 }
 
-/* THE FULL SIZE RANGE, BOTH WAYS, over a picture. The enhanced stage clamps
-   the crest to 1..1.55x -- "upward only", for the live stack's clearance --
-   which is why "softer" could never get small there. One caption line has the
-   room, and CWI 2.3.6 runs from 3% to 12% of the screen height. */
 .studio-shell[data-cues="true"][data-motion="enhanced"] .caption-word {
   --crest-scale: calc(
     1 + var(--voice-phase) * (var(--voice-scale, 1) - 1)
   );
 }
 
-/* A WORD IN MOTION IS DRAWN OVER ITS NEIGHBOURS, AND A VERY BIG ONE MOVES
-   THEM. The pop overlaps the words beside it -- in the film too -- and
-   without an order the three sets of letters were simply printed through one
-   another. `--film-push` is half the width the word gains (or, negative,
-   loses), set once from its resting box; riding `--voice-phase` it opens and
-   closes with the size it makes room for. */
 .studio-shell[data-cues="true"] .caption-word {
   z-index: calc(1 + var(--voice-phase) * 10);
-  /* On top of the word's own .30em space, which `margin-inline` alone would
-     have replaced -- and the last word of a line has none to keep. */
   margin-left: calc(var(--voice-phase) * var(--film-push, 0px));
   margin-right: calc(.30em + var(--voice-phase) * var(--film-push, 0px));
 }
@@ -2976,19 +2875,12 @@ button {
   margin-right: calc(var(--voice-phase) * var(--film-push, 0px));
 }
 
-/* SCALED AS GEOMETRY, NOT RE-HINTED AS TEXT. A font-size animation is laid
-   out and rasterised afresh every frame, and by default each glyph is fitted
-   to the pixel grid at its new size -- so a word growing to twice its size
-   shimmers as its stems snap from one fit to the next. This asks for the
-   outline to be scaled exactly. */
 .studio-shell[data-cues="true"] .word-ink,
 .studio-shell[data-cues="true"] .word-glyph {
+  /* Without it glyphs are re-hinted at every font size and shimmer as they grow. */
   text-rendering: geometricPrecision;
 }
 
-/* ── EXPORT ──────────────────────────────────────────────────────────────
-   Chrome: the UI face, the one accent, no shadow. A disclosure rather than
-   four buttons, so the top bar gains one word. */
 .export-menu {
   position: relative;
   font: 400 12px/1 var(--font-ui);

@@ -1,14 +1,4 @@
-/** ONE CAPTION LINE AT A TIME, for a recording.
-
-    The live stage is a rolling transcript, because nobody knows where a live
-    sentence will end. A recording is analysed whole, so the server can say
-    which caption line every word belongs to (`word.cue`), and the stage can
-    do what a captioned film does: put one line on screen, complete, and
-    replace it with the next.
-
-    Measured off the PR film: a caption appears a few frames before its first
-    word turns and stays until the next one replaces it, or a little past its
-    last word when nothing follows. */
+/** ONE CAPTION LINE AT A TIME, for a recording. */
 
 import type {CaptionWord} from "./caption-store.ts";
 
@@ -35,9 +25,7 @@ function endMs(word: CaptionWord): number {
     + Math.max(0, Number(word.end ?? 0) - Number(word.start ?? 0)) * 1000;
 }
 
-/** Group the recording's words into caption lines, in order. Words without a
-   `cue` are not part of any line and are left out: a live session has none,
-   and this returns an empty list for it. */
+/** Group the recording's words into caption lines, in order. */
 export function buildCues(words: CueWord[]): CaptionCue[] {
   const cues: CaptionCue[] = [];
   for (const entry of words) {
@@ -59,8 +47,7 @@ export function buildCues(words: CueWord[]): CaptionCue[] {
   return cues;
 }
 
-/** Measured off the PR film: a caption is on screen 4-6 frames (24 fps)
-   before its first word turns. */
+/** Measured off the PR film: a caption is on screen 4-6 frames (24 fps) before its first word turns. */
 export const CUE_LEAD_MS = 250;
 /** ...and a caption with nothing after it is gone well inside a second. */
 export const CUE_HOLD_MS = 600;
@@ -72,12 +59,7 @@ export interface CueTiming {
   holdMs: number;
 }
 
-/** The line that should be on screen at `playheadMs`, or null.
-
-    The newest line whose lead-in has begun wins, so a line is replaced the
-    moment the next one is due and two are never up together. A line with a
-    gap after it leaves `holdMs` past its last word, so a caption does not sit
-    over a silent shot. */
+/** The line that should be on screen at `playheadMs`, or null. */
 export function activeCue(
   cues: CaptionCue[],
   playheadMs: number,
@@ -93,21 +75,7 @@ export function activeCue(
   return playheadMs <= current.endMs + holdMs ? current : null;
 }
 
-
-/** HOW A RUN OF QUIET WORDS MOVES, on one caption line.
-
-    Watched in the PR film: "or softer" does not shrink word by word as each
-    is spoken. The two words shrink TOGETHER, once, while they are still white
-    read-ahead -- as "louder" comes back down before them -- then turn colour
-    small, and stay small until the caption is replaced. Shrinking each word
-    as it was spoken and popping it back made two little pulses in a row,
-    which is what read as unnatural.
-
-    So consecutive quiet words on a line share one window: every word in the
-    run starts shrinking `preMs` before the FIRST of them is spoken and comes
-    back when the LAST has been said -- or not at all, if the run reaches the
-    end of the line, because the caption leaves before there is anything to
-    come back to. */
+/** HOW A RUN OF QUIET WORDS MOVES, on one caption line. */
 export interface QuietRun {
   /** How long before THIS word's own onset its shrink begins. */
   leadMs: number;
