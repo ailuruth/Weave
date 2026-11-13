@@ -1,6 +1,6 @@
 # Contributing
 
-Set up with the Quick start in [README.md](README.md). Use `.venv/bin/python`, never the system Python.
+Run `./install.sh` to set up. Use `.venv/bin/python`, never the system Python.
 
 ## Before you push
 
@@ -22,6 +22,6 @@ It runs lint, the tests and the build. GitHub runs the same check on every push.
 
 ## Making a change
 
-Change a value in `config.yaml`, run `autocwi live --sample`, and watch the result. For a visual change, attach a screenshot to the pull request.
+Change a value in `config.yaml`, run `weave live --sample`, and watch the result. For a visual change, attach a screenshot to the pull request.
 
 If you find a way that audio or transcripts leave the machine, report it privately.

@@ -13,7 +13,7 @@ You give Weave a video. It returns the video with those captions drawn on it. It
 ## Caption a video
 
 ```bash
-.venv/bin/python -m autocwi caption clip.mp4 --lang en     # or ko, multi
+./weave caption clip.mp4 --lang en     # or ko, multi
 ```
 
 This writes the captioned video to `out/exports/`, with the captions as `.srt`, `.vtt`, an After Effects script and `.cwi.json`. A sound only file comes back as captions on a black frame.
@@ -23,12 +23,12 @@ This writes the captioned video to `out/exports/`, with the captions as `.srt`, 
 You need Python 3.11, Node.js, ffmpeg and Chrome, on macOS (Apple Silicon) or Linux.
 
 ```bash
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/fetch_font.py             # fonts, 12 MB
-.venv/bin/python scripts/fetch_streaming_model.py  # models, 2.2 GB
-npm --prefix web install && npm --prefix web run build
+git clone https://github.com/nobel2040ne/Weave.git
+cd Weave
+./install.sh
 ```
+
+The script sets up everything, including 2.2 GB of models. It takes a few minutes.
 
 ## Live captions
 
@@ -37,9 +37,9 @@ Weave can also caption a microphone while people speak, in a studio that opens i
 ![The studio running: a dark stage of rolling captions, each word coloured by its speaker](docs/figure/fig5.png)
 
 ```bash
-.venv/bin/python -m autocwi live                  # captions from the microphone
-.venv/bin/python -m autocwi live --lang ko        # en, ko or multi
-.venv/bin/python -m autocwi live --sample         # the bundled film, no microphone
+./weave live                  # captions from the microphone
+./weave live --lang ko        # en, ko or multi
+./weave live --sample         # the bundled film, no microphone
 ```
 
 In the studio you can also choose **Import a video** to watch a recording being captioned, and **Export** to save the results.

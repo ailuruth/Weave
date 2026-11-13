@@ -11,7 +11,7 @@ npm install && npm run build
 ## Develop
 
 ```bash
-.venv/bin/python -m autocwi live --sample --no-open
+./weave live --sample --no-open
 NEXT_PUBLIC_AUTOCWI_ORIGIN=http://127.0.0.1:7337 npm --prefix web run dev
 ```
 

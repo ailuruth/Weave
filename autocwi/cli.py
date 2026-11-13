@@ -47,7 +47,7 @@ def _common(p: argparse.ArgumentParser, needs_input: bool = True) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="autocwi", description=__doc__,
+    ap = argparse.ArgumentParser(prog="weave", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -348,6 +348,8 @@ def stage_fuse(args, cfg, _device) -> None:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     if args.cmd == "caption":
+        if not Path(args.file).is_file():
+            raise SystemExit(f"weave: no such file: {args.file}")
         args = build_parser().parse_args([
             "live", "--import", args.file, "--lang", args.lang, "--out", args.out,
             "--once" if args.no_video else "--render"])

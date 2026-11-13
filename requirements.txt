@@ -1,4 +1,4 @@
-# auto-CWI — Python 3.11 (macOS arm64 / Linux). All inference is local.
+# Python 3.11, macOS arm64 or Linux. All inference is local.
 numpy==1.26.4
 PyYAML==6.0.2
 pydantic==2.9.2
@@ -7,11 +7,10 @@ pydantic==2.9.2
 faster-whisper==1.1.1
 ctranslate2==4.5.0
 transformers==4.48.3
-# From master, not PyPI: the `multi` bilingual profile needs PR #3671, which no
-# release contains. Pin back to 1.13.4 to revert — only that profile breaks.
-sherpa-onnx @ git+https://github.com/k2-fsa/sherpa-onnx@master  # -> 1.13.5
+# Korean and bilingual captions need 1.13.5 or later.
+sherpa-onnx==1.13.5
 
-# Diarization — pyannote weights are gated; see CONTRIBUTING.md for HF_TOKEN
+# Diarization. The pyannote weights are gated and need HF_TOKEN.
 torch==2.5.1
 torchaudio==2.5.1
 pyannote.audio==3.3.2

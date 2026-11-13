@@ -186,7 +186,14 @@ def fetch_tarball_models(assets: Path, models, release_tag: str) -> None:
         print("extracting ...")
         with tarfile.open(tmp, "r:bz2") as tf:
             tf.extractall(assets, filter="data")
-        (assets / name).rename(dest)
+        extracted = assets / name
+        if dest.exists():
+            for item in extracted.iterdir():
+                if not (dest / item.name).exists():
+                    item.rename(dest / item.name)
+            shutil.rmtree(extracted)
+        else:
+            extracted.rename(dest)
         tmp.unlink()
         print(f"wrote {dest}")
 

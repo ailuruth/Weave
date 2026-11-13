@@ -3,7 +3,7 @@
 A recording is known whole before its first frame is shown. Weave uses that to fix the text, find where each word starts, and judge how a whole sentence was said.
 
 ```bash
-.venv/bin/python -m autocwi caption clip.mp4 --lang en
+./weave caption clip.mp4 --lang en
 ```
 
 ## Stages
