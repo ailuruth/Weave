@@ -110,6 +110,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     lv.add_argument("--file", default=None,
                     help="stream a wav/mp4 file at real-time pace instead of the mic")
+    lv.add_argument("--import", dest="import_file", default=None, metavar="FILE",
+                    help="caption a recording the way the studio's Import "
+                         "does: transcribed whole, analysed, then played. "
+                         "No picture -- for probes and headless checks.")
     lv.add_argument("--sample", action="store_true",
                     help="stream the bundled sample for the selected language")
     # The PR film changes treatment at 28 s: before it is the titles demo on

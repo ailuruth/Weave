@@ -7362,6 +7362,10 @@ def run_live(args, cfg: dict, device: str) -> None:
         # this one session, and always plays from its first frame: the studio
         # slaves its own copy of the picture to this source clock.
         imported = language_session.media()
+        if imported is None and getattr(args, "import_file", None):
+            # The same path from the command line, so every probe can measure
+            # what an import renders without driving the picker.
+            imported = Path(args.import_file)
         if imported is not None:
             source_file = str(imported)
             start_s = 0.0
