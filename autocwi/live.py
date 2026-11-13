@@ -55,8 +55,10 @@ from autocwi.recording import (
     MEDIA_MAX_BYTES,
     MEDIA_SUFFIXES,
     RecordingHooks,
+    StepClock,
     media_has_audio,
     recording_events,
+    render_recording,
     video_motion,
 )
 
@@ -6235,6 +6237,10 @@ class Broadcaster:
             # keeps first-paint motion exactly as the first one's did.
             self._has_presented_to_client = False
 
+    def last_event_id(self) -> int:
+        with self._lock:
+            return self._next_id - 1
+
     def publish(self, obj: dict) -> None:
         with self._lock:
             event_id = self._next_id
@@ -7155,7 +7161,8 @@ def run_live(args, cfg: dict, device: str) -> None:
         server, broadcaster = _start_server(
             page,
             port,
-            not getattr(args, "no_open", False),
+            not getattr(args, "no_open", False)
+            and not getattr(args, "render", False),
             static_root=static_root,
             legacy_page=legacy_route,
             font_path=font_path,
@@ -7382,10 +7389,13 @@ def run_live(args, cfg: dict, device: str) -> None:
                     onset_detector=onset,
                 )
 
+            render_clock = None
             if imported is None:
                 _listening()
                 events = _caption_pass()
             else:
+                if getattr(args, "render", False):
+                    render_clock = StepClock()
                 events = recording_events(
                     imported,
                     language_session.snapshot().get("media") or imported.name,
@@ -7401,6 +7411,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                     ),
                     paced=not getattr(args, "once", False),
                     cache=recording_cache,
+                    clock=render_clock.now if render_clock else None,
+                    sleep=render_clock.sleep if render_clock else None,
                 )
         events_path = out / "live_events.jsonl"
 
@@ -7436,6 +7448,31 @@ def run_live(args, cfg: dict, device: str) -> None:
         )
         cue_seq = 0
 
+        render_report: dict = {}
+        render_thread = None
+        if render_clock is not None:
+            media_name = language_session.snapshot().get("media") or imported.name
+            captioned = out / "exports" / f"{Path(media_name).stem}.captioned.mp4"
+
+            def _render() -> None:
+                try:
+                    render_report.update(render_recording(
+                        imported, captioned,
+                        studio_url=f"http://127.0.0.1:{server.server_address[1]}/",
+                        clock=render_clock,
+                        last_event_id=broadcaster.last_event_id,
+                        progress=lambda done: print(
+                            f"[live] drawing captions {round(done * 100)}%",
+                            flush=True),
+                    ))
+                except Exception as exc:  # noqa: BLE001 - reported below
+                    render_report["error"] = f"{type(exc).__name__}: {exc}"
+                finally:
+                    render_clock.finish()
+
+            render_thread = threading.Thread(target=_render, daemon=True)
+            render_thread.start()
+
         try:
             with open(events_path, "w", encoding="utf-8") as f:
                 for ev in events:
@@ -7455,6 +7492,16 @@ def run_live(args, cfg: dict, device: str) -> None:
                                 node_link.send_cue(cue.flag, cue.direction_deg,
                                                    cue.intensity, cue_seq)
                 else:
+                    if render_thread is not None:
+                        render_clock.finish()
+                        render_thread.join()
+                        server.shutdown()
+                        if "error" in render_report:
+                            raise SystemExit(
+                                f"[live] render failed: {render_report['error']}")
+                        print(f"[live] captioned video: {captioned} "
+                              f"{json.dumps(render_report)}")
+                        return
                     print("[live] audio source finished — server still running "
                           "(Ctrl-C to quit)")
                     # A finished clip still holds the session: the stage keeps

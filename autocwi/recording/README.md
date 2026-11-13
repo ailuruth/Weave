@@ -10,6 +10,7 @@ This package is the code. The stage order is in `pipeline.py`. This document own
 .venv/bin/python -m autocwi live                                   # then Import a video at the picker
 .venv/bin/python -m autocwi live --import clip.mp4 --lang en       # same path, from the command line
 .venv/bin/python -m autocwi live --import clip.mp4 --lang en --once --out out   # export and exit
+.venv/bin/python -m autocwi live --import clip.mp4 --lang en --render --out out # the captioned video
 ```
 
 Exports land in `OUT/exports/`. See "Export" below.
@@ -125,6 +126,21 @@ The After Effects script follows the template's rig as read from the `.aep` and 
 
 ffmpeg parses the `.srt` and `.vtt`. `autocwi cc` replays the spec.
 
+### 7. The captioned video
+
+`--render` writes `NAME.captioned.mp4`: the recording with the studio's own captions drawn on it. It is the studio that draws them, so the video carries the same motion the stage shows, to the frame.
+
+How it works (`render.py`):
+
+1. The server replays the recording to the studio on a `StepClock`, which only moves when the renderer moves it.
+2. Headless Chrome opens the studio with its page clock paused. The renderer advances that clock and the replay clock together, stopping at every frame time and at every moment the replay has something to send.
+3. Before each frame the page script sets every animation's time from the page clock. Chrome's animation clock keeps ticking in real time while the page clock is paused. Measured on a test page, it ran 1.41 to 1.57 times fast with 60 ms of idle per step, and the first render drew "louder" a second early.
+4. Each frame is captured as a PNG with a transparent background, at the recording's own resolution. ffmpeg lays the frames over the original picture and copies the audio.
+
+Checked on the PR film: 1,648 frames at 1280 by 720 in 164 s, analysis included. "louder" is spoken from 16.50 to 17.26 s; in the rendered frames it starts to grow at 16.50 s and is back by 17.50 s.
+
+It needs Chrome or Chromium (`CHROME` names another executable) and an ffmpeg with `libx264`. A recording with a variable frame rate is drawn at its nominal rate.
+
 ## How a recording is shown
 
 The studio shows one caption line at a time, as a captioned film does (`web/src/lib/caption-cues.ts`). Geometry is read off the film's frames as fractions of the picture: type 4.2% of the frame height, plate top at 86.67%, plate height 7.22%, side padding 0.37 em, centred.
@@ -162,6 +178,7 @@ What watching the film against ours changed, each confirmed in frames first:
 ## Limits
 
 - No pause or seek.
+- The captioned video is made from the command line. The studio's Export menu does not offer it yet.
 - "louder" reaches about 2× where the film's is nearly 3×.
 - The film rests a line at its speaker's weight. Weave rests every word at Regular 400 (`docs/MOTION.md`, "Return to normal").
 - Speakers, timing and sizes have no standard benchmark run yet.

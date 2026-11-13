@@ -63,6 +63,14 @@ To export without opening the studio:
 .venv/bin/python -m autocwi live --import clip.mp4 --lang en --once --out out
 ```
 
+To get the recording back with the captions drawn on it, exactly as the studio moves them:
+
+```bash
+.venv/bin/python -m autocwi live --import clip.mp4 --lang en --render --out out
+```
+
+That writes `OUT/exports/NAME.captioned.mp4`. The studio itself draws every frame in headless Chrome, and ffmpeg lays the frames over the original picture and keeps the original sound.
+
 ## Commands
 
 Live — the product. Language is locked before capture.

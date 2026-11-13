@@ -116,6 +116,10 @@ def build_parser() -> argparse.ArgumentParser:
                          "Writes OUT/exports/NAME.{srt,vtt,cwi.json,"
                          "aftereffects.jsx}; add --once to export and exit "
                          "without opening the studio.")
+    lv.add_argument("--render", action="store_true",
+                    help="with --import: also write OUT/exports/"
+                         "NAME.captioned.mp4, the recording with the "
+                         "studio's own captions drawn on it, then exit.")
     lv.add_argument("--sample", action="store_true",
                     help="stream the bundled sample for the selected language")
     # The PR film changes treatment at 28 s: before it is the titles demo on

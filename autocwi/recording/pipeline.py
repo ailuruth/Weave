@@ -43,6 +43,8 @@ def recording_events(
     hooks: RecordingHooks,
     paced: bool = True,
     cache: dict | None = None,
+    clock: Callable[[], float] | None = None,
+    sleep: Callable[[float], None] | None = None,
 ) -> Iterator[dict]:
     """Yield the studio events for one recording, analysed and then replayed."""
 
@@ -88,4 +90,6 @@ def recording_events(
         direct=lambda words: direct(words, live_cfg.get("import_director")),
         on_score=export,
         paced=paced,
+        _clock=clock,
+        _sleep=sleep,
     )
