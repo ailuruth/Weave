@@ -2679,21 +2679,56 @@ button {
   animation-fill-mode: forwards, forwards, forwards;
 }
 
+/* TWENTY STEPS, NOT FOUR. The first version drew straight lines between the
+   film's four samples, and on a word going to twice its size the corners
+   between them showed as a stutter. These are a monotone curve through the
+   same samples, so the size changes speed gradually. */
 @keyframes reel-phase-rise {
-  0% { --voice-phase: 0; }
-  23% { --voice-phase: .19; }
-  49% { --voice-phase: .59; }
-  75% { --voice-phase: .86; }
-  100% { --voice-phase: 1; }
+  0% { --voice-phase: 0.000; }
+  5% { --voice-phase: 0.029; }
+  10% { --voice-phase: 0.066; }
+  15% { --voice-phase: 0.110; }
+  20% { --voice-phase: 0.159; }
+  25% { --voice-phase: 0.213; }
+  30% { --voice-phase: 0.284; }
+  35% { --voice-phase: 0.367; }
+  40% { --voice-phase: 0.453; }
+  45% { --voice-phase: 0.535; }
+  50% { --voice-phase: 0.602; }
+  55% { --voice-phase: 0.663; }
+  60% { --voice-phase: 0.720; }
+  65% { --voice-phase: 0.773; }
+  70% { --voice-phase: 0.820; }
+  75% { --voice-phase: 0.860; }
+  80% { --voice-phase: 0.895; }
+  85% { --voice-phase: 0.928; }
+  90% { --voice-phase: 0.956; }
+  95% { --voice-phase: 0.981; }
+  100% { --voice-phase: 1.000; }
 }
 
 @keyframes reel-phase-fall {
-  0% { --voice-phase: 1; }
-  20% { --voice-phase: .87; }
-  40% { --voice-phase: .62; }
-  60% { --voice-phase: .23; }
-  80% { --voice-phase: .05; }
-  100% { --voice-phase: 0; }
+  0% { --voice-phase: 1.000; }
+  5% { --voice-phase: 0.978; }
+  10% { --voice-phase: 0.948; }
+  15% { --voice-phase: 0.911; }
+  20% { --voice-phase: 0.870; }
+  25% { --voice-phase: 0.821; }
+  30% { --voice-phase: 0.762; }
+  35% { --voice-phase: 0.694; }
+  40% { --voice-phase: 0.620; }
+  45% { --voice-phase: 0.528; }
+  50% { --voice-phase: 0.418; }
+  55% { --voice-phase: 0.311; }
+  60% { --voice-phase: 0.230; }
+  65% { --voice-phase: 0.171; }
+  70% { --voice-phase: 0.119; }
+  75% { --voice-phase: 0.078; }
+  80% { --voice-phase: 0.050; }
+  85% { --voice-phase: 0.031; }
+  90% { --voice-phase: 0.015; }
+  95% { --voice-phase: 0.004; }
+  100% { --voice-phase: -0.000; }
 }
 
 @keyframes reel-crouch {
@@ -2703,55 +2738,214 @@ button {
 
 @keyframes reel-lift-rise {
   0% { transform: translate3d(-50%, var(--film-crouch-em, .057em), 0) scale(1); }
-  23% {
+  5% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.19), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .19));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.029), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.029));
   }
-  49% {
+  10% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.59), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .59));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.066), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.066));
+  }
+  15% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.110), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.110));
+  }
+  20% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.159), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.159));
+  }
+  25% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.213), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.213));
+  }
+  30% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.284), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.284));
+  }
+  35% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.367), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.367));
+  }
+  40% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.453), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.453));
+  }
+  45% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.535), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.535));
+  }
+  50% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.602), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.602));
+  }
+  55% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.663), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.663));
+  }
+  60% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.720), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.720));
+  }
+  65% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.773), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.773));
+  }
+  70% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.820), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.820));
   }
   75% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.86), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .86));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.860), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.860));
+  }
+  80% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.895), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.895));
+  }
+  85% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.928), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.928));
+  }
+  90% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.956), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.956));
+  }
+  95% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.981), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.981));
   }
   100% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
-      scale(var(--sync-pop));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1.000), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 1.000));
   }
 }
 
 @keyframes reel-lift-fall {
   0% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
-      scale(var(--sync-pop));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1.000), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 1.000));
+  }
+  5% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.978), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.978));
+  }
+  10% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.948), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.948));
+  }
+  15% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.911), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.911));
   }
   20% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.87), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .87));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.870), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.870));
+  }
+  25% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.821), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.821));
+  }
+  30% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.762), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.762));
+  }
+  35% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.694), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.694));
   }
   40% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.62), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .62));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.620), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.620));
+  }
+  45% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.528), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.528));
+  }
+  50% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.418), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.418));
+  }
+  55% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.311), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.311));
   }
   60% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.23), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .23));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.230), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.230));
+  }
+  65% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.171), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.171));
+  }
+  70% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.119), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.119));
+  }
+  75% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.078), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.078));
   }
   80% {
     transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.05), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .05));
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.050), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.050));
   }
-  100% { transform: translate3d(-50%, 0, 0) scale(1); }
+  85% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.031), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.031));
+  }
+  90% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.015), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.015));
+  }
+  95% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.004), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * 0.004));
+  }
+  100% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * 0.000), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * -0.000));
+  }
 }
 
 /* THE FULL SIZE RANGE, BOTH WAYS, over a picture. The enhanced stage clamps
@@ -2780,4 +2974,14 @@ button {
 
 .studio-shell[data-cues="true"] .caption-word:last-child {
   margin-right: calc(var(--voice-phase) * var(--film-push, 0px));
+}
+
+/* SCALED AS GEOMETRY, NOT RE-HINTED AS TEXT. A font-size animation is laid
+   out and rasterised afresh every frame, and by default each glyph is fitted
+   to the pixel grid at its new size -- so a word growing to twice its size
+   shimmers as its stems snap from one fit to the next. This asks for the
+   outline to be scaled exactly. */
+.studio-shell[data-cues="true"] .word-ink,
+.studio-shell[data-cues="true"] .word-glyph {
+  text-rendering: geometricPrecision;
 }

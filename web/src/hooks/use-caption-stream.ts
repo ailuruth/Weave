@@ -71,6 +71,14 @@ export interface FilmMotion {
   holdMaxMs: number;
   holdFromScale: number;
   holdFullScale: number;
+  /** Rise and fall stretch by 1 + this x the size change. */
+  bigSlowdown: number;
+  /** A drawn-out word floats this high for as long as it is held. */
+  heldLiftEm: number;
+  heldFromMs: number;
+  heldPerCharMs: number;
+  heldRampMs: number;
+  heldMaxMs: number;
   /** A word this much bigger starts moving its neighbours aside. */
   pushFromScale: number;
   pushFullScale: number;
@@ -246,6 +254,8 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   videoMotion: {
     leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130,
     holdTrimMs: 100, holdMaxMs: 700, holdFromScale: 1.15, holdFullScale: 1.45,
+    bigSlowdown: 0.55, heldLiftEm: 0.45, heldFromMs: 250, heldPerCharMs: 60,
+    heldRampMs: 300, heldMaxMs: 1200,
     pushFromScale: 1.5, pushFullScale: 1.9,
     scaleRange: [0.55, 2.0],
     scalePoints: [[0, -0.45], [0.08, -0.35], [0.14, 0], [0.26, 0],

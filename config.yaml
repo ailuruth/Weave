@@ -324,6 +324,24 @@ motion:
         # overlap their neighbours. Faded in between these two sizes.
         push_from_scale: 1.5
         push_full_scale: 1.9
+        # A BIG CHANGE OF SIZE TAKES LONGER. The film's "louder" rises in
+        # 0.25 s and returns in 0.25 s where an ordinary word takes 0.16 and
+        # 0.21; at one speed, going to twice the size looked abrupt. Rise and
+        # fall are stretched by 1 + this x the size change.
+        big_slowdown: 0.55
+        # A WORD THE SPEAKER DRAWS OUT FLOATS FOR AS LONG AS IT IS HELD. The
+        # narrator says "iiis" for 0.8 s; in the film "is" dips, springs about
+        # half a letter-height above the line, stays there in white while it
+        # is being said, then lands and turns colour. "Drawn out" is voiced
+        # length beyond what the word's letters account for:
+        #   voiced_ms - (held_from_ms + held_per_char_ms x letters), over
+        #   held_ramp_ms. "is": 800 - 370 -> fully held. "louder": 620 - 610
+        #   -> not (it is long because it has six letters).
+        held_lift_em: 0.45
+        held_from_ms: 250
+        held_per_char_ms: 60
+        held_ramp_ms: 300
+        held_max_ms: 1200
         scale_range: [0.55, 2.0]
         # loudness (0..1, baseline 0.222) -> size above 1.0. Flat across
         # ordinary speech (0.14..0.26); "softer" (0.08) lands near 0.65x and

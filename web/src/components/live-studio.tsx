@@ -213,6 +213,10 @@ interface WordMemo {
   /** The motion clock: frozen the first time the word was ever drawn. */
   clock: Map<string, {
     duration: number; sweepMs: number; crestMs: number; filmHoldMs: number;
+    /** 0..1: how drawn-out the word is ("iiis"). */
+    filmHeld: number;
+    /** Stretch on the film clock's rise and fall, for a big size change. */
+    filmSlow: number;
   }>;
   /** The resolved hold, once the gate has closed on it. */
   hold: Map<string, number>;
@@ -436,7 +440,7 @@ const MotionWord = memo(function MotionWord({
   /* Set by the effect below the arm effect, which is where the turn moment
      is known. */
 
-  const [{duration, sweepMs, crestMs, filmHoldMs}] = useState(() => {
+  const [{duration, sweepMs, crestMs, filmHoldMs, filmHeld, filmSlow}] = useState(() => {
     /* Frozen the first time this WORD was drawn, not this component -- they
        are different moments once a word can change row. */
     const remembered = memo.clock.get(id);
@@ -482,19 +486,38 @@ const MotionWord = memo(function MotionWord({
             / Math.max(1e-6, filmMotion.holdFullScale - filmMotion.holdFromScale),
           0, 1)
       : 0;
+    /* A WORD THE SPEAKER DRAWS OUT. Voiced length beyond what its letters
+       account for -- "is" said for 0.8 s is held; "louder" at 0.6 s is just
+       six letters long. */
+    const voicedMs = spokenMs * voicedFraction(word);
+    const letters = Math.max(1, word.text.replace(/[^\p{L}\p{N}]/gu, "").length);
+    const held = filmMotion
+      ? clamp(
+          (voicedMs - (filmMotion.heldFromMs + filmMotion.heldPerCharMs * letters))
+            / Math.max(1, filmMotion.heldRampMs),
+          0, 1)
+      : 0;
+    const slow = filmMotion
+      ? 1 + filmMotion.bigSlowdown * clamp(Math.abs(motion.voice.scale - 1), 0, 1.2)
+      : 1;
     const clock = {
       duration: naturalMs,
       sweepMs: sweep,
       // The crest is the SLOW clock -- emphasis, not speech rate.
       crestMs: crest,
       /* A quiet word is barely voiced, so its voiced length says nothing
-         about how long it lasts: a shrunk word holds for its whole span. */
+         about how long it lasts: a shrunk word holds for its whole span.
+         A drawn-out word floats until it has been said. */
       filmHoldMs: filmMotion
-        ? holdGate * clamp(
-            spokenMs * (motion.voice.scale < 1 ? 1 : voicedFraction(word))
-              - filmMotion.holdTrimMs,
-            0, filmMotion.holdMaxMs)
+        ? Math.max(
+            holdGate * clamp(
+              spokenMs * (motion.voice.scale < 1 ? 1 : voicedFraction(word))
+                - filmMotion.holdTrimMs,
+              0, filmMotion.holdMaxMs),
+            held * clamp(voicedMs - filmMotion.riseMs, 0, filmMotion.heldMaxMs))
         : 0,
+      filmHeld: held,
+      filmSlow: slow,
     };
     memo.clock.set(id, clock);
     return clock;
@@ -511,6 +534,11 @@ const MotionWord = memo(function MotionWord({
      quiet "softer" the BOLDEST word of its line -- seen side by side with the
      reference, the opposite of it. So over a picture the crest weight follows
      the crest size, through the same range. */
+  /* A HELD WORD TURNS COLOUR WHEN IT LANDS, as the film's "is" does: white
+     while it floats, coloured as it comes back to the line. */
+  const filmTurnLagMs = film && filmHeld > 0.5
+    ? film.riseMs * filmSlow + filmHoldMs + film.fallMs * filmSlow * 0.4
+    : 0;
   const filmLiftShare = !film ? 1
     : motion.voice.scale < 0.98 ? 0
       : 1 - clamp((motion.voice.scale - 1.1) / 0.2, 0, 1);
@@ -575,11 +603,15 @@ const MotionWord = memo(function MotionWord({
     "--sync-pop": (film && motion.voice.scale < 0.98 ? 1 : motion.sync.scale)
       .toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
-    "--word-lift-em": `${(runtime.wordLiftEmEnhanced * filmLiftShare).toFixed(4)}em`,
-    "--motion-duration": `${(film ? film.riseMs + film.fallMs : duration).toFixed(0)}ms`,
+    "--word-lift-em": `${(film
+      ? runtime.wordLiftEmEnhanced * filmLiftShare
+        + filmHeld * (film.heldLiftEm - runtime.wordLiftEmEnhanced * filmLiftShare)
+      : runtime.wordLiftEmEnhanced).toFixed(4)}em`,
+    "--motion-duration": `${(film ? (film.riseMs + film.fallMs) * filmSlow : duration).toFixed(0)}ms`,
     ...(film ? {
       "--film-lead": `${film.leadMs}ms`,
-      "--film-crouch-em": `${motion.voice.scale < 0.98 ? 0 : film.crouchEm}em`,
+      "--film-crouch-em": `${(motion.voice.scale < 0.98
+        ? 0 : film.crouchEm * (1 + filmHeld)).toFixed(4)}em`,
       "--film-crouch-ms": `${film.crouchMs}ms`,
       "--film-hold": `${filmHoldMs.toFixed(0)}ms`,
     } : {}),
@@ -598,9 +630,9 @@ const MotionWord = memo(function MotionWord({
       : (enhancedMotion ? "voice-phase-film" : "voice-phase"),
     /* The two halves of the split envelope. Only read when `data-tail` is
        `extended`; harmless otherwise. */
-    "--rise-ms": `${(film ? film.riseMs : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
+    "--rise-ms": `${(film ? film.riseMs * filmSlow : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
     "--fall-ms": `${(film
-      ? film.fallMs
+      ? film.fallMs * filmSlow
       : fallDurationMs(crestMs, fallRef.current ?? 0)).toFixed(0)}ms`,
     "--sync-envelope": enhancedMotion ? "word-sync-pop-film" : "word-sync-pop",
     // CWI 2.3 is a WORD-level property: in intonation.mov every glyph of
@@ -702,7 +734,7 @@ const MotionWord = memo(function MotionWord({
       const index = Number(span.dataset.charIndex ?? 0);
       span.style.setProperty(
         "--char-turn-delay",
-        `${charTurnDelayMs(turnDelay, index, perWord, sweepMs)}ms`,
+        `${charTurnDelayMs(turnDelay + filmTurnLagMs, index, perWord, sweepMs)}ms`,
       );
       span.style.setProperty(
         "--char-wave-delay",
