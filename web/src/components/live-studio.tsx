@@ -49,6 +49,8 @@ import {
   buildCues,
   CUE_HOLD_MS,
   CUE_LEAD_MS,
+  quietRuns,
+  type QuietRun,
 } from "@/lib/caption-cues";
 import {
   captionMotionFor,
@@ -233,6 +235,7 @@ const MotionWord = memo(function MotionWord({
   holdGapS,
   holdSettled,
   paceGapS,
+  quietRun,
   clockEpoch,
   scheduleWord,
   memo,
@@ -257,6 +260,8 @@ const MotionWord = memo(function MotionWord({
   holdSettled: boolean;
   /** Onset-to-onset interval to the NEXT word: one word at this speech rate. */
   paceGapS: number;
+  /** Recordings only: the run of quiet words this one shrinks with. */
+  quietRun?: QuietRun;
   clockEpoch: number | null;
   scheduleWord: (
     id: string,
@@ -519,6 +524,14 @@ const MotionWord = memo(function MotionWord({
       filmHeld: held,
       filmSlow: slow,
     };
+    /* A QUIET WORD MOVES WITH ITS RUN, not on its own: it starts shrinking
+       with the first quiet word beside it and comes back with the last --
+       or stays small, when the run ends the caption line. */
+    if (filmMotion && quietRun && motion.voice.scale < 0.98) {
+      clock.filmHoldMs = quietRun.stays
+        ? 600000
+        : Math.max(0, quietRun.spanMs - filmMotion.riseMs * slow);
+    }
     memo.clock.set(id, clock);
     return clock;
   });
@@ -564,12 +577,13 @@ const MotionWord = memo(function MotionWord({
     const half = element.offsetWidth * (motion.voice.scale * widening - 1) / 2;
     element.style.setProperty("--film-push", `${(half * filmPushShare).toFixed(2)}px`);
   }, [film, filmPushShare, motion.voice.scale]);
-  const [filmQuiet, filmLoud] = film ? film.scaleRange : [1, 1];
-  const filmWeight = !film ? 400 : motion.voice.scale >= 1
-    ? 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
-        * (runtime.weightRange[1] - 400)
-    : 400 - clamp((1 - motion.voice.scale) / Math.max(1e-6, 1 - filmQuiet), 0, 1)
-        * (400 - runtime.weightRange[0]);
+  const filmLoud = film ? film.scaleRange[1] : 1;
+  /* ...and a word that SHRINKS keeps its weight. Thinned to 245 as well as
+     shrunk it turned to hairlines; the film's small "or softer" is the same
+     face, smaller. */
+  const filmWeight = !film || motion.voice.scale < 1 ? 400
+    : 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
+        * (runtime.weightRange[1] - 400);
   const crestWeight = Math.round(film ? filmWeight :
     400
       + ((quietWord ? motion.registerWeight : motion.voice.weight) - 400)
@@ -609,7 +623,8 @@ const MotionWord = memo(function MotionWord({
       : runtime.wordLiftEmEnhanced).toFixed(4)}em`,
     "--motion-duration": `${(film ? (film.riseMs + film.fallMs) * filmSlow : duration).toFixed(0)}ms`,
     ...(film ? {
-      "--film-lead": `${film.leadMs}ms`,
+      "--film-lead": `${(quietRun && motion.voice.scale < 0.98
+        ? quietRun.leadMs : film.leadMs).toFixed(0)}ms`,
       "--film-crouch-em": `${(motion.voice.scale < 0.98
         ? 0 : film.crouchEm * (1 + filmHeld)).toFixed(4)}em`,
       "--film-crouch-ms": `${film.crouchMs}ms`,
@@ -1442,6 +1457,17 @@ function CaptionFeed({
   /* ...AND HOW LONG THE MOTION LASTS, WHICH IS ONE WORD AT THE CURRENT
      SPEECH RATE. */
   const paceGaps = new Map<string, number>();
+  /* Over a picture, which words shrink together. "Quiet" is whatever the
+     size mapping draws below 1x -- everything left of its first zero. */
+  const film = runtime.filmMotion ?? null;
+  const quietEdge = film
+    ? (film.scalePoints.find(([, above]) => above >= 0)?.[0] ?? 0)
+    : 0;
+  const quiet = useMemo(() => (film ? quietRuns(
+    buildCues(timingWords),
+    (word) => number(word.loudness, 1) < quietEdge - 1e-6,
+    film.shrinkPreMs,
+  ) : new Map<string, QuietRun>()), [film, quietEdge, timingWords]);
   {
     let previousOnset: number | null = null;
     let previousUtterance: number | null = null;
@@ -1543,6 +1569,7 @@ function CaptionFeed({
                     holdGapS={holdGaps.get(id) ?? 0}
                     holdSettled={holdSettledIds.has(id)}
                     paceGapS={paceGaps.get(id) ?? 0}
+                    quietRun={quiet.get(id)}
                     clockEpoch={clockEpoch}
                     scheduleWord={scheduleWord}
                     memo={wordMemo}

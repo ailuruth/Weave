@@ -7092,6 +7092,7 @@ def _studio_runtime_config(
             "holdMaxMs": (live_sync.get("video_motion") or {}).get("hold_max_ms", 700),
             "holdFromScale": (live_sync.get("video_motion") or {}).get("hold_from_scale", 1.15),
             "holdFullScale": (live_sync.get("video_motion") or {}).get("hold_full_scale", 1.45),
+            "shrinkPreMs": (live_sync.get("video_motion") or {}).get("shrink_pre_ms", 40),
             "bigSlowdown": (live_sync.get("video_motion") or {}).get("big_slowdown", 0.55),
             "heldLiftEm": (live_sync.get("video_motion") or {}).get("held_lift_em", 0.45),
             "heldFromMs": (live_sync.get("video_motion") or {}).get("held_from_ms", 250),
@@ -7100,9 +7101,9 @@ def _studio_runtime_config(
             "heldMaxMs": (live_sync.get("video_motion") or {}).get("held_max_ms", 1200),
             "pushFromScale": (live_sync.get("video_motion") or {}).get("push_from_scale", 1.5),
             "pushFullScale": (live_sync.get("video_motion") or {}).get("push_full_scale", 1.9),
-            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.55, 2.0]),
+            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.5, 2.0]),
             "scalePoints": (live_sync.get("video_motion") or {}).get("scale_points", [
-                [0.0, -0.45], [0.08, -0.35], [0.14, 0.0], [0.26, 0.0],
+                [0.0, -0.5], [0.08, -0.45], [0.14, 0.0], [0.26, 0.0],
                 [0.45, 0.15], [0.75, 0.36], [1.0, 0.8]]),
         },
         "voiceScaleDeadbandEnhanced": live_sync.get(

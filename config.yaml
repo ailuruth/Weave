@@ -329,6 +329,16 @@ motion:
         # 0.21; at one speed, going to twice the size looked abrupt. Rise and
         # fall are stretched by 1 + this x the size change.
         big_slowdown: 0.55
+        # QUIET WORDS SHRINK AS A GROUP, AHEAD OF BEING SPOKEN. In the film
+        # "or softer" shrinks once, together, while still white -- as
+        # "louder" comes back down -- then turns colour small and stays small
+        # to the end of the caption. A run of quiet words starts this long
+        # before its first word, and returns after its last (or never, when
+        # it ends the line).
+        # 40, not 250: seen beside the film, ours shrank a quarter second
+        # before its did. The film's run shrinks as "louder" lets go, which is
+        # when "or" begins.
+        shrink_pre_ms: 40
         # A WORD THE SPEAKER DRAWS OUT FLOATS FOR AS LONG AS IT IS HELD. The
         # narrator says "iiis" for 0.8 s; in the film "is" dips, springs about
         # half a letter-height above the line, stays there in white while it
@@ -342,14 +352,14 @@ motion:
         held_per_char_ms: 60
         held_ramp_ms: 300
         held_max_ms: 1200
-        scale_range: [0.55, 2.0]
+        scale_range: [0.5, 2.0]
         # loudness (0..1, baseline 0.222) -> size above 1.0. Flat across
         # ordinary speech (0.14..0.26); "softer" (0.08) lands near 0.65x and
         # the loudest word of a line at 1.9x. A drill-sergeant line, raised to
         # 0.75 by the sentence director, lands at 1.45x (film: 1.34-1.60x).
         scale_points:
-          - [0.00, -0.45]
-          - [0.08, -0.35]
+          - [0.00, -0.50]
+          - [0.08, -0.45]
           - [0.14, 0.00]
           - [0.26, 0.00]
           - [0.45, 0.15]

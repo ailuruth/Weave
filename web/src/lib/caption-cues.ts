@@ -92,3 +92,58 @@ export function activeCue(
   if (!current) return null;
   return playheadMs <= current.endMs + holdMs ? current : null;
 }
+
+
+/** HOW A RUN OF QUIET WORDS MOVES, on one caption line.
+
+    Watched in the PR film: "or softer" does not shrink word by word as each
+    is spoken. The two words shrink TOGETHER, once, while they are still white
+    read-ahead -- as "louder" comes back down before them -- then turn colour
+    small, and stay small until the caption is replaced. Shrinking each word
+    as it was spoken and popping it back made two little pulses in a row,
+    which is what read as unnatural.
+
+    So consecutive quiet words on a line share one window: every word in the
+    run starts shrinking `preMs` before the FIRST of them is spoken and comes
+    back when the LAST has been said -- or not at all, if the run reaches the
+    end of the line, because the caption leaves before there is anything to
+    come back to. */
+export interface QuietRun {
+  /** How long before THIS word's own onset its shrink begins. */
+  leadMs: number;
+  /** From the start of the run's shrink to the end of its last word. */
+  spanMs: number;
+  /** The run ends the caption line: stay small until the line is replaced. */
+  stays: boolean;
+}
+
+export function quietRuns(
+  cues: CaptionCue[],
+  isQuiet: (word: CaptionWord) => boolean,
+  preMs: number,
+): Map<string, QuietRun> {
+  const runs = new Map<string, QuietRun>();
+  for (const cue of cues) {
+    let i = 0;
+    while (i < cue.words.length) {
+      if (!isQuiet(cue.words[i].word)) {
+        i += 1;
+        continue;
+      }
+      let j = i;
+      while (j + 1 < cue.words.length && isQuiet(cue.words[j + 1].word)) j += 1;
+      const startMs = onsetMs(cue.words[i].word) - preMs;
+      const spanMs = endMs(cue.words[j].word) - startMs;
+      const stays = j === cue.words.length - 1;
+      for (let k = i; k <= j; k += 1) {
+        runs.set(cue.words[k].id, {
+          leadMs: onsetMs(cue.words[k].word) - startMs,
+          spanMs,
+          stays,
+        });
+      }
+      i = j + 1;
+    }
+  }
+  return runs;
+}
