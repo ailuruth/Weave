@@ -58,6 +58,10 @@ DEFAULTS = {
     "arousal_high": 2.50,
     "pop_floor": 0.75,
     "calm_gain": 0.20,
+    "standout_low_db": 3.5,
+    "standout_high_db": 5.0,
+    "standout_low_loudness": 0.85,
+    "standout_high_loudness": 0.95,
 }
 
 
@@ -92,6 +96,43 @@ def direct_recording(words: list[dict], settings: dict | None = None) -> list[di
     sentences: dict[object, list[dict]] = defaultdict(list)
     for word in words:
         sentences[word.get("utterance")].append(word)
+    # A WORD THAT STANDS OUT FROM ITS OWN SENTENCE KEEPS ITS SIZE (2026-11-13).
+    # `calm_gain` was fitted while word times were Whisper's, which put
+    # "louder" 0.7 s early and measured it at the line's average. Re-timed by
+    # forced alignment, the narrator's "louder" is +5.0 dB over its sentence
+    # and the interviewee's "wow, wow" +6.3 and +4.7 dB -- the three words the
+    # film makes largest in a calm line -- and flattening every calm sentence
+    # was flattening exactly them. What the film leaves alone at high level
+    # ("Star" +4.3, "read" +3.6, "rescue" +3.5) sits just under; the ramp
+    # between `standout_low_db` and `standout_high_db` is placed across that
+    # gap, which is as narrow as it sounds and comes from one film.
+    medians: dict[object, float] = {}
+    for key, group in sentences.items():
+        levels = sorted(float(w["loudness_db"]) for w in group
+                        if w.get("loudness_db") is not None)
+        if levels:
+            medians[key] = levels[len(levels) // 2]
+    s_low, s_high = float(cfg["standout_low_db"]), float(cfg["standout_high_db"])
+
+    def standout(word: dict) -> float:
+        median = medians.get(word.get("utterance"))
+        if median is None or word.get("loudness_db") is None:
+            return 0.0
+        over = float(word["loudness_db"]) - median
+        by_sentence = _smoothstep((over - s_low) / max(1e-6, s_high - s_low))
+        # ...OR FROM ITS SPEAKER'S WHOLE RANGE. dB over the sentence depends on
+        # where the sentence happens to be cut: "louder" was +5.0 dB over a
+        # 67-word run and +4.0 dB over its own sentence, the same audio, and
+        # fell through the ramp. `loudness` is already normalised against
+        # everything that speaker has said, and "louder" (0.99) and "wow"
+        # (1.00, 0.97) are at the top of it whichever way the text is cut.
+        level = float(word.get("loudness") or 0.0)
+        by_speaker = _smoothstep(
+            (level - float(cfg["standout_low_loudness"]))
+            / max(1e-6, float(cfg["standout_high_loudness"])
+                  - float(cfg["standout_low_loudness"])))
+        return max(by_sentence, by_speaker)
+
     gates: dict[object, float | None] = {}
     for key, group in sentences.items():
         arousal = sentence_arousal(group)
@@ -108,7 +149,9 @@ def direct_recording(words: list[dict], settings: dict | None = None) -> list[di
             directed.append(word)
             continue
         loudness = float(loudness)
-        calm = LOUDNESS_PIVOT + (loudness - LOUDNESS_PIVOT) * float(cfg["calm_gain"])
+        keep = float(cfg["calm_gain"])
+        keep += (1.0 - keep) * standout(word)
+        calm = LOUDNESS_PIVOT + (loudness - LOUDNESS_PIVOT) * keep
         aroused = max(loudness, float(cfg["pop_floor"]))
         directed.append({
             **word,
@@ -201,5 +244,44 @@ def assign_cues(words: list[dict], max_chars: int = CUE_MAX_CHARS) -> list[dict]
         for line in _split_line(words[i:j], max_chars):
             out.extend({**word, "cue": cue} for word in line)
             cue += 1
+        i = j
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Speakers
+# ---------------------------------------------------------------------------
+
+def settle_speakers(words: list[dict], min_share: float = 0.6) -> list[dict]:
+    """One sentence, one speaker -- where the sentence clearly has one.
+
+    The tracker attributes word by word, and on a quiet or short word it can
+    hand two words of a line to somebody else: the film's "so you can feel
+    when my voice gets louder or softer." came out with "or softer." in a
+    second speaker's colour, because those are the quietest words in it. A
+    live stage has to live with that; a recording knows the whole sentence.
+
+    Only a sentence where one speaker already holds `min_share` of the
+    attributed words is settled, so a sentence that really is shared -- or
+    that the tracker is honestly split on -- is left exactly as it came.
+    """
+
+    out = list(words)
+    i = 0
+    while i < len(words):
+        j = i
+        while j < len(words) and words[j].get("utterance") == words[i].get("utterance"):
+            j += 1
+        counts: dict[str, int] = {}
+        for word in words[i:j]:
+            if word.get("speaker"):
+                counts[word["speaker"]] = counts.get(word["speaker"], 0) + 1
+        if counts:
+            top, n = max(counts.items(), key=lambda item: item[1])
+            if n / sum(counts.values()) >= min_share:
+                for k in range(i, j):
+                    if out[k].get("speaker") != top:
+                        out[k] = {**out[k], "speaker": top, "speaker_known": True,
+                                  "speaker_status": "corrected"}
         i = j
     return out

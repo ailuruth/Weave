@@ -304,6 +304,33 @@ motion:
         # rises -- a crouch before the jump.
         crouch_em: 0.057
         crouch_ms: 130
+        # A BIG WORD HOLDS WHILE IT IS SPOKEN. The film's "louder" rises in
+        # 0.25 s, holds 0.55 s and returns in 0.25 s; an ordinary word has no
+        # hold at all. The hold is the word's voiced length less `hold_trim_ms`,
+        # faded in between the two sizes below so a small pop gets none.
+        hold_trim_ms: 100
+        hold_max_ms: 700
+        hold_from_scale: 1.15
+        hold_full_scale: 1.45
+        # THE SIZE RANGE OF A CAPTIONED VIDEO IS THE DESIGN SYSTEM'S, not the
+        # live stage's. `voice_scale_range` above stops at 1.62x because the
+        # live stack has 1 px of clearance between rows; one caption line over
+        # a picture has all the room the film uses. CWI 2.3.6: 3%..12% of the
+        # screen height on a 5% baseline, i.e. 0.6x..2.4x. The film's footage
+        # tops out near 1.9x ("wow" 1.87x) and its titles reach 2.9x.
+        scale_range: [0.6, 2.0]
+        # loudness (0..1, baseline 0.222) -> size above 1.0. Flat across
+        # ordinary speech (0.12..0.26); "softer" (0.04) lands near 0.67x and
+        # the loudest word of a line at 1.9x. A drill-sergeant line, raised to
+        # 0.75 by the sentence director, lands at 1.45x (film: 1.34-1.60x).
+        scale_points:
+          - [0.00, -0.40]
+          - [0.06, -0.30]
+          - [0.12, 0.00]
+          - [0.26, 0.00]
+          - [0.45, 0.15]
+          - [0.75, 0.45]
+          - [1.00, 0.90]
       # A WORD THAT WAITS RISES, AND LANDS AS IT TURNS.
       character_wave_falloff: 1.0
       # ...and no floor, for the same reason.
@@ -766,6 +793,15 @@ live:
     # silence and CWI 2.2.2's colour turn would fire before anyone speaks.
     # Moves each start (later only) to where the word's own sound begins.
     snap_onsets: true
+    # WORD TIMES COME FROM A FORCED ALIGNER, NOT FROM WHISPER (2026-11-13).
+    # Whisper's are attention-derived: on the PR film it put "louder" at
+    # 15.8 s when it is spoken at 16.67 s, so the colour turned 0.7 s early
+    # and the one word the narrator says loudly measured at the line's
+    # average. Re-timed (torchaudio MMS_FA, local, ~1.2 GB once): 56 of 173
+    # word starts moved by more than 150 ms, "louder" measures -11.0 dB
+    # (loudness 1.00) and "softer" -23.1 dB (0.04). `snap_onsets` is only the
+    # fallback when the aligner cannot load.
+    forced_alignment: true
   # WHICH WORDS POP IN A RECORDING IS DECIDED PER SENTENCE (2026-11-13).
   # The live rule sizes a word from its own loudness; the film decides by the
   # line. Scored on 65 hand-labelled words of the PR film from 0:28:
@@ -794,6 +830,18 @@ live:
     pop_floor: 0.75
     # How much of a word's own above-baseline loudness a CALM sentence keeps.
     calm_gain: 0.20
+    # ...UNLESS THE WORD STANDS OUT FROM ITS OWN SENTENCE, in dB over the
+    # sentence's median: then it keeps its size. With aligned word times the
+    # film's largest calm-line pops are exactly these -- "wow, wow" +6.3 and
+    # +4.7 dB, "louder" +5.0 dB -- and what it leaves flat sits just under
+    # ("Star" +4.3, "read" +3.6). Word-by-word match +0.53 -> +0.64.
+    standout_low_db: 3.5
+    standout_high_db: 5.0
+    # ...or sits at the top of its speaker's whole range, which does not
+    # depend on where the sentence was cut ("louder" 0.99, "wow" 1.00, 0.97;
+    # the loud words the film leaves flat are all at or under 0.84).
+    standout_low_loudness: 0.85
+    standout_high_loudness: 0.95
   endpoint_max_s: 30.0
   # Cold-start window only (first 6 words); after that the mapping uses
   # percentiles of the speaker's own word history.

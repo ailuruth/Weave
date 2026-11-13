@@ -51,7 +51,7 @@ from urllib.parse import parse_qs, urlsplit
 import numpy as np
 
 from autocwi import haptics, netaudio
-from autocwi.director import assign_cues, direct_recording
+from autocwi.director import assign_cues, direct_recording, settle_speakers
 
 SR = 16_000
 BLOCK = 1024  # samples per audio block (~64 ms)
@@ -6237,6 +6237,21 @@ class LiveLanguageSession:
         with self._lock:
             return self._media
 
+    def set_media(self, path: Path, name: str) -> None:
+        """Name the recording a command-line run was started on, so the studio
+        can ask for its picture. Not an upload: the file is the operator's
+        own and is never deleted here."""
+
+        with self._lock:
+            self._media_name = name
+            self._served_media = path
+
+    def served_media(self) -> Path | None:
+        """The file the studio may fetch as this session's picture."""
+
+        with self._lock:
+            return self._media or getattr(self, "_served_media", None)
+
     def snapshot(self) -> dict:
         with self._lock:
             return self._snapshot_locked()
@@ -6520,6 +6535,54 @@ def make_handler(
                 ),
             )
 
+        def _send_media(self, target: Path | None) -> None:
+            """The session's recording, for the studio's own player.
+
+            WITH RANGES: a media element seeks by asking for byte ranges, and
+            the caption playhead slaves the picture by seeking. Read in
+            blocks, never whole -- a film does not fit in one `read_bytes`.
+            """
+
+            if target is None or not target.is_file():
+                self.send_error(404)
+                return
+            size = target.stat().st_size
+            start, end = 0, size - 1
+            match = re.match(r"bytes=(\d*)-(\d*)$", self.headers.get("Range", ""))
+            if match and (match.group(1) or match.group(2)):
+                if match.group(1):
+                    start = int(match.group(1))
+                    end = int(match.group(2)) if match.group(2) else size - 1
+                else:
+                    start = max(0, size - int(match.group(2)))
+                if start > end or start >= size:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                end = min(end, size - 1)
+                self.send_response(206)
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            else:
+                self.send_response(200)
+            self.send_header("Content-Type",
+                             mimetypes.guess_type(target.name)[0]
+                             or "application/octet-stream")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            remaining = end - start + 1
+            with open(target, "rb") as handle:
+                handle.seek(start)
+                while remaining > 0:
+                    block = handle.read(min(remaining, 1 << 18))
+                    if not block:
+                        break
+                    self.wfile.write(block)
+                    remaining -= len(block)
+
         def do_GET(self):
             path = urlsplit(self.path).path
             if path in ("/", "/index.html", "/live.html"):
@@ -6544,6 +6607,8 @@ def make_handler(
                 # browser was reloaded, and on a restartable session that
                 # returns the studio to the language picker.
                 self._send_json(language_session.begin_page_load())
+            elif path == "/session/media-file" and language_session is not None:
+                self._send_media(language_session.served_media())
             elif path == "/RobotoFlex.ttf" and font_path is not None:
                 self._send_file(
                     font_path,
@@ -7023,6 +7088,14 @@ def _studio_runtime_config(
             "fallMs": (live_sync.get("video_motion") or {}).get("fall_ms", 209),
             "crouchEm": (live_sync.get("video_motion") or {}).get("crouch_em", 0.057),
             "crouchMs": (live_sync.get("video_motion") or {}).get("crouch_ms", 130),
+            "holdTrimMs": (live_sync.get("video_motion") or {}).get("hold_trim_ms", 100),
+            "holdMaxMs": (live_sync.get("video_motion") or {}).get("hold_max_ms", 700),
+            "holdFromScale": (live_sync.get("video_motion") or {}).get("hold_from_scale", 1.15),
+            "holdFullScale": (live_sync.get("video_motion") or {}).get("hold_full_scale", 1.45),
+            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.6, 2.0]),
+            "scalePoints": (live_sync.get("video_motion") or {}).get("scale_points", [
+                [0.0, -0.4], [0.06, -0.3], [0.12, 0.0], [0.26, 0.0],
+                [0.45, 0.15], [0.75, 0.45], [1.0, 0.9]]),
         },
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),
@@ -7242,6 +7315,9 @@ def run_live(args, cfg: dict, device: str) -> None:
         "selectedLanguage": initial_lang,
         "languageSelectionRequired": selection_required,
     })
+    if getattr(args, "import_file", None):
+        language_session.set_media(
+            Path(args.import_file).resolve(), Path(args.import_file).name)
 
     realtime = not os.environ.get("AUTOCWI_FAST")
     mic_device = getattr(args, "device", None)
@@ -7552,7 +7628,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                     ready=_listening,
                     cancelled=language_session.restart_pending,
                     direct=lambda words: assign_cues(direct_recording(
-                        words, live_cfg.get("import_director"))),
+                        settle_speakers(words),
+                        live_cfg.get("import_director"))),
                 )
         events_path = out / "live_events.jsonl"
 

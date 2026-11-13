@@ -211,7 +211,9 @@ function unarmedCharacters(element: HTMLElement): HTMLElement[] {
 /** Per-word values that must survive a word being rebuilt in another row. */
 interface WordMemo {
   /** The motion clock: frozen the first time the word was ever drawn. */
-  clock: Map<string, {duration: number; sweepMs: number; crestMs: number}>;
+  clock: Map<string, {
+    duration: number; sweepMs: number; crestMs: number; filmHoldMs: number;
+  }>;
   /** The resolved hold, once the gate has closed on it. */
   hold: Map<string, number>;
   /* THE 2.3 VOICE AXES, frozen at first sight like the clock beside them. */
@@ -395,7 +397,13 @@ const MotionWord = memo(function MotionWord({
      reason than either. */
   /* ...AND THE FREEZE IS AT THE TURN, NOT AT THE MOUNT (2026-08-05).
      Freezing is right -- see above. */
-  const holdTarget = clamp(
+  /* THE FILM'S CLOCK, for a captioned video: one short bell on every word,
+     with no tail stretched to the next word -- and NO GAP-HOLD. On the live
+     stage a word that follows a pause floats instead of growing; in the film
+     the word after the pause is "louder", and it grows to three times its
+     size. Seen side by side, ours only lifted. */
+  const film = runtime.filmMotion ?? null;
+  const holdTarget = film ? 0 : clamp(
     (holdGapS - runtime.holdMinS) /
       Math.max(1e-6, runtime.holdFullS - runtime.holdMinS),
     0,
@@ -421,10 +429,6 @@ const MotionWord = memo(function MotionWord({
     memo.hold.set(id, holdTarget);
     setHoldAmount((current) => (current === holdTarget ? current : holdTarget));
   }, [holdSettled, holdTarget, holdAmount, id, memo]);
-  /* THE FILM'S CLOCK, for a captioned video: one short bell on every word,
-     the same length whatever the emphasis, with no held crest and no tail
-     stretched to the next word. */
-  const film = runtime.filmMotion ?? null;
   const holdEnvelope = !film && holdEmphasis >= HOLD_ENVELOPE_EMPHASIS;
   /* How long this word takes to come back down: long enough to reach the
      next word's turn, so the stage is never still while anyone is talking. */
@@ -432,7 +436,7 @@ const MotionWord = memo(function MotionWord({
   /* Set by the effect below the arm effect, which is where the turn moment
      is known. */
 
-  const [{duration, sweepMs, crestMs}] = useState(() => {
+  const [{duration, sweepMs, crestMs, filmHoldMs}] = useState(() => {
     /* Frozen the first time this WORD was drawn, not this component -- they
        are different moments once a word can change row. */
     const remembered = memo.clock.get(id);
@@ -464,11 +468,30 @@ const MotionWord = memo(function MotionWord({
           crestWindowMs(push, runtime, spokenMs * voicedFraction(word)),
           push, runtime.wordMotionMaxMs,
         );
+    /* The film clock's hold: a big word stays up while it is spoken, an
+       ordinary one not at all. `end` runs to the next onset, so the voiced
+       fraction is what makes the span speech. */
+    const filmMotion = runtime.filmMotion ?? null;
+    /* Symmetric: a word that shrinks stays small while it is spoken, for the
+       same reason a big one stays big -- "softer" is soft for its whole
+       length, not for a quarter of a second. */
+    const departure = Math.max(motion.voice.scale - 1, (1 - motion.voice.scale) * 1.5);
+    const holdGate = filmMotion
+      ? clamp(
+          (departure - (filmMotion.holdFromScale - 1))
+            / Math.max(1e-6, filmMotion.holdFullScale - filmMotion.holdFromScale),
+          0, 1)
+      : 0;
     const clock = {
       duration: naturalMs,
       sweepMs: sweep,
       // The crest is the SLOW clock -- emphasis, not speech rate.
       crestMs: crest,
+      filmHoldMs: filmMotion
+        ? holdGate * clamp(
+            spokenMs * voicedFraction(word) - filmMotion.holdTrimMs,
+            0, filmMotion.holdMaxMs)
+        : 0,
     };
     memo.clock.set(id, clock);
     return clock;
@@ -479,7 +502,19 @@ const MotionWord = memo(function MotionWord({
      emphasis only where the film would have bolded it. Everything below is a
      target for the motion to rise to -- the word still RETURNS to Regular
      400 / 100% / the face's default proportions (docs/MOTION.md). */
-  const crestWeight = Math.round(
+  /* IN THE FILM, WEIGHT GOES WITH SIZE. Its "louder" is heavy while it is
+     big and its "softer" is light while it is small; a word that only lifts
+     keeps the line's weight. Driving weight from pitch instead made the low,
+     quiet "softer" the BOLDEST word of its line -- seen side by side with the
+     reference, the opposite of it. So over a picture the crest weight follows
+     the crest size, through the same range. */
+  const [filmQuiet, filmLoud] = film ? film.scaleRange : [1, 1];
+  const filmWeight = !film ? 400 : motion.voice.scale >= 1
+    ? 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
+        * (runtime.weightRange[1] - 400)
+    : 400 - clamp((1 - motion.voice.scale) / Math.max(1e-6, 1 - filmQuiet), 0, 1)
+        * (400 - runtime.weightRange[0]);
+  const crestWeight = Math.round(film ? filmWeight :
     400
       + ((quietWord ? motion.registerWeight : motion.voice.weight) - 400)
         * (1 - holdAmount),
@@ -512,6 +547,7 @@ const MotionWord = memo(function MotionWord({
       "--film-lead": `${film.leadMs}ms`,
       "--film-crouch-em": `${film.crouchEm}em`,
       "--film-crouch-ms": `${film.crouchMs}ms`,
+      "--film-hold": `${filmHoldMs.toFixed(0)}ms`,
     } : {}),
     // The 2.3 crest takes its own window so its rise tracks the colour wipe
     // instead of leading it (`crestDurationMs`); the pop and wave keep the
@@ -1718,6 +1754,19 @@ function MediaBackdrop({
       player.play().catch(() => undefined);
     });
   }, [playheadMs]);
+  /* ...and the sound comes back on the first click or key anywhere, which is
+     the gesture the browser was waiting for. */
+  useEffect(() => {
+    const unmute = () => {
+      if (ref.current) ref.current.muted = false;
+    };
+    window.addEventListener("pointerdown", unmute);
+    window.addEventListener("keydown", unmute);
+    return () => {
+      window.removeEventListener("pointerdown", unmute);
+      window.removeEventListener("keydown", unmute);
+    };
+  }, []);
   /* WHERE THE PICTURE ACTUALLY IS. The video is letterboxed inside the stage,
      and a caption is placed against the FRAME -- 91% of the way down the
      picture, sized at 4.2% of its height -- not against the stage around it.
@@ -2140,9 +2189,17 @@ export function LiveStudio() {
   }, [selectLanguage]);
   // The picker being up means no session is running, whatever was imported
   // for the last one.
+  /* A recording started from the command line was never picked in this
+     browser, so there is no local copy: its picture comes from the server
+     that is captioning it. */
+  const servedMedia = useMemo<ImportedMedia | null>(() => (session.media ? {
+    url: "/session/media-file",
+    name: session.media,
+    video: /\.(mp4|m4v|mov|webm|mkv)$/i.test(session.media),
+  } : null), [session.media]);
   const activeMedia =
     session.state === "loading" || session.state === "listening"
-      ? media
+      ? (media ?? servedMedia)
       : null;
   const mediaMode = activeMedia
     ? (activeMedia.video ? "video" : "audio")
@@ -2225,7 +2282,12 @@ export function LiveStudio() {
      presented the same way. A live session's words carry none. */
   const cueMode = cues.length > 0;
   const stageRuntime = useMemo(
-    () => (cueMode ? {...runtime, filmMotion: runtime.videoMotion} : runtime),
+    () => (cueMode ? {
+      ...runtime,
+      filmMotion: runtime.videoMotion,
+      voiceScaleRange: runtime.videoMotion.scaleRange,
+      voiceScalePointsEnhanced: runtime.videoMotion.scalePoints,
+    } : runtime),
     [cueMode, runtime],
   );
   const shownParagraphs = cueMode ? cueParagraphs : stageParagraphs;

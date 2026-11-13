@@ -52,6 +52,8 @@ export interface LanguageSession {
   state: SessionState;
   language: string | null;
   languages: LiveLanguageOption[];
+  /** The name of the recording this session captions, if it is one. */
+  media?: string | null;
 }
 
 /** Pop and lift timing read off the PR film -- see `video_motion` in
@@ -64,6 +66,14 @@ export interface FilmMotion {
   /** The dip before the rise, in em, and how long it takes. */
   crouchEm: number;
   crouchMs: number;
+  /** A big word holds its crest while it is spoken. */
+  holdTrimMs: number;
+  holdMaxMs: number;
+  holdFromScale: number;
+  holdFullScale: number;
+  /** CWI 2.3.6's own size range and mapping, for one line over a picture. */
+  scaleRange: [number, number];
+  scalePoints: Array<[number, number]>;
 }
 
 export interface RuntimeConfig {
@@ -230,7 +240,13 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   wordMotionEnhancedMs: 500,
   wordMotionEnhancedEmphasisMs: 0,
   crestLagMs: 40,
-  videoMotion: {leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130},
+  videoMotion: {
+    leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130,
+    holdTrimMs: 100, holdMaxMs: 700, holdFromScale: 1.15, holdFullScale: 1.45,
+    scaleRange: [0.6, 2.0],
+    scalePoints: [[0, -0.4], [0.06, -0.3], [0.12, 0], [0.26, 0],
+                  [0.45, 0.15], [0.75, 0.45], [1, 0.9]],
+  },
   voiceScaleDeadbandEnhanced: 0.1,
   voiceScaleResponseEnhanced: 0.5,
   voiceScalePivotEnhanced: 0.1,

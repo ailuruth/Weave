@@ -2659,7 +2659,8 @@ button {
     reel-phase-rise var(--rise-ms) linear
       calc(var(--turn-delay) - var(--film-lead, 0ms)) forwards,
     reel-phase-fall var(--fall-ms) linear
-      calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)) forwards;
+      calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)
+           + var(--film-hold, 0ms)) forwards;
 }
 
 /* The crouch is listed FIRST so the rise, which fills forwards, owns the
@@ -2673,7 +2674,8 @@ button {
   animation-delay:
     calc(var(--turn-delay) - var(--film-lead, 0ms) - var(--film-crouch-ms, 130ms)),
     calc(var(--turn-delay) - var(--film-lead, 0ms)),
-    calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms));
+    calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)
+         + var(--film-hold, 0ms));
   animation-fill-mode: forwards, forwards, forwards;
 }
 
@@ -2750,4 +2752,14 @@ button {
       scale(calc(1 + (var(--sync-pop) - 1) * .05));
   }
   100% { transform: translate3d(-50%, 0, 0) scale(1); }
+}
+
+/* THE FULL SIZE RANGE, BOTH WAYS, over a picture. The enhanced stage clamps
+   the crest to 1..1.55x -- "upward only", for the live stack's clearance --
+   which is why "softer" could never get small there. One caption line has the
+   room, and CWI 2.3.6 runs from 3% to 12% of the screen height. */
+.studio-shell[data-cues="true"][data-motion="enhanced"] .caption-word {
+  --crest-scale: calc(
+    1 + var(--voice-phase) * (var(--voice-scale, 1) - 1)
+  );
 }

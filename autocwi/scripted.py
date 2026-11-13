@@ -90,6 +90,152 @@ def snap_onsets(
     return snapped
 
 
+_ALIGN_CHARS = set("abcdefghijklmnopqrstuvwxyz'")
+
+
+def _align_token(text: str) -> str:
+    """A word as the aligner's alphabet spells it; "*" when it has no letters
+    the alphabet knows (digits, symbols), which lets the aligner give that
+    word whatever sound is there instead of failing the whole sentence."""
+
+    import unicodedata
+
+    plain = unicodedata.normalize("NFKD", text).lower().replace("\u2019", "'")
+    token = "".join(ch for ch in plain if ch in _ALIGN_CHARS).strip("'")
+    return token or "*"
+
+
+def align_words(
+    words: list[ScriptWord],
+    audio: np.ndarray,
+    *,
+    aligner=None,
+    window_words: int = 24,
+    pad_s: float = 1.5,
+) -> tuple[list[ScriptWord], object]:
+    """Re-time every word against the audio with a forced aligner.
+
+    WHISPER'S WORD TIMES ARE NOT GOOD ENOUGH FOR THIS STAGE. They come from
+    attention, not from the sound, and on the PR film they put "louder" at
+    15.8 s when it is spoken at 16.5 s. Everything here is keyed on a word's
+    span: the colour turns 0.7 s early, and its loudness is measured over
+    the pause and the word before it, so the one word the narrator says
+    loudly (-11 dB) came out at -17.8 dB, below the line's average.
+
+    A CTC aligner answers a narrower question -- GIVEN these words, where is
+    each one -- from the acoustics, frame by frame (20 ms). torchaudio's
+    MMS_FA is multilingual and local (a one-time ~1.2 GB download).
+
+    The text is aligned a few sentences at a time, inside the stretch of
+    audio Whisper put it in plus `pad_s` either side, with a wildcard at both
+    ends to soak up whatever else is in that stretch. That keeps the work
+    linear in the recording's length, and one bad passage cannot shift the
+    rest.
+
+    A word the alphabet cannot spell is still placed (as a wildcard). A window
+    that is mostly such words -- Hangul, until romanisation is added -- keeps
+    Whisper's times, and so does any window the aligner fails on.
+    Returns ``(words, aligner)`` so the loaded model can be reused.
+    """
+
+    import torch
+    import torchaudio
+    from torchaudio.pipelines import MMS_FA as bundle
+
+    if aligner is None:
+        model = bundle.get_model(with_star=True).eval()
+        aligner = (model, bundle.get_tokenizer(), bundle.get_aligner())
+    model, tokenizer, ctc_align = aligner
+    out = list(words)
+    i = 0
+    while i < len(words):
+        # a window ends at a sentence end where it can, never past the cap
+        j = min(len(words), i + window_words)
+        for k in range(i + 1, j):
+            if (words[k - 1].text.rstrip("\"')").endswith((".", "?", "!"))
+                    and k - i >= 6):
+                j = k
+                break
+        group = words[i:j]
+        tokens = [_align_token(w.text) for w in group]
+        if sum(t != "*" for t in tokens) * 2 >= len(tokens):
+            lo = max(0.0, group[0].start - pad_s)
+            hi = min(len(audio) / SR, group[-1].end + pad_s)
+            clip = torch.from_numpy(
+                audio[int(lo * SR):int(hi * SR)].astype(np.float32))[None]
+            try:
+                with torch.inference_mode():
+                    emission, _ = model(clip)
+                    spans = ctc_align(emission[0], tokenizer(["*"] + tokens + ["*"]))
+                per_frame = clip.shape[1] / emission.shape[1] / SR
+                for n, (word, span) in enumerate(zip(group, spans[1:-1])):
+                    start = lo + span[0].start * per_frame
+                    end = lo + span[-1].end * per_frame
+                    if end > start:
+                        out[i + n] = ScriptWord(word.text, float(start), float(end))
+            except Exception:  # noqa: BLE001 - keep Whisper's times for this window
+                pass
+        i = j
+    # Alignment is per window, so two windows can disagree by a frame at
+    # their seam. Starts must not run backwards.
+    for n in range(1, len(out)):
+        if out[n].start < out[n - 1].start:
+            out[n] = ScriptWord(out[n].text, out[n - 1].start, max(out[n].end, out[n - 1].start + 0.02))
+    return lead_in(out, audio), aligner
+
+
+def lead_in(
+    words: list[ScriptWord],
+    audio: np.ndarray,
+    *,
+    sr: int = SR,
+    frame_s: float = 0.01,
+    # Measured on "louder": its first consonant runs at -16..-19 dB under a
+    # vowel peak of -9 dB, over room tone at -25 dB. 0.2 of the peak (-23 dB)
+    # is between the two; 0.35 stopped at the consonant and moved nothing.
+    rise: float = 0.2,
+    max_back_s: float = 0.25,
+) -> list[ScriptWord]:
+    """Move a word's start back to where its sound begins, after a gap.
+
+    A CTC aligner places a word at its first confidently spelled character,
+    which for a word that swells in -- "louder", said after a pause -- is
+    late: aligned at 16.67 s, while the level has been rising since 16.50 s
+    and the film starts its motion at 16.43 s. CWI 2.2.2 turns the colour
+    "as soon as the sound of the word begins".
+
+    Only words with silence in front of them are touched, only backwards,
+    never into the previous word, and only while the level stays above
+    `rise` of the word's own peak -- so room tone ahead of a word is not
+    mistaken for it.
+    """
+
+    hop = max(1, int(frame_s * sr))
+    out = list(words)
+    for n, word in enumerate(words):
+        floor_t = max(word.start - max_back_s, words[n - 1].end if n else 0.0)
+        if word.start - floor_t < 2 * frame_s:
+            continue
+        lo, hi = int(word.start * sr), min(len(audio), int(word.end * sr))
+        if hi - lo < 2 * hop:
+            continue
+        body = audio[lo:hi].astype(np.float64)
+        frames = len(body) // hop
+        peak = float(np.sqrt((body[:frames * hop].reshape(frames, hop) ** 2).mean(axis=1)).max())
+        if peak <= 1e-5:
+            continue
+        start = word.start
+        while start - frame_s >= floor_t:
+            a = int((start - frame_s) * sr)
+            level = float(np.sqrt((audio[a:a + hop].astype(np.float64) ** 2).mean()))
+            if level < peak * rise:
+                break
+            start -= frame_s
+        if start < word.start:
+            out[n] = ScriptWord(word.text, start, word.end)
+    return out
+
+
 def transcribe_recording(
     path: str | Path,
     cfg: dict,
@@ -130,6 +276,13 @@ def transcribe_recording(
         # Each window stands alone, so one mis-heard line cannot be repeated
         # into the ones after it.
         condition_on_previous_text=False,
+        # WITHOUT THIS THE FILM'S FIRST 28 SECONDS COME BACK AS ONE LOWERCASE
+        # RUN WITH NO PUNCTUATION, and sentences are what caption lines are
+        # cut from: "louder or softer character identification" was shown as
+        # one caption. A punctuated prompt sets the style for the transcript.
+        initial_prompt=settings.get(
+            "initial_prompt",
+            "Hello. This is a transcript, with punctuation and capital letters."),
     )
     words: list[ScriptWord] = []
     for segment in segments:
@@ -138,7 +291,15 @@ def transcribe_recording(
             if text and word.end > word.start:
                 words.append(ScriptWord(text, float(word.start), float(word.end)))
     words.sort(key=lambda w: w.start)
-    if settings.get("snap_onsets", True):
+    if settings.get("forced_alignment", True):
+        try:
+            words, _ = align_words(words, audio)
+        except Exception as exc:  # noqa: BLE001 - aligner missing or not downloaded
+            print(f"[live] forced alignment unavailable ({exc}); "
+                  "keeping the recognizer's word times")
+            if settings.get("snap_onsets", True):
+                words = snap_onsets(words, audio)
+    elif settings.get("snap_onsets", True):
         words = snap_onsets(words, audio)
     return words, model
 
