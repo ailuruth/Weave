@@ -51,6 +51,7 @@ from urllib.parse import parse_qs, urlsplit
 import numpy as np
 
 from autocwi import haptics, netaudio
+from autocwi.director import direct_recording
 
 SR = 16_000
 BLOCK = 1024  # samples per audio block (~64 ms)
@@ -5851,10 +5852,15 @@ def analysed_events(
     progress: Callable[[float], None] | None = None,
     ready: Callable[[], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
+    direct: Callable[[list[dict]], list[dict]] | None = None,
     _clock=None,
     _sleep=None,
 ):
     """Hear the whole recording first, then play it back on the source clock.
+
+    ``direct`` sees every final word at once, before any is shown, and may
+    return revised copies in the same order -- which is where a decision that
+    needs the whole sentence (autocwi/director.py) is made.
 
     ``events`` must come from an UNPACED source (`file_blocks(realtime=False)`),
     so the first phase runs as fast as the models do -- measured 17 s for the
@@ -5886,6 +5892,12 @@ def analysed_events(
             close()
     score = build_media_score(heard)
     del heard
+    if direct is not None:
+        slots = [i for i, (_, ev) in enumerate(score) if ev.get("type") == "word"]
+        revised = direct([score[i][1] for i in slots])
+        if len(revised) == len(slots):
+            for i, word in zip(slots, revised):
+                score[i] = (score[i][0], word)
     if ready is not None:
         ready()
     started = clock()
@@ -7517,6 +7529,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                         f"analysing {round(done * 100)}%", lang),
                     ready=_listening,
                     cancelled=language_session.restart_pending,
+                    direct=lambda words: direct_recording(
+                        words, live_cfg.get("import_director")),
                 )
         events_path = out / "live_events.jsonl"
 

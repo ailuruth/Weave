@@ -168,7 +168,7 @@ class ScriptedRecognizer:
     `create_stream`, `stream.accept_waveform`, `stream.input_finished`,
     `is_ready`, `decode_stream`, `get_result_all`, `is_endpoint`. This answers
     them from the transcript: a word exists once the audio fed so far has
-    reached its start, and an utterance ends at the end of a SENTENCE.
+    covered it, and an utterance ends at the end of a SENTENCE.
 
     The transducer can only end an utterance on silence, and a film rarely
     pauses that long: on the PR film no gap reaches `endpoint_silence_s`, and
@@ -211,9 +211,15 @@ class ScriptedRecognizer:
         stream.pending = False
         now = self._now(stream)
         count = stream.emitted
+        # A word exists once its WHOLE span has been fed, not when its start
+        # has. The captioner measures a word's prosody on first sight and
+        # caches it; released at its start, the span is not in the buffer yet
+        # and the word is cached as silence (measured: -80 dB on 6 of 65
+        # labelled film words). The transducer never does this -- it emits a
+        # word about a second after it was said.
         while (stream.first + count < len(self.words)
                and (stream.finished
-                    or self.words[stream.first + count].start <= now)):
+                    or self.words[stream.first + count].end <= now)):
             # Nothing is offered past a sentence end until the captioner has
             # taken the endpoint and opened the next stream -- otherwise two
             # sentences with no pause between them merge into one utterance.

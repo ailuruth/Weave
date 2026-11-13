@@ -746,6 +746,26 @@ live:
     # silence and CWI 2.2.2's colour turn would fire before anyone speaks.
     # Moves each start (later only) to where the word's own sound begins.
     snap_onsets: true
+  # WHICH WORDS POP IN A RECORDING IS DECIDED PER SENTENCE (2026-11-13).
+  # The live rule sizes a word from its own loudness; the film decides by the
+  # line. Scored on 65 hand-labelled words of the PR film from 0:28:
+  #   live rule (word loudness)   AUC 0.80   80% of words right
+  #   this (sentence arousal)     AUC 0.94   91% of words right, no false pop
+  # Arousal is the sentence's mean pitch over its speaker's register: raised
+  # pitch is what raised effort sounds like, and it survives mastering where
+  # level does not. See autocwi/director.py, including what it cannot solve.
+  # FITTED TO ONE FILM: its calm lines sit <= 1.18 and its aroused ones
+  # >= 1.68, and the gate below is placed in that gap. Re-measure on other
+  # material before trusting these on it.
+  import_director:
+    enabled: true
+    arousal_low: 1.30
+    arousal_high: 1.60
+    # What every word of an aroused sentence is raised to, on the normalised
+    # loudness channel (2.3.5 baseline = 0.222, 2.3.6 ceiling = 1.0).
+    pop_floor: 0.62
+    # How much of a word's own above-baseline loudness a CALM sentence keeps.
+    calm_gain: 0.35
   endpoint_max_s: 30.0
   # Cold-start window only (first 6 words); after that the mapping uses
   # percentiles of the speaker's own word history.
