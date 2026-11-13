@@ -883,6 +883,11 @@ live:
   # FITTED TO ONE FILM: its calm lines sit <= 1.18 and its aroused ones
   # >= 1.68, and the gate below is placed in that gap. Re-measure on other
   # material before trusting these on it.
+  import_render:
+    # Captions are drawn at this rate, or at the recording's own if that is
+    # higher. The studio moves them at 60, and a 24 fps film drawn at 24
+    # shows the motion in steps.
+    fps: 60
   import_director:
     enabled: true
     # RE-FITTED 2026-11-13 TO THE PIXEL MEASUREMENT (86 trusted words of

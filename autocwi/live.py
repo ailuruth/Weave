@@ -7463,6 +7463,9 @@ def run_live(args, cfg: dict, device: str) -> None:
                             progress=lambda done: print(
                                 f"[live] drawing captions {round(done * 100)}%",
                                 flush=True),
+                            fps=int(getattr(args, "fps", None) or (
+                                cfg["live"].get("import_render") or {}
+                            ).get("fps", 60)),
                         )
                         print(f"[live] captioned video: {target} "
                               f"{json.dumps(report)}")

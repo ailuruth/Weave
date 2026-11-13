@@ -100,6 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--out", default="out")
     cp.add_argument("--no-video", dest="no_video", action="store_true",
                     help="write the caption files only")
+    cp.add_argument("--fps", type=int, default=None,
+                    help="frames a second the captions are drawn at "
+                         "(default 60)")
 
     ck = sub.add_parser(
         "check", help="check a caption file (spec.json / NAME.cwi.json) "
@@ -135,6 +138,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="with --import: also write OUT/exports/"
                          "NAME.captioned.mp4, the recording with the "
                          "studio's own captions drawn on it, then exit.")
+    lv.add_argument("--fps", type=int, default=None,
+                    help="with --render: frames a second the captions are "
+                         "drawn at (default 60)")
     lv.add_argument("--sample", action="store_true",
                     help="stream the bundled sample for the selected language")
     # The PR film changes treatment at 28 s: before it is the titles demo on
@@ -352,7 +358,8 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(f"weave: no such file: {args.file}")
         args = build_parser().parse_args([
             "live", "--import", args.file, "--lang", args.lang, "--out", args.out,
-            "--once" if args.no_video else "--render"])
+            "--once" if args.no_video else "--render",
+            *(["--fps", str(args.fps)] if args.fps else [])])
     if args.cmd == "check":
         from .check import check_file, report
 

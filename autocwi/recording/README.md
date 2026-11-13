@@ -28,6 +28,7 @@ A recording is known whole before its first frame is shown. Weave uses that to f
 * Size follows the sentence. A shouted line grows on every word.
 * Motion values live in `config.yaml` under `video_motion`.
 * The renderer sets each animation's time itself. Chrome's animation clock keeps running while the page clock is paused.
+* Captions are drawn at 60 frames a second, whatever the recording's own rate. `--fps 120` raises it.
 
 ## Limits
 

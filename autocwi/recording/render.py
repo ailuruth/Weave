@@ -39,7 +39,8 @@ CHROME_FLAGS = (
     "--disable-checker-imaging",
 )
 WINDOW = (1600, 1000)
-CANVAS = (1280, 720, 30)
+CANVAS = (1280, 720)
+RENDER_FPS = 60
 COPIED_AUDIO = frozenset({".mp4", ".m4v", ".mov", ".m4a", ".aac"})
 MIN_STEP_S = 1e-4
 DELIVERY_TIMEOUT_S = 10.0
@@ -187,7 +188,8 @@ def find_chrome() -> str:
         "rendering needs Chrome or Chromium; set CHROME to its executable")
 
 
-def probe_picture(media: Path) -> Picture:
+def probe_picture(media: Path, fps: int = RENDER_FPS) -> Picture:
+    """The recording's frame, and the rate captions are drawn at: `fps`, or the recording's own if that is higher."""
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height,r_frame_rate",
@@ -195,13 +197,13 @@ def probe_picture(media: Path) -> Picture:
         capture_output=True, text=True, check=True).stdout
     data = json.loads(out)
     if not data.get("streams"):
-        width, height, rate = CANVAS
-        frames = math.ceil(float(data["format"]["duration"]) * rate)
-        return Picture(width, height, Fraction(rate), frames, own=False)
+        width, height = CANVAS
+        frames = math.ceil(float(data["format"]["duration"]) * fps)
+        return Picture(width, height, Fraction(fps), frames, own=False)
     stream = data["streams"][0]
-    fps = Fraction(stream["r_frame_rate"])
-    frames = math.ceil(float(data["format"]["duration"]) * fps)
-    return Picture(int(stream["width"]), int(stream["height"]), fps, frames)
+    rate = max(Fraction(stream["r_frame_rate"]), Fraction(fps))
+    frames = math.ceil(float(data["format"]["duration"]) * rate)
+    return Picture(int(stream["width"]), int(stream["height"]), rate, frames)
 
 
 class _Page:
@@ -282,7 +284,8 @@ def _encoder(media: Path, picture: Picture, out: Path) -> subprocess.Popen:
     captions = ["-f", "image2pipe", "-framerate", str(picture.fps), "-c:v", "png", "-i", "-"]
     if picture.own:
         inputs = ["-i", str(media), *captions]
-        graph = f"[1:v]scale={size}[captions];[0:v][captions]overlay=eof_action=pass[out]"
+        graph = (f"[0:v]fps={picture.fps}[picture];[1:v]scale={size}[captions];"
+                 "[picture][captions]overlay=eof_action=pass[out]")
         sound = "0:a?"
     else:
         canvas = f"color=c=black:s={picture.width}x{picture.height}:r={picture.fps}"
@@ -307,6 +310,7 @@ def render_score(
     publish: Callable[[dict], None],
     last_event_id: Callable[[], int],
     progress: Callable[[float], None] | None = None,
+    fps: int = RENDER_FPS,
 ) -> dict:
     """Replay `score` to the studio's render channel and write the captioned recording."""
     from .score import replay_score
@@ -326,7 +330,7 @@ def render_score(
     try:
         return render_recording(
             media, out, studio_url=studio_url, clock=clock,
-            last_event_id=last_event_id, progress=progress)
+            last_event_id=last_event_id, progress=progress, fps=fps)
     finally:
         clock.finish()
         thread.join()
@@ -340,6 +344,7 @@ def render_recording(
     clock: StepClock,
     last_event_id: Callable[[], int],
     progress: Callable[[float], None] | None = None,
+    fps: int = RENDER_FPS,
 ) -> dict:
     """Play the recording through the studio on `clock` and write it out with its captions drawn on.
 
@@ -349,7 +354,7 @@ def render_recording(
     """
     from websockets.sync.client import connect
 
-    picture = probe_picture(media)
+    picture = probe_picture(media, fps)
     profile = tempfile.mkdtemp(prefix="weave-render-")
     port = _free_port()
     chrome = subprocess.Popen(
