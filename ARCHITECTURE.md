@@ -56,8 +56,8 @@ reference:  screen recordings ─► measured per glyph ─► assets/reference_
 | `web/src/lib/caption-store.ts` | Pure event reducer: stable word identity, independent revision channels, source/finality authority, and the reveal deadline policy. |
 | `web/src/lib/caption-paragraphs.ts` | Pure layout partitioner: Transcript keeps complete paragraphs; Stage flattens them into rows on a measured em budget and keeps as many as it measures room for. |
 | `web/src/hooks/use-caption-stream.ts` | Client boundary for the language session, the event stream, the reveal scheduler, reconnect state, and the `?demo=1` preview. |
-| `autocwi/recording/` | Captioning a recording instead of a room: whole-file transcription, forced alignment, the live captioner driven by that script, sentence-level direction, export, and timed replay. Stages are listed in `pipeline.py`; reasons and measurements in its `README.md`. |
-| `autocwi/check.py` | `autocwi check FILE`: a caption file against the design system. Speaker colours (same, too close, too dark), word order and bounds, a dead size channel, line length. The contract itself is `schema.py`; this is what the contract cannot say. |
+| `autocwi/recording/` | Captions a recording: transcribes it whole, times each word, directs sizes and speakers by sentence, exports, and draws the captioned video. Its `README.md` explains the stages. |
+| `autocwi/check.py` | `autocwi check FILE` checks a caption file for faults the schema cannot express, such as two speakers in one colour. |
 | `autocwi/livepage.py` | Generates the legacy `live.html` renderer (kept as a fallback and diagnostic tool). |
 | `autocwi/live_render_core.js` | Dependency-free ordering/reduction core shared by the legacy page and its Node tests. |
 
@@ -81,7 +81,7 @@ reference:  screen recordings ─► measured per glyph ─► assets/reference_
 | `autocwi/audio.py` | ffmpeg/ffprobe helpers: probe duration/fps, extract 16 kHz mono wav. |
 | `autocwi/stubs.py` | Deterministic placeholder stages (`--stub`) so the pipeline runs with zero models. |
 | `autocwi/device.py` | Compute-device selection (cuda → mps → cpu) and seeding. |
-| `autocwi/cli.py` | Subcommands: `live`, `run`, `cc`, `tune`, `transcribe`, `diarize`, `prosody`, `fuse`. |
+| `autocwi/cli.py` | Subcommands: `live`, `caption`, `check`, `run`, `cc`, `tune`, `transcribe`, `diarize`, `prosody`, `fuse`. |
 
 ## Data contract
 
