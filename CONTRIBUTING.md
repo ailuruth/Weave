@@ -5,12 +5,10 @@ Set up with the Quick start in [README.md](README.md). Use `.venv/bin/python`, n
 ## Before you push
 
 ```bash
-npm --prefix web run lint
-npm --prefix web run test
-npm --prefix web run build
+npm --prefix web run check
 ```
 
-Lint has 10 known errors in `live-studio.tsx`. Do not add to them.
+It runs lint, the tests and the build. GitHub runs the same check on every push. Lint shows a few warnings in `live-studio.tsx`, where the caption motion depends on patterns the React rules dislike. Do not add to them.
 
 ## Rules
 

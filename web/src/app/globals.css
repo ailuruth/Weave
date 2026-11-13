@@ -2433,7 +2433,8 @@ button {
   overflow: visible;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--frame-h, 100cqh) * .042 * var(--caption-scale, 1));
+  font-size: calc(
+    var(--frame-h, 100cqh) * .042 * var(--caption-scale, 1) * var(--cue-fit, 1));
 }
 
 .studio-shell[data-cues="true"] .caption-feed .caption-paragraph[data-row-id] {

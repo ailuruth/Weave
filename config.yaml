@@ -854,6 +854,11 @@ live:
     # OFF ON THE MEASUREMENT: with VAD the film scores 17.1% -- it removes the
     # same shouted and cartoon lines the streaming lane loses.
     vad_filter: false
+    # Whisper invents a line over silence ("Thank you.", "감사합니다."). Its
+    # words in such a line average 0.41 and 0.57 in confidence. The least
+    # confident real line measured is 0.72, a cartoon shout. A line under this
+    # is dropped.
+    min_word_confidence: 0.65
     # Whisper gives a pause to the word AFTER it, so that word's start sits in
     # silence and CWI 2.2.2's colour turn would fire before anyone speaks.
     # Moves each start (later only) to where the word's own sound begins.

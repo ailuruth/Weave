@@ -50,9 +50,13 @@ def transcribe_recording(
         condition_on_previous_text=False,
         initial_prompt=_style_prompt(settings, language),
     )
+    floor = float(settings.get("min_word_confidence", 0.65))
     words: list[ScriptWord] = []
     for segment in segments:
-        for word in segment.words or []:
+        spoken = segment.words or []
+        if spoken and sum(w.probability for w in spoken) / len(spoken) < floor:
+            continue
+        for word in spoken:
             text = str(word.word).strip()
             if text and word.end > word.start:
                 words.append(ScriptWord(text, float(word.start), float(word.end)))

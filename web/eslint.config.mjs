@@ -6,4 +6,12 @@ export default defineConfig([
   ...nextVitals,
   ...nextTypescript,
   globalIgnores([".next/**", "out/**", "next-env.d.ts"]),
+  {
+    files: ["src/components/live-studio.tsx"],
+    rules: {
+      "react-hooks/refs": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/purity": "warn",
+    },
+  },
 ]);

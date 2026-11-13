@@ -106,6 +106,15 @@ def direct_recording(words: list[dict], settings: dict | None = None) -> list[di
 
 
 CUE_MAX_CHARS = 54
+CUE_MIN_CHARS = 20
+WIDE_ASPECT = 16 / 9
+
+
+def line_length(aspect: float | None, base: int = CUE_MAX_CHARS) -> int:
+    """How many characters a caption line may hold in a frame of this shape."""
+    if not aspect or aspect >= WIDE_ASPECT:
+        return base
+    return max(CUE_MIN_CHARS, round(base * (aspect / WIDE_ASPECT) ** 0.5))
 _LEADS_ON = frozenset(
     "a an the to of in on at by for with and but or so that what which who "
     "when where how if as is are was were be i you he she we they it my your "

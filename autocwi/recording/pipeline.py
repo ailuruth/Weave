@@ -8,9 +8,10 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from .direct import direct
+from .direct import CUE_MAX_CHARS, direct, line_length
 from .export import write_exports
 from .recognizer import ScriptedRecognizer
+from .render import probe_picture
 from .score import analysed_events
 from .transcribe import transcribe_recording
 
@@ -68,6 +69,11 @@ def recording_events(
                   f"({exc}); using the streaming lane")
 
     duration_s = media_duration_s(media)
+    director = dict(live_cfg.get("import_director") or {})
+    picture = probe_picture(media)
+    director["cue_max_chars"] = line_length(
+        picture.width / picture.height,
+        int(director.get("cue_max_chars", CUE_MAX_CHARS)))
 
     def export(words: list[dict]) -> None:
         stem = Path(name).stem
@@ -86,7 +92,7 @@ def recording_events(
         progress=lambda done: hooks.announce(f"analysing {round(done * 100)}%"),
         ready=hooks.ready,
         cancelled=hooks.cancelled,
-        direct=lambda words: direct(words, live_cfg.get("import_director")),
+        direct=lambda words: direct(words, director),
         on_score=export,
         on_timeline=hooks.scored,
         paced=paced,

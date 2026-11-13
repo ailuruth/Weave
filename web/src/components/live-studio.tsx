@@ -915,13 +915,6 @@ function VoiceCompass({
      two: the last bearing was measured, 0deg never was. It stays dimmed by
      `data-measured="false"`, which is the claim being withheld, and 0deg
      remains the fallback only until the FIRST real reading arrives. */
-  const [heldBearing, setHeldBearing] = useState<number | null>(null);
-  useEffect(() => {
-    if (Number.isFinite(direction)) setHeldBearing(compassBearing(direction));
-  }, [direction]);
-  const shownBearing = directionMeasured
-    ? compassBearing(direction)
-    : heldBearing ?? 0;
   /* THREE NEEDLES, ONE PER 120 DEG SECTOR (2026-09-07, at the user's request).
      One needle over the whole circle meant every change of talker was a sweep
      across the dial -- 350deg to 10deg is 20deg of room and 340deg of travel,
@@ -1819,6 +1812,9 @@ function StageSound({
   );
 }
 
+/** The widest a caption line may be, as a share of the picture's width. */
+const CUE_FRAME_SHARE = 0.92;
+
 type VideoExport = "idle" | "drawing" | "failed";
 
 function ExportMenu() {
@@ -2308,6 +2304,18 @@ export function LiveStudio() {
     words: cue.words,
   }] : []), [cue]);
   const cueMode = cues.length > 0;
+  const cueId = cue?.cue ?? null;
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const line = stage?.querySelector<HTMLElement>(".caption-feed .caption-surface");
+    if (!stage) return;
+    stage.style.setProperty("--cue-fit", "1");
+    const frame = parseFloat(stage.style.getPropertyValue("--frame-w"));
+    if (!line || !(frame > 0)) return;
+    const room = frame * CUE_FRAME_SHARE;
+    const width = line.getBoundingClientRect().width;
+    if (width > room) stage.style.setProperty("--cue-fit", (room / width).toFixed(4));
+  }, [cueId]);
   const stageRuntime = useMemo(
     () => (cueMode ? {
       ...runtime,

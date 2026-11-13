@@ -5,6 +5,7 @@ from .direct import (
     assign_cues,
     direct,
     direct_recording,
+    line_length,
     settle_speakers,
     soften,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "ScriptWord", "ScriptedRecognizer", "StepClock", "align_words",
     "analysed_events",
     "assign_cues", "build_media_score", "direct", "direct_recording", "lead_in",
+    "line_length",
     "media_has_audio", "recording_events", "render_recording", "render_score",
     "replay_score", "romanize_hangul",
     "settle_speakers",
