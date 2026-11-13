@@ -16,6 +16,7 @@ import {
   type LevelEvent,
 } from "@/lib/caption-store";
 import {acousticTimeMs} from "@/lib/motion-timing";
+import type {ReelMotion} from "@/lib/reel-motion";
 import {resolveSpeakerLock, type SpeakerLock} from "@/lib/speaker-lock";
 import {
   advanceClock,
@@ -57,37 +58,6 @@ export interface LanguageSession {
 }
 
 /** Pop and lift timing read off the PR film -- see `video_motion` in config.yaml for the per-frame measurement. */
-export interface FilmMotion {
-  /** How long before the colour wipe starts the motion begins. */
-  leadMs: number;
-  riseMs: number;
-  fallMs: number;
-  /** The dip before the rise, in em, and how long it takes. */
-  crouchEm: number;
-  crouchMs: number;
-  /** A big word holds its crest while it is spoken. */
-  holdTrimMs: number;
-  holdMaxMs: number;
-  holdFromScale: number;
-  holdFullScale: number;
-  /** How long before a run of quiet words is spoken it shrinks. */
-  shrinkPreMs: number;
-  /** Rise and fall stretch by 1 + this x the size change. */
-  bigSlowdown: number;
-  /** A drawn-out word floats this high for as long as it is held. */
-  heldLiftEm: number;
-  heldFromMs: number;
-  heldPerCharMs: number;
-  heldRampMs: number;
-  heldMaxMs: number;
-  /** A word this much bigger starts moving its neighbours aside. */
-  pushFromScale: number;
-  pushFullScale: number;
-  /** CWI 2.3.6's own size range and mapping, for one line over a picture. */
-  scaleRange: [number, number];
-  scalePoints: Array<[number, number]>;
-}
-
 export interface RuntimeConfig {
   palette: string[];
   /** Speaker colors for the light stage: same hues, darkened to >=4.5:1. */
@@ -151,9 +121,10 @@ export interface RuntimeConfig {
   /** Enhanced: how far the size cue trails the turn, ms. */
   crestLagMs: number;
   /** The film's measured motion clock, served for captioned video. */
-  videoMotion: FilmMotion;
-  /** Set by the studio, never served: the clock above, switched on for a recording shown one caption line at a time. */
-  filmMotion?: FilmMotion | null;
+  /** How a captioned recording moves, as served. */
+  videoMotion: ReelMotion;
+  /** Set by the studio, never served: `videoMotion`, while a recording is on the stage. */
+  reel?: ReelMotion | null;
   /** Enhanced: narrower 2.3 size deadband. */
   voiceScaleDeadbandEnhanced: number;
   /** Enhanced: slope of the continuous loudness ramp. */
@@ -252,11 +223,15 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   wordMotionEnhancedEmphasisMs: 0,
   crestLagMs: 40,
   videoMotion: {
+    cueLeadMs: 250, cueHoldMs: 600,
     leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130,
     holdTrimMs: 100, holdMaxMs: 700, holdFromScale: 1.15, holdFullScale: 1.45,
-    shrinkPreMs: 40, bigSlowdown: 0.55, heldLiftEm: 0.45, heldFromMs: 250, heldPerCharMs: 60,
-    heldRampMs: 300, heldMaxMs: 1200,
-    pushFromScale: 1.5, pushFullScale: 1.9,
+    shrinkHoldGain: 1.5, shrinkBelowScale: 0.98, shrinkPreMs: 40,
+    bigSlowdown: 0.55, slowdownMaxChange: 1.2, resizeFromChange: 0.12,
+    liftFadeScale: [1.1, 1.3],
+    heldLiftEm: 0.45, heldFromMs: 250, heldPerCharMs: 60,
+    heldRampMs: 300, heldMaxMs: 1200, heldTurnFrom: 0.5, heldTurnFallShare: 0.4,
+    pushFromScale: 1.5, pushFullScale: 1.9, widenMax: 0.14, widenFullChange: 0.9,
     scaleRange: [0.5, 2.0],
     scalePoints: [[0, -0.5], [0.08, -0.45], [0.14, 0], [0.26, 0],
                   [0.45, 0.15], [0.75, 0.36], [1, 0.8]],

@@ -47,11 +47,6 @@ export function buildCues(words: CueWord[]): CaptionCue[] {
   return cues;
 }
 
-/** Measured off the PR film: a caption is on screen 4-6 frames (24 fps) before its first word turns. */
-export const CUE_LEAD_MS = 250;
-/** ...and a caption with nothing after it is gone well inside a second. */
-export const CUE_HOLD_MS = 600;
-
 export interface CueTiming {
   /** How long before its first word a line is drawn. */
   leadMs: number;

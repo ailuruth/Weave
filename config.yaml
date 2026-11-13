@@ -297,6 +297,11 @@ motion:
       # stage, where the longer tail was asked for. These apply only when a
       # recording is shown one caption line at a time.
       video_motion:
+        # A caption line is drawn this long before its first word turns (the
+        # film: 4-6 frames at 24 fps), and one with nothing after it is gone
+        # this long after its last word.
+        cue_lead_ms: 250
+        cue_hold_ms: 600
         lead_ms: 40
         rise_ms: 163
         fall_ms: 209
@@ -312,6 +317,17 @@ motion:
         hold_max_ms: 700
         hold_from_scale: 1.15
         hold_full_scale: 1.45
+        # A shrink counts this many times over toward that hold, so a word at
+        # 0.8x holds like one at 1.3x: a small word that springs straight back
+        # reads as a flicker.
+        shrink_hold_gain: 1.5
+        # A SIZE CHANGE BEYOND THIS REPLACES THE POP AND THE LETTER WAVE. The
+        # word resizes as one piece (2.3 is per word); 2.2.3's pop and the
+        # per-letter wave on top of it made a big word wobble.
+        resize_from_change: 0.12
+        # SIZE AND LIFT ARE EXCLUSIVE. The lift is withdrawn across this size
+        # range, so a word that swells does not also leave the line.
+        lift_fade_scale: [1.1, 1.3]
         # THE SIZE RANGE OF A CAPTIONED VIDEO IS THE DESIGN SYSTEM'S, not the
         # live stage's. `voice_scale_range` above stops at 1.62x because the
         # live stack has 1 px of clearance between rows; one caption line over
@@ -324,11 +340,17 @@ motion:
         # overlap their neighbours. Faded in between these two sizes.
         push_from_scale: 1.5
         push_full_scale: 1.9
+        # The crest is heavier as well as bigger, and a heavier face is wider:
+        # the room made is for up to this much more width, reached at this
+        # much size change.
+        widen_max: 0.14
+        widen_full_change: 0.9
         # A BIG CHANGE OF SIZE TAKES LONGER. The film's "louder" rises in
         # 0.25 s and returns in 0.25 s where an ordinary word takes 0.16 and
         # 0.21; at one speed, going to twice the size looked abrupt. Rise and
         # fall are stretched by 1 + this x the size change.
         big_slowdown: 0.55
+        slowdown_max_change: 1.2
         # QUIET WORDS SHRINK AS A GROUP, AHEAD OF BEING SPOKEN. In the film
         # "or softer" shrinks once, together, while still white -- as
         # "louder" comes back down -- then turns colour small and stays small
@@ -339,6 +361,9 @@ motion:
         # before its did. The film's run shrinks as "louder" lets go, which is
         # when "or" begins.
         shrink_pre_ms: 40
+        # A word under this size is one that shrinks: no crouch, no lift, and
+        # it moves with its quiet run.
+        shrink_below_scale: 0.98
         # A WORD THE SPEAKER DRAWS OUT FLOATS FOR AS LONG AS IT IS HELD. The
         # narrator says "iiis" for 0.8 s; in the film "is" dips, springs about
         # half a letter-height above the line, stays there in white while it
@@ -352,6 +377,10 @@ motion:
         held_per_char_ms: 60
         held_ramp_ms: 300
         held_max_ms: 1200
+        # A word more than this drawn out turns colour as it LANDS, this far
+        # into its fall, not at its onset.
+        held_turn_from: 0.5
+        held_turn_fall_share: 0.4
         scale_range: [0.5, 2.0]
         # loudness (0..1, baseline 0.222) -> size above 1.0. Flat across
         # ordinary speech (0.14..0.26); "softer" (0.08) lands near 0.65x and

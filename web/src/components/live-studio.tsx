@@ -47,12 +47,17 @@ import {mediaSyncAction} from "@/lib/media-sync";
 import {
   activeCue,
   buildCues,
-  CUE_HOLD_MS,
-  CUE_LEAD_MS,
   quietRuns,
   type QuietRun,
 } from "@/lib/caption-cues";
 import {
+  countLetters,
+  quietLoudnessEdge,
+  reelPlan,
+  type ReelPlan,
+} from "@/lib/reel-motion";
+import {
+  NORMAL_CAPTION_TYPE,
   captionMotionFor,
   characterVoiceTypes,
   emphasisOf,
@@ -214,11 +219,9 @@ function unarmedCharacters(element: HTMLElement): HTMLElement[] {
 interface WordMemo {
   /** The motion clock: frozen the first time the word was ever drawn. */
   clock: Map<string, {
-    duration: number; sweepMs: number; crestMs: number; filmHoldMs: number;
-    /** 0..1: how drawn-out the word is ("iiis"). */
-    filmHeld: number;
-    /** Stretch on the film clock's rise and fall, for a big size change. */
-    filmSlow: number;
+    duration: number; sweepMs: number; crestMs: number;
+    /** Recordings only: the whole plan, frozen with the clock. */
+    reel: ReelPlan | null;
   }>;
   /** The resolved hold, once the gate has closed on it. */
   hold: Map<string, number>;
@@ -378,8 +381,7 @@ const MotionWord = memo(function MotionWord({
           "--group-lift-em": groupLift,
           "--char-group": waveLead[index] ?? index,
           /* THE TWO SCOPES TRADE OFF. */
-          "--char-wave": ((runtime.filmMotion
-              && Math.abs(motion.voice.scale - 1) > 0.12 ? 0 : 1)
+          "--char-wave": ((reel?.resized ? 0 : 1)
             * waveSuppression * clamp(
             0.85 + ((characterTypes[index]?.scale ?? 1) - motion.voice.scale) * 1.6,
             0.45,
@@ -408,8 +410,8 @@ const MotionWord = memo(function MotionWord({
      reason than either. */
   /* ...AND THE FREEZE IS AT THE TURN, NOT AT THE MOUNT (2026-08-05).
      Freezing is right -- see above. */
-  const film = runtime.filmMotion ?? null;
-  const holdTarget = film ? 0 : clamp(
+  const onReel = Boolean(runtime.reel);
+  const holdTarget = onReel ? 0 : clamp(
     (holdGapS - runtime.holdMinS) /
       Math.max(1e-6, runtime.holdFullS - runtime.holdMinS),
     0,
@@ -435,12 +437,12 @@ const MotionWord = memo(function MotionWord({
     memo.hold.set(id, holdTarget);
     setHoldAmount((current) => (current === holdTarget ? current : holdTarget));
   }, [holdSettled, holdTarget, holdAmount, id, memo]);
-  const holdEnvelope = !film && holdEmphasis >= HOLD_ENVELOPE_EMPHASIS;
+  const holdEnvelope = !onReel && holdEmphasis >= HOLD_ENVELOPE_EMPHASIS;
   /* How long this word takes to come back down: long enough to reach the
      next word's turn, so the stage is never still while anyone is talking. */
   const fallRef = useRef<number | null>(null);
 
-  const [{duration, sweepMs, crestMs, filmHoldMs, filmHeld, filmSlow}] = useState(() => {
+  const [{duration, sweepMs, crestMs, reel}] = useState(() => {
     /* Frozen the first time this WORD was drawn, not this component -- they
        are different moments once a word can change row. */
     const remembered = memo.clock.get(id);
@@ -472,46 +474,27 @@ const MotionWord = memo(function MotionWord({
           crestWindowMs(push, runtime, spokenMs * voicedFraction(word)),
           push, runtime.wordMotionMaxMs,
         );
-    const filmMotion = runtime.filmMotion ?? null;
-    const departure = Math.max(motion.voice.scale - 1, (1 - motion.voice.scale) * 1.5);
-    const holdGate = filmMotion
-      ? clamp(
-          (departure - (filmMotion.holdFromScale - 1))
-            / Math.max(1e-6, filmMotion.holdFullScale - filmMotion.holdFromScale),
-          0, 1)
-      : 0;
-    const voicedMs = spokenMs * voicedFraction(word);
-    const letters = Math.max(1, word.text.replace(/[^\p{L}\p{N}]/gu, "").length);
-    const held = filmMotion
-      ? clamp(
-          (voicedMs - (filmMotion.heldFromMs + filmMotion.heldPerCharMs * letters))
-            / Math.max(1, filmMotion.heldRampMs),
-          0, 1)
-      : 0;
-    const slow = filmMotion
-      ? 1 + filmMotion.bigSlowdown * clamp(Math.abs(motion.voice.scale - 1), 0, 1.2)
-      : 1;
     const clock = {
       duration: naturalMs,
       sweepMs: sweep,
       // The crest is the SLOW clock -- emphasis, not speech rate.
       crestMs: crest,
-      filmHoldMs: filmMotion
-        ? Math.max(
-            holdGate * clamp(
-              spokenMs * (motion.voice.scale < 1 ? 1 : voicedFraction(word))
-                - filmMotion.holdTrimMs,
-              0, filmMotion.holdMaxMs),
-            held * clamp(voicedMs - filmMotion.riseMs, 0, filmMotion.heldMaxMs))
-        : 0,
-      filmHeld: held,
-      filmSlow: slow,
+      reel: runtime.reel ? reelPlan(
+        runtime.reel,
+        {
+          scale: motion.voice.scale,
+          spokenMs,
+          voicedFraction: voicedFraction(word),
+          letters: countLetters(word.text),
+        },
+        quietRun,
+        {
+          liftEm: runtime.wordLiftEmEnhanced,
+          weight: NORMAL_CAPTION_TYPE.weight,
+          heavyWeight: runtime.weightRange[1],
+        },
+      ) : null,
     };
-    if (filmMotion && quietRun && motion.voice.scale < 0.98) {
-      clock.filmHoldMs = quietRun.stays
-        ? 600000
-        : Math.max(0, quietRun.spanMs - filmMotion.riseMs * slow);
-    }
     memo.clock.set(id, clock);
     return clock;
   });
@@ -521,30 +504,13 @@ const MotionWord = memo(function MotionWord({
      emphasis only where the film would have bolded it. Everything below is a
      target for the motion to rise to -- the word still RETURNS to Regular
      400 / 100% / the face's default proportions (docs/MOTION.md). */
-  const filmTurnLagMs = film && filmHeld > 0.5
-    ? film.riseMs * filmSlow + filmHoldMs + film.fallMs * filmSlow * 0.4
-    : 0;
-  const filmLiftShare = !film ? 1
-    : motion.voice.scale < 0.98 ? 0
-      : 1 - clamp((motion.voice.scale - 1.1) / 0.2, 0, 1);
-  const filmPushShare = !film ? 0
-    : motion.voice.scale < 1 ? 1
-      : clamp((motion.voice.scale - film.pushFromScale)
-          / Math.max(1e-6, film.pushFullScale - film.pushFromScale), 0, 1);
   useLayoutEffect(() => {
     const element = wordRef.current;
-    if (!element || !film || element.style.getPropertyValue("--film-push")) return;
-    const widening = motion.voice.scale > 1
-      ? 1 + 0.14 * clamp((motion.voice.scale - 1) / 0.9, 0, 1)
-      : 1;
-    const half = element.offsetWidth * (motion.voice.scale * widening - 1) / 2;
-    element.style.setProperty("--film-push", `${(half * filmPushShare).toFixed(2)}px`);
-  }, [film, filmPushShare, motion.voice.scale]);
-  const filmLoud = film ? film.scaleRange[1] : 1;
-  const filmWeight = !film || motion.voice.scale < 1 ? 400
-    : 400 + clamp((motion.voice.scale - 1) / Math.max(1e-6, filmLoud - 1), 0, 1)
-        * (runtime.weightRange[1] - 400);
-  const crestWeight = Math.round(film ? filmWeight :
+    if (!element || !reel || element.style.getPropertyValue("--reel-push")) return;
+    element.style.setProperty(
+      "--reel-push", `${(element.offsetWidth * reel.pushPerWidth).toFixed(2)}px`);
+  }, [reel]);
+  const crestWeight = Math.round(reel ? reel.weight :
     400
       + ((quietWord ? motion.registerWeight : motion.voice.weight) - 400)
         * (1 - holdAmount),
@@ -569,21 +535,16 @@ const MotionWord = memo(function MotionWord({
        proportional now (`sync_pop_floor_enhanced`) and there is nothing left
        for a gate to decide. `quietWord` still governs WEIGHT, which the film
        really does withhold, per line rather than per word. */
-    "--sync-pop": (film && Math.abs(motion.voice.scale - 1) > 0.12
-      ? 1 : motion.sync.scale).toFixed(3),
+    "--sync-pop": (reel?.resized ? 1 : motion.sync.scale).toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
-    "--word-lift-em": `${(film
-      ? runtime.wordLiftEmEnhanced * filmLiftShare
-        + filmHeld * (film.heldLiftEm - runtime.wordLiftEmEnhanced * filmLiftShare)
-      : runtime.wordLiftEmEnhanced).toFixed(4)}em`,
-    "--motion-duration": `${(film ? (film.riseMs + film.fallMs) * filmSlow : duration).toFixed(0)}ms`,
-    ...(film ? {
-      "--film-lead": `${(quietRun && motion.voice.scale < 0.98
-        ? quietRun.leadMs : film.leadMs).toFixed(0)}ms`,
-      "--film-crouch-em": `${(motion.voice.scale < 0.98
-        ? 0 : film.crouchEm * (1 + filmHeld)).toFixed(4)}em`,
-      "--film-crouch-ms": `${film.crouchMs}ms`,
-      "--film-hold": `${filmHoldMs.toFixed(0)}ms`,
+    "--word-lift-em": `${(reel
+      ? reel.liftEm : runtime.wordLiftEmEnhanced).toFixed(4)}em`,
+    "--motion-duration": `${(reel ? reel.riseMs + reel.fallMs : duration).toFixed(0)}ms`,
+    ...(reel ? {
+      "--reel-lead": `${reel.leadMs.toFixed(0)}ms`,
+      "--reel-crouch-em": `${reel.crouchEm.toFixed(4)}em`,
+      "--reel-crouch-ms": `${runtime.reel?.crouchMs ?? 0}ms`,
+      "--reel-hold": `${reel.holdMs.toFixed(0)}ms`,
     } : {}),
     // The 2.3 crest takes its own window so its rise tracks the colour wipe
     // instead of leading it (`crestDurationMs`); the pop and wave keep the
@@ -600,9 +561,9 @@ const MotionWord = memo(function MotionWord({
       : (enhancedMotion ? "voice-phase-film" : "voice-phase"),
     /* The two halves of the split envelope. Only read when `data-tail` is
        `extended`; harmless otherwise. */
-    "--rise-ms": `${(film ? film.riseMs * filmSlow : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
-    "--fall-ms": `${(film
-      ? film.fallMs * filmSlow
+    "--rise-ms": `${(reel ? reel.riseMs : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
+    "--fall-ms": `${(reel
+      ? reel.fallMs
       : fallDurationMs(crestMs, fallRef.current ?? 0)).toFixed(0)}ms`,
     "--sync-envelope": enhancedMotion ? "word-sync-pop-film" : "word-sync-pop",
     // CWI 2.3 is a WORD-level property: in intonation.mov every glyph of
@@ -704,7 +665,7 @@ const MotionWord = memo(function MotionWord({
       const index = Number(span.dataset.charIndex ?? 0);
       span.style.setProperty(
         "--char-turn-delay",
-        `${charTurnDelayMs(turnDelay + filmTurnLagMs, index, perWord, sweepMs)}ms`,
+        `${charTurnDelayMs(turnDelay + (reel?.turnLagMs ?? 0), index, perWord, sweepMs)}ms`,
       );
       span.style.setProperty(
         "--char-wave-delay",
@@ -723,13 +684,13 @@ const MotionWord = memo(function MotionWord({
   useLayoutEffect(() => {
     const element = wordRef.current;
     const armed = armedRef.current;
-    if (film) return;  // a fixed fall: there is no neighbour to stretch to
+    if (reel) return;
     if (!element || fallRef.current !== null || !(paceGapS > 0)) return;
     if (armed !== null && performance.now() >= armed.turnAtMs) return;
     fallRef.current = paceGapS;
     element.style.setProperty(
       "--fall-ms", `${fallDurationMs(crestMs, paceGapS).toFixed(0)}ms`);
-  }, [crestMs, film, paceGapS]);
+  }, [crestMs, reel, paceGapS]);
 
   return (
     <span
@@ -1334,7 +1295,7 @@ function CaptionFeed({
 
   /* THE BOX OPENS SIDEWAYS OVER A NEWLY APPENDED WORD. */
   useLayoutEffect(() => {
-    if (transcript || reducedMotion || runtime.filmMotion) {
+    if (transcript || reducedMotion || runtime.reel) {
       for (const animation of rowGrowAnimations.current.values()) {
         animation.cancel();
       }
@@ -1376,7 +1337,7 @@ function CaptionFeed({
         }
       }, {once: true});
     });
-  }, [paragraphs, reducedMotion, runtime.filmMotion, transcript]);
+  }, [paragraphs, reducedMotion, runtime.reel, transcript]);
 
   useEffect(() => () => {
     for (const animation of rowGrowAnimations.current.values()) {
@@ -1401,15 +1362,16 @@ function CaptionFeed({
   /* ...AND HOW LONG THE MOTION LASTS, WHICH IS ONE WORD AT THE CURRENT
      SPEECH RATE. */
   const paceGaps = new Map<string, number>();
-  const film = runtime.filmMotion ?? null;
-  const quietEdge = film
-    ? (film.scalePoints.find(([, above]) => above >= 0)?.[0] ?? 0)
-    : 0;
-  const quiet = useMemo(() => (film ? quietRuns(
-    buildCues(timingWords),
-    (word) => number(word.loudness, 1) < quietEdge - 1e-6,
-    film.shrinkPreMs,
-  ) : new Map<string, QuietRun>()), [film, quietEdge, timingWords]);
+  const reel = runtime.reel ?? null;
+  const quiet = useMemo(() => {
+    if (!reel) return new Map<string, QuietRun>();
+    const edge = quietLoudnessEdge(reel);
+    return quietRuns(
+      buildCues(timingWords),
+      (word) => number(word.loudness, 1) < edge - 1e-6,
+      reel.shrinkPreMs,
+    );
+  }, [reel, timingWords]);
   {
     let previousOnset: number | null = null;
     let previousUtterance: number | null = null;
@@ -2276,7 +2238,10 @@ export function LiveStudio() {
     : paragraphs;
   const cues = useMemo(() => buildCues(timingWords), [timingWords]);
   const cue = cues.length
-    ? activeCue(cues, playheadMs, {leadMs: CUE_LEAD_MS, holdMs: CUE_HOLD_MS})
+    ? activeCue(cues, playheadMs, {
+        leadMs: runtime.videoMotion.cueLeadMs,
+        holdMs: runtime.videoMotion.cueHoldMs,
+      })
     : null;
   const cueParagraphs = useMemo<CaptionParagraph[]>(() => (cue ? [{
     id: `cue:${cue.cue}`,
@@ -2289,7 +2254,7 @@ export function LiveStudio() {
   const stageRuntime = useMemo(
     () => (cueMode ? {
       ...runtime,
-      filmMotion: runtime.videoMotion,
+      reel: runtime.videoMotion,
       voiceScaleRange: runtime.videoMotion.scaleRange,
       voiceScalePointsEnhanced: runtime.videoMotion.scalePoints,
     } : runtime),

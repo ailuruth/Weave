@@ -57,6 +57,7 @@ from autocwi.recording import (
     RecordingHooks,
     media_has_audio,
     recording_events,
+    video_motion,
 )
 
 SR = 16_000
@@ -6901,30 +6902,7 @@ def _studio_runtime_config(
         "wordMotionEnhancedEmphasisMs": live_sync.get(
             "word_motion_enhanced_emphasis_ms", 0),
         "crestLagMs": live_sync.get("crest_lag_ms", 40),
-        "videoMotion": {
-            "leadMs": (live_sync.get("video_motion") or {}).get("lead_ms", 40),
-            "riseMs": (live_sync.get("video_motion") or {}).get("rise_ms", 163),
-            "fallMs": (live_sync.get("video_motion") or {}).get("fall_ms", 209),
-            "crouchEm": (live_sync.get("video_motion") or {}).get("crouch_em", 0.057),
-            "crouchMs": (live_sync.get("video_motion") or {}).get("crouch_ms", 130),
-            "holdTrimMs": (live_sync.get("video_motion") or {}).get("hold_trim_ms", 100),
-            "holdMaxMs": (live_sync.get("video_motion") or {}).get("hold_max_ms", 700),
-            "holdFromScale": (live_sync.get("video_motion") or {}).get("hold_from_scale", 1.15),
-            "holdFullScale": (live_sync.get("video_motion") or {}).get("hold_full_scale", 1.45),
-            "shrinkPreMs": (live_sync.get("video_motion") or {}).get("shrink_pre_ms", 40),
-            "bigSlowdown": (live_sync.get("video_motion") or {}).get("big_slowdown", 0.55),
-            "heldLiftEm": (live_sync.get("video_motion") or {}).get("held_lift_em", 0.45),
-            "heldFromMs": (live_sync.get("video_motion") or {}).get("held_from_ms", 250),
-            "heldPerCharMs": (live_sync.get("video_motion") or {}).get("held_per_char_ms", 60),
-            "heldRampMs": (live_sync.get("video_motion") or {}).get("held_ramp_ms", 300),
-            "heldMaxMs": (live_sync.get("video_motion") or {}).get("held_max_ms", 1200),
-            "pushFromScale": (live_sync.get("video_motion") or {}).get("push_from_scale", 1.5),
-            "pushFullScale": (live_sync.get("video_motion") or {}).get("push_full_scale", 1.9),
-            "scaleRange": (live_sync.get("video_motion") or {}).get("scale_range", [0.5, 2.0]),
-            "scalePoints": (live_sync.get("video_motion") or {}).get("scale_points", [
-                [0.0, -0.5], [0.08, -0.45], [0.14, 0.0], [0.26, 0.0],
-                [0.45, 0.15], [0.75, 0.36], [1.0, 0.8]]),
-        },
+        "videoMotion": video_motion(live_sync.get("video_motion")),
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),
         "voiceScaleResponseEnhanced": live_sync.get(

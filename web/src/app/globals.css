@@ -2575,22 +2575,22 @@ button {
   .caption-word[data-tail="extended"] {
   animation:
     reel-phase-rise var(--rise-ms) linear
-      calc(var(--turn-delay) - var(--film-lead, 0ms)) forwards,
+      calc(var(--turn-delay) - var(--reel-lead, 0ms)) forwards,
     reel-phase-fall var(--fall-ms) linear
-      calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)
-           + var(--film-hold, 0ms)) forwards;
+      calc(var(--turn-delay) - var(--reel-lead, 0ms) + var(--rise-ms)
+           + var(--reel-hold, 0ms)) forwards;
 }
 
 .studio-shell[data-cues="true"][data-motion="enhanced"]
   .caption-word[data-tail="extended"] .word-glyph {
   animation-name: reel-crouch, reel-lift-rise, reel-lift-fall;
-  animation-duration: var(--film-crouch-ms, 130ms), var(--rise-ms), var(--fall-ms);
+  animation-duration: var(--reel-crouch-ms, 130ms), var(--rise-ms), var(--fall-ms);
   animation-timing-function: ease-out, linear, linear;
   animation-delay:
-    calc(var(--turn-delay) - var(--film-lead, 0ms) - var(--film-crouch-ms, 130ms)),
-    calc(var(--turn-delay) - var(--film-lead, 0ms)),
-    calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)
-         + var(--film-hold, 0ms));
+    calc(var(--turn-delay) - var(--reel-lead, 0ms) - var(--reel-crouch-ms, 130ms)),
+    calc(var(--turn-delay) - var(--reel-lead, 0ms)),
+    calc(var(--turn-delay) - var(--reel-lead, 0ms) + var(--rise-ms)
+         + var(--reel-hold, 0ms));
   animation-fill-mode: forwards, forwards, forwards;
 }
 
@@ -2644,11 +2644,11 @@ button {
 
 @keyframes reel-crouch {
   0% { transform: translate3d(-50%, 0, 0) scale(1); }
-  100% { transform: translate3d(-50%, var(--film-crouch-em, .057em), 0) scale(1); }
+  100% { transform: translate3d(-50%, var(--reel-crouch-em, .057em), 0) scale(1); }
 }
 
 @keyframes reel-lift-rise {
-  0% { transform: translate3d(-50%, var(--film-crouch-em, .057em), 0) scale(1); }
+  0% { transform: translate3d(-50%, var(--reel-crouch-em, .057em), 0) scale(1); }
   5% {
     transform:
       translate3d(-50%, calc(var(--word-lift-em, .16em) * -0.029), 0)
@@ -2867,12 +2867,12 @@ button {
 
 .studio-shell[data-cues="true"] .caption-word {
   z-index: calc(1 + var(--voice-phase) * 10);
-  margin-left: calc(var(--voice-phase) * var(--film-push, 0px));
-  margin-right: calc(.30em + var(--voice-phase) * var(--film-push, 0px));
+  margin-left: calc(var(--voice-phase) * var(--reel-push, 0px));
+  margin-right: calc(.30em + var(--voice-phase) * var(--reel-push, 0px));
 }
 
 .studio-shell[data-cues="true"] .caption-word:last-child {
-  margin-right: calc(var(--voice-phase) * var(--film-push, 0px));
+  margin-right: calc(var(--voice-phase) * var(--reel-push, 0px));
 }
 
 .studio-shell[data-cues="true"] .word-ink,

@@ -146,6 +146,8 @@ The picture is slaved to the caption playhead (`web/src/lib/media-sync.ts`). It 
 
 The video motion clock (`motion.live_sync.video_motion` in `config.yaml`) reproduces that curve. It applies only to recordings; the live stage keeps its own timing.
 
+Every value of that clock is in `config.yaml`. `autocwi/recording/display.py` serves the block whole, and `web/src/lib/reel-motion.ts` turns it and one word into a plan: when the word starts, how long it rises, holds and falls, how far it lifts, how much room it takes, what weight it reaches. The plan is computed once per word and frozen with the rest of the word's clock, so a word rebuilt on screen moves the same way. The component writes the plan to the page and decides nothing.
+
 What watching the film against ours changed, each confirmed in frames first:
 
 - A word after a pause was turned into a lift with no size. "louder" follows a pause.

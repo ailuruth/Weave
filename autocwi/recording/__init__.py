@@ -8,6 +8,7 @@ from .direct import (
     settle_speakers,
     soften,
 )
+from .display import video_motion
 from .export import write_exports
 from .media import MEDIA_MAX_BYTES, MEDIA_SUFFIXES, media_has_audio
 from .pipeline import RecordingHooks, recording_events
@@ -21,5 +22,6 @@ __all__ = [
     "ScriptWord", "ScriptedRecognizer", "align_words", "analysed_events",
     "assign_cues", "build_media_score", "direct", "direct_recording", "lead_in",
     "media_has_audio", "recording_events", "romanize_hangul", "settle_speakers",
-    "snap_onsets", "soften", "transcribe_recording", "write_exports",
+    "snap_onsets", "soften", "transcribe_recording", "video_motion",
+    "write_exports",
 ]
