@@ -10,6 +10,10 @@ Weave captions a video with [Caption with Intention](https://captionwithintentio
 
 You give Weave a video. It returns the video with those captions drawn on it. It works in English and Korean and runs on your own machine.
 
+![A film scene captioned by Weave. Each word turns to its speaker's colour as it is spoken](docs/figure/caption-demo.gif)
+
+The clip is from [Sintel](https://durian.blender.org), © Blender Foundation, CC BY 3.0.
+
 ## Caption a video
 
 ```bash
