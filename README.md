@@ -27,6 +27,23 @@ npm --prefix web install && npm --prefix web run build
 
 First run loads models for ~8 s. macOS asks for microphone permission once per terminal app. A page stuck on *Preparing language setup* means `web/out` is stale.
 
+## Caption a video
+
+Start `python -m autocwi live` with no `--lang`, choose **Import a video** under the language buttons, then pick the language spoken in it. The file never leaves the machine.
+
+A recording is not streamed. It is transcribed whole (Whisper `large-v3-turbo`, a one-time ~1.6 GB download), run through the same prosody, speaker and motion pipeline as a live session, and only then played, with the picture held on the caption playhead. Each word appears once, in its final text and colour.
+
+Measured on the bundled PR film against a hand transcript of its captions from 0:28:
+
+| | Live studio | Imported |
+|---|---|---|
+| Words matching the film's captions | 92 of 106 | 101 of 105 |
+| Read-ahead before a word is spoken (median) | 688 ms | 1736 ms |
+| Words whose text changed after appearing | 32 of 170 | 0 of 173 |
+| Words whose colour changed after appearing | 70 of 170 | 0 of 173 |
+
+Speaker changes land on 7 of the film's 10, with 8 more where the film has none: attribution is the open problem. There is no pause, seek or export yet.
+
 ## Commands
 
 Live — the product. Language is locked before capture.
@@ -96,6 +113,21 @@ config.yaml  every tunable value — never hardcoded in code
 | [CONTRIBUTING.md](CONTRIBUTING.md) | setup and the ground rules |
 | [web/README.md](web/README.md) | the studio frontend |
 | [captionwithintention.org](https://captionwithintention.org) | the design system — the final word |
+
+## Related work
+
+Caption with Intention is published as a design system and an After Effects template; a 2025 industry write-up notes that no service automates it. Other open implementations and the research this project leans on:
+
+| | |
+|---|---|
+| [mjkang-estrella/caption-with-intention](https://github.com/mjkang-estrella/caption-with-intention) | browser editor: per-word motion inspector, SRT/WebVTT import, CWI JSON round-trip |
+| [samadon1/sightline](https://github.com/samadon1/sightline) | Fire TV runtime over an approved WebVTT track, with a person confirming every proposal |
+| [Segyun/Alive-Caption](https://github.com/Segyun/Alive-Caption) | iOS app, live and file-based, on-device |
+| [jutopia03/CIG](https://github.com/jutopia03/CIG-Caption-with-Intention-Generator-) | upload-a-video generator on cloud speech recognition |
+| de Lacerda Pataca et al., [CHI 2023](https://dl.acm.org/doi/10.1145/3544548.3581511) | DHH viewers: captions showing emotion beat conventional ones for emphasis; prosody alone did not |
+| de Lacerda Pataca et al., [Caption Royale, CHI 2024](https://dl.acm.org/doi/10.1145/3613904.3642258) | the design space of affective captions, from DHH viewers |
+
+What Weave adds is the automatic path: local models, live or from a file, with every figure measured against the film. What the editors above have and Weave does not is a person in the loop — which word a captioner enlarges is a judgement, not something in the audio.
 
 ## Future work
 

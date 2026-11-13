@@ -7283,6 +7283,8 @@ def run_live(args, cfg: dict, device: str) -> None:
     base_cfg = cfg
     loaded_lang: str | None = None
     stack: tuple | None = None
+    # The whole-file recognizer for imports, kept warm between them.
+    import_model = None
 
     def announce(stage: str, language: str | None = None) -> None:
         """Publish a boot stage UNLESS a reload has already superseded it.
@@ -7431,6 +7433,35 @@ def run_live(args, cfg: dict, device: str) -> None:
             # gate stays up over the progress, and comes down on the replay.
             if imported is None:
                 _listening()
+            else:
+                # A RECORDING GETS A WHOLE-FILE RECOGNIZER (see scripted.py for
+                # the measurement). Its words then drive the same captioner the
+                # streaming transducer drives, so nothing downstream changes.
+                # Any failure -- package missing, model not downloaded and no
+                # network -- falls back to the streaming lane, which is why
+                # that stack is still loaded above.
+                import_cfg = dict(live_cfg.get("import_recognizer", {}) or {})
+                if str(import_cfg.get("engine", "whisper")) == "whisper":
+                    from .scripted import ScriptedRecognizer, transcribe_recording
+
+                    announce("transcribing", lang)
+                    try:
+                        t_script = time.perf_counter()
+                        script, import_model = transcribe_recording(
+                            imported, cfg, lang, model=import_model)
+                        model = ScriptedRecognizer(
+                            script,
+                            endpoint_gap_s=float(
+                                live_cfg.get("endpoint_silence_s", 1.2)),
+                        )
+                        # The script IS the verified text: no draft lane, and
+                        # no endpoint pass to "correct" it back.
+                        draft_model = verifier = None
+                        print(f"[live] whole-file transcript: {len(script)} "
+                              f"words in {time.perf_counter() - t_script:.1f}s")
+                    except Exception as exc:  # noqa: BLE001 - any loader failure
+                        print("[live] whole-file recognizer unavailable "
+                              f"({exc}); using the streaming lane")
             # The level meter reports the array's bearing when one is attached.
             # Built here rather than inside `streaming_events` so the node's
             # direction can reach it without threading the link through the

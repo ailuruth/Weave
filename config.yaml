@@ -721,6 +721,31 @@ live:
     record_disagreements: true
   # Longer verifier phrases retain linguistic context.
   endpoint_silence_s: 1.2
+  # AN IMPORTED RECORDING IS TRANSCRIBED WHOLE, NOT STREAMED (2026-11-13).
+  # The streaming transducer is chosen for delay, and a recording has none to
+  # protect. Measured on the PR film against the hand transcript from 0:28:
+  #   streaming lane                          WER 15.1%  (92/106 words)
+  #   streaming lane + Whisper endpoint pass  WER 14.3%
+  #   Whisper over the whole file             WER  5.7%  (101/105 words)
+  # The words then drive the SAME captioner (autocwi/scripted.py), so prosody,
+  # speakers and motion are untouched. Local: the model is a one-time ~1.6 GB
+  # download, and if it cannot load the import falls back to the streaming
+  # lane. `engine: streaming` forces that fallback.
+  import_recognizer:
+    engine: whisper
+    model: large-v3-turbo
+    # CTranslate2 has no MPS backend; CPU int8 is the Apple Silicon path.
+    device: cpu
+    compute_type: int8
+    beam_size: 5
+    cpu_threads: 6
+    # OFF ON THE MEASUREMENT: with VAD the film scores 17.1% -- it removes the
+    # same shouted and cartoon lines the streaming lane loses.
+    vad_filter: false
+    # Whisper gives a pause to the word AFTER it, so that word's start sits in
+    # silence and CWI 2.2.2's colour turn would fire before anyone speaks.
+    # Moves each start (later only) to where the word's own sound begins.
+    snap_onsets: true
   endpoint_max_s: 30.0
   # Cold-start window only (first 6 words); after that the mapping uses
   # percentiles of the speaker's own word history.

@@ -1801,6 +1801,8 @@ function LanguageGate({
                     ? `Importing ${file.name}`
                     : /^analysing/.test(stage)
                       ? `Analysing ${stage.replace(/^analysing\s*/, "")}`
+                    : stage === "transcribing"
+                      ? "Transcribing"
                     : selected
                       ? `Preparing ${selected.label}`
                       : "Preparing language setup"}
