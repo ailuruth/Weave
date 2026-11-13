@@ -364,6 +364,11 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     useState<ConnectionState>("connecting");
   const [runtime, setRuntime] =
     useState<RuntimeConfig>(DEFAULT_RUNTIME_CONFIG);
+  /* Flips once, when the first `/runtime-config.json` request settles either
+     way. A word freezes its motion at first sight, so one replayed before the
+     served config arrives keeps `DEFAULT_RUNTIME_CONFIG`'s amplitudes for
+     good. The stream waits on this. */
+  const [runtimeKnown, setRuntimeKnown] = useState(false);
   const [session, setSession] = useState<LanguageSession>({
     state: "checking",
     language: null,
@@ -589,7 +594,10 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
           setRuntime({...DEFAULT_RUNTIME_CONFIG, ...value});
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setRuntimeKnown(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -644,6 +652,35 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     }
   }, [backendOrigin]);
 
+  /* IMPORT A RECORDING. The file goes to the local server as a raw body, the
+     server keeps it for exactly one session, and the language pick that
+     follows starts that session on it instead of the microphone. Resolves
+     false when the import was refused, so the caller can drop its own copy. */
+  const importMedia = useCallback(async (file: File, language: string) => {
+    setLanguageError(null);
+    try {
+      const response = await fetch(
+        `${backendOrigin}/session/media?name=${encodeURIComponent(file.name)}`,
+        {
+          method: "POST",
+          headers: {"Content-Type": "application/octet-stream"},
+          body: file,
+        },
+      );
+      const value = await response.json() as {error?: string};
+      if (!response.ok) {
+        throw new Error(value.error ?? "Could not import that file.");
+      }
+    } catch (error) {
+      setLanguageError(
+        error instanceof Error ? error.message : "Could not import that file.",
+      );
+      return false;
+    }
+    await selectLanguage(language);
+    return true;
+  }, [backendOrigin, selectLanguage]);
+
   useEffect(() => {
     const isDemo = new URLSearchParams(window.location.search).has("demo");
     if (isDemo) {
@@ -696,7 +733,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     // visitor's captions onto a stage that is supposed to be blank. The flag
     // only ever flips once (a reset lands on `selecting`, never `checking`),
     // so this cannot churn the EventSource.
-    if (!sessionKnown) return;
+    if (!sessionKnown || !runtimeKnown) return;
 
     const source = new EventSource(`${backendOrigin}/events`);
     source.onopen = () => setConnection("live");
@@ -729,7 +766,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
       }
     };
     return () => source.close();
-  }, [backendOrigin, dispatch, resetStage, sessionKnown]);
+  }, [backendOrigin, dispatch, resetStage, runtimeKnown, sessionKnown]);
 
   /* SCHEDULING, IN FULL. A word is placed on the playhead once, by the word
      itself, in its own layout effect (see `MotionWord`). */
@@ -926,6 +963,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     session,
     languageError,
     selectLanguage,
+    importMedia,
     scheduleWord,
     clockEpoch,
     playheadMs,

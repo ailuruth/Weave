@@ -1202,7 +1202,6 @@ button {
 .compass-sound i {
   display: inline-block;
   font-style: normal;
-  animation: sound-vibrate 190ms linear infinite;
 }
 
 :root[data-theme="light"] .compass-sound {
@@ -1210,17 +1209,8 @@ button {
   color: var(--caption-unknown);
 }
 
-.compass-sound[data-category="music"] i {
-  animation: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .compass-sound i { animation: none; }
-}
-
-.studio-shell[data-reduced-motion="true"] .compass-sound i {
-  animation: none;
-}
+/* The label's motion is per category now -- see "A SOUND HAS ITS OWN STYLE"
+   at the end of this file, which both this label and the stage's share. */
 
 /* AN UNMEASURED BEARING IS DRAWN, BUT NOT CLAIMED. */
 .voice-compass[data-measured="false"] .compass-direction b,
@@ -2250,16 +2240,17 @@ button {
 }
 
 /* THE TAIL HOLDS ITS AMPLITUDE LONGER THAN THE FILM'S OWN RETURN DOES. */
+/* ...AND IT LANDS AT ZERO SPEED. The stops this replaces traced 1 - t^2,
+   which holds the amplitude as asked and then reaches rest at its fastest:
+   the word stopped dead. One easing keeps the same hold (.80 at 48%, half
+   amplitude at 70%) with no faster a peak speed, and it has no corners -- the
+   stops were joined by straight lines, so the speed stepped at each one. */
 @keyframes voice-phase-film-fall {
-  0% { --voice-phase: 1.000; }
-  6% { --voice-phase: 0.9975; }
-  16% { --voice-phase: 0.975; }
-  30% { --voice-phase: 0.915; }
-  48% { --voice-phase: 0.790; }
-  66% { --voice-phase: 0.600; }
-  82% { --voice-phase: 0.360; }
-  93% { --voice-phase: 0.140; }
-  100% { --voice-phase: 0.000; }
+  0% {
+    --voice-phase: 1;
+    animation-timing-function: cubic-bezier(.7, 0, .84, 1);
+  }
+  100% { --voice-phase: 0; }
 }
 
 @keyframes word-sync-pop-film-rise {
@@ -2405,27 +2396,16 @@ button {
     transform:
       translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
       scale(var(--sync-pop));
-  }
-  /* Leaves the peak with almost no slope, to meet the rise's own ease-out. */
-  6% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.994), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .995));
-  }
-  18% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.94), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .945));
-  }
-  55% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.62), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .58));
+    /* Leaves the peak at zero speed, to meet the rise's own ease-out, and
+       reaches the dip at zero speed too: it is a turning point. As straight
+       segments the word hit the dip at its fastest and reversed in one frame. */
+    animation-timing-function: cubic-bezier(.7, 0, .84, 1);
   }
   82% {
     transform:
       translate3d(-50%, calc(var(--word-lift-em, .16em) * .18), 0)
       scale(calc(1 + (var(--sync-pop) - 1) * .16));
+    animation-timing-function: cubic-bezier(.4, 0, .6, 1);
   }
   100% { transform: translate3d(-50%, 0, 0) scale(1); }
 }
@@ -2444,4 +2424,206 @@ button {
       translate3d(-50%, calc(var(--word-lift-em, .16em) * .3), 0)
       scale(calc(1 + (var(--sync-pop) - 1) * .34));
   }
+}
+
+/* ── AN IMPORTED RECORDING ───────────────────────────────────────────────
+   The studio captions a film as well as a room. The picture fills the stage
+   and the captions take the foot of it, which is where a captioned film puts
+   them. Everything here is keyed on `data-media`, so a live session renders
+   exactly as it did. */
+.stage-media {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* A sound-only import is heard and has nothing to draw: the stage stays the
+   caption stage. `display: none` does not stop a media element playing. */
+.studio-shell[data-media="audio"] .stage-media {
+  display: none;
+}
+
+/* THE CAPTIONS KEEP THE BOTTOM THIRD, in either layout. `max-height` is what
+   `useStageLayout` reads to count rows, so the row budget follows this number
+   and nothing else has to be told. `top: auto` + `bottom` + `flex-end` are the
+   same three load-bearing declarations the rolling layout uses. */
+.studio-shell[data-media="video"] .caption-feed {
+  top: auto;
+  bottom: 3%;
+  max-height: 27%;
+  justify-content: flex-end;
+}
+
+/* CWI 2.4.1's box exists so type survives whatever the picture is doing
+   behind it. Rows here come and go, so the plate is one soft field under the
+   whole caption band instead of a box per row: it takes the stage's own
+   ground, so both themes keep the contrast they were measured at. */
+.studio-shell[data-media="video"] .caption-stage::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38%;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--stage-bg) 94%, transparent) 0%,
+    color-mix(in srgb, var(--stage-bg) 86%, transparent) 62%,
+    transparent 100%
+  );
+}
+
+/* History over a film is clutter the picture has to compete with (first
+   build: five receding rows across the middle of the frame). The live row and
+   the one before it stay; anything older is gone, not dimmed. */
+.studio-shell[data-media="video"] .caption-paragraph:nth-last-child(n+3) {
+  opacity: 0;
+}
+
+.studio-shell[data-media="video"][data-layout="rolling"]
+  .caption-paragraph:nth-last-child(2) {
+  opacity: .7;
+}
+
+/* CWI 2.4.4, on the picture: white, bracketed, on its own plate, at the top
+   so it can never sit on a caption row. Chrome type scale is not used -- this
+   is a caption, so it takes the caption face. */
+.stage-sound {
+  position: absolute;
+  z-index: 6;
+  top: 5%;
+  left: 50%;
+  max-width: 80%;
+  padding: .2em .5em .26em;
+  border-radius: var(--r-xs);
+  background: rgba(0, 0, 0, .82);
+  color: #fff;
+  font-family: var(--font-caption);
+  font-size: clamp(15px, 4.4cqh, 30px);
+  font-variation-settings: "opsz" 14, "wght" 460, "wdth" 100;
+  letter-spacing: -.008em;
+  line-height: 1.24;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.stage-sound i {
+  display: inline-block;
+  font-style: normal;
+}
+
+/* ── A SOUND HAS ITS OWN STYLE ───────────────────────────────────────────
+   Read off the PR film, which treats its non-speech cues differently from
+   each other: `[Toy music]` and `[Beep]` vibrate for as long as they sound,
+   `[GASP]` pops, and the shouted `WHOOOOOA!!` pops slowly through a rainbow.
+   One treatment per detector category, shared by the compass label and the
+   stage label:
+
+     environmental  vibrates while it is up      (the film's [Beep])
+     music          holds still                  (CWI 2.4.5: "don't need to be
+                                                  animated and don't change
+                                                  color")
+     reaction       one pop                      (the film's [GASP])
+     vocal          one slow pop through colour  (the film's WHOOOOOA!!)
+
+   THE POPS RUN ONCE AND CARRY NO FILL, so the label is back at its own size
+   and its own white when they finish: none -> effect -> none, the same rule
+   every word follows. Only the vibration repeats, because the film's does --
+   it says the sound is still going. */
+.compass-sound[data-category="environmental"] i,
+.stage-sound[data-category="environmental"] i {
+  animation: sound-vibrate 190ms linear infinite;
+}
+
+.compass-sound[data-category="reaction"] i,
+.stage-sound[data-category="reaction"] i {
+  transform-origin: 50% 100%;
+  animation: sound-pop 760ms cubic-bezier(.3, 0, .2, 1) 1;
+}
+
+.compass-sound[data-category="vocal"] i,
+.stage-sound[data-category="vocal"] i {
+  transform-origin: 50% 100%;
+  animation: sound-rainbow-pop 1500ms cubic-bezier(.3, 0, .2, 1) 1;
+}
+
+@keyframes sound-pop {
+  0% { transform: scale(1); }
+  32% { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+
+/* Every stop names its colour, and the last one is the label's own: with no
+   fill the animation then hands back exactly what it left. */
+@keyframes sound-rainbow-pop {
+  0% { transform: scale(1); color: #fff; }
+  14% { color: #ff5a5a; }
+  28% { transform: scale(1.38); color: #ffb13d; }
+  42% { color: #f5e663; }
+  56% { transform: scale(1.38); color: #5fe08a; }
+  70% { color: #4fc3ff; }
+  84% { color: #c58bff; }
+  100% { transform: scale(1); color: #fff; }
+}
+
+/* Reduced motion drops the geometry and the colour run; the label still
+   appears, bracketed and white. */
+@media (prefers-reduced-motion: reduce) {
+  .compass-sound i,
+  .stage-sound i { animation: none !important; }
+}
+
+.studio-shell[data-reduced-motion="true"] .compass-sound i,
+.studio-shell[data-reduced-motion="true"] .stage-sound i {
+  animation: none !important;
+}
+
+/* ── IMPORT, AT THE PICKER ───────────────────────────────────────────────
+   Chrome, so it takes the UI face and the one accent: a text action under
+   the three pills, never a fourth pill competing with them. */
+.media-import {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.media-import-action {
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: 400 17px/1.24 var(--font-ui);
+  letter-spacing: -.374px;
+  cursor: pointer;
+  transition: opacity 140ms ease;
+}
+
+.media-import-action:active {
+  opacity: .6;
+}
+
+.media-import-name {
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text);
+  font: 600 17px/1.24 var(--font-ui);
+  letter-spacing: -.374px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-import-hint {
+  margin: 0;
+  color: var(--muted);
+  font: 400 14px/1.43 var(--font-ui);
+  letter-spacing: -.224px;
 }

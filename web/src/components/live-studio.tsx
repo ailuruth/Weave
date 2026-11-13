@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   memo,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -42,6 +43,7 @@ import {
   type CaptionStackPosition,
 } from "@/lib/caption-paragraphs";
 import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
+import {mediaSyncAction} from "@/lib/media-sync";
 import {
   captionMotionFor,
   characterVoiceTypes,
@@ -417,11 +419,8 @@ const MotionWord = memo(function MotionWord({
   /* How long this word takes to come back down: long enough to reach the
      next word's turn, so the stage is never still while anyone is talking. */
   const fallRef = useRef<number | null>(null);
-  /* ...AND IT STOPS ACCEPTING ONE ONCE THE WORD HAS TURNED. */
-  const turnedRef = useRef(false);
-  if (fallRef.current === null && paceGapS > 0 && !turnedRef.current) {
-    fallRef.current = paceGapS;
-  }
+  /* Set by the effect below the arm effect, which is where the turn moment
+     is known. */
 
   const [{duration, sweepMs, crestMs}] = useState(() => {
     /* Frozen the first time this WORD was drawn, not this component -- they
@@ -580,9 +579,6 @@ const MotionWord = memo(function MotionWord({
     const rearming = element.dataset.armed !== "true";
     element.dataset.armed = "true";
     const turnDelay = armedRef.current.turnAtMs - performance.now();
-    // Past its turn this word is history: nothing about its motion may change
-    // again. See `turnedRef` above.
-    if (turnDelay <= 0) turnedRef.current = true;
     // The word's own delay is written ONCE: rewriting `animation-delay` shifts
     // a running animation, which is the hazard `data-armed` exists to prevent.
     if (rearming) {
@@ -634,6 +630,22 @@ const MotionWord = memo(function MotionWord({
     // when a word grows, and every new span is armed on that pass.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clockEpoch, crestMs, id, scheduleWord, sweepMs, word, characters.length]);
+
+  /* THE FALL TAKES ITS NEIGHBOUR ONCE, AND ONLY BEFORE THE TURN. The gap is
+     tested against the CLOCK at the moment it arrives. It used to be tested
+     against a flag the arm effect set, and nothing re-runs that effect at the
+     turn, so a neighbour arriving later rewrote `--fall-ms` under the running
+     fall: 19 of 108 sample words, each jumping mid-return. Written here as
+     well as through the style prop because this render already happened. */
+  useLayoutEffect(() => {
+    const element = wordRef.current;
+    const armed = armedRef.current;
+    if (!element || fallRef.current !== null || !(paceGapS > 0)) return;
+    if (armed !== null && performance.now() >= armed.turnAtMs) return;
+    fallRef.current = paceGapS;
+    element.style.setProperty(
+      "--fall-ms", `${fallDurationMs(crestMs, paceGapS).toFixed(0)}ms`);
+  }, [crestMs, paceGapS]);
 
   return (
     <span
@@ -1643,20 +1655,115 @@ function SignalWaveform({values}: {values: number[]}) {
   );
 }
 
+/** A recording the viewer imported, as the browser holds it. The server has
+   its own copy for the recognizer; this one is the picture. */
+interface ImportedMedia {
+  url: string;
+  name: string;
+  /** False for a sound-only file: it is heard, and there is nothing to draw. */
+  video: boolean;
+}
+
+/* THE PICTURE UNDER THE CAPTIONS. Slaved to the caption playhead, never to
+   the wall clock -- see `media-sync.ts`. It carries the recording's own sound:
+   the captions are an addition to the film, not a replacement for it. */
+function MediaBackdrop({
+  media,
+  playheadMs,
+}: {
+  media: ImportedMedia;
+  playheadMs: number;
+}) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const player = ref.current;
+    if (!player) return;
+    const action = mediaSyncAction({
+      playheadMs,
+      currentTimeS: player.currentTime,
+      paused: player.paused,
+      ended: player.ended,
+      durationS: player.duration,
+    });
+    if (action.kind === "none" || action.kind === "hold") return;
+    if (action.kind === "trim") {
+      if (player.playbackRate !== action.rate) player.playbackRate = action.rate;
+      return;
+    }
+    player.playbackRate = 1;
+    player.currentTime = action.atS;
+    if (action.kind !== "play") return;
+    // A browser may refuse sound it did not see a gesture for. The picture
+    // still has to run on time, so it starts muted rather than not at all.
+    player.play().catch(() => {
+      player.muted = true;
+      player.play().catch(() => undefined);
+    });
+  }, [playheadMs]);
+  return (
+    <video
+      ref={ref}
+      className="stage-media"
+      src={media.url}
+      playsInline
+      preload="auto"
+      aria-label={media.name}
+    />
+  );
+}
+
+/* CWI 2.4.4, ON THE PICTURE. With a recording on the stage the bracketed
+   label belongs with the film, where a captioned film puts it; the compass
+   keeps its own copy for the live room. */
+function StageSound({
+  sound,
+}: {
+  sound: {label?: string; category?: string} | null | undefined;
+}) {
+  if (!sound?.label && !sound?.category) return null;
+  return (
+    <span
+      className="stage-sound"
+      data-category={sound.category ?? "environmental"}
+    >
+      <i>[{sound.label ?? sound.category}]</i>
+    </span>
+  );
+}
+
 function LanguageGate({
   session,
   error,
   onSelect,
+  onImport,
+  stage,
 }: {
   session: LanguageSession;
   error: string | null;
+  /** The server's boot stage, which for an import carries its progress. */
+  stage: string;
   onSelect: (language: string) => void;
+  onImport: (file: File, language: string) => Promise<void>;
 }) {
   const selected = session.languages.find(
     (language) => language.id === session.language,
   );
-  const selecting = session.state === "selecting";
   const unavailable = session.state === "unavailable";
+  /* A recording waiting for its language. The pick below is still a language
+     pick -- the recognizer is chosen before capture either way -- so the file
+     is held here until one is made, and the pair is sent together. */
+  const [file, setFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const picker = useRef<HTMLInputElement>(null);
+  const selecting = session.state === "selecting" && !importing;
+  const choose = (language: string) => {
+    if (!file) {
+      onSelect(language);
+      return;
+    }
+    setImporting(true);
+    void onImport(file, language).finally(() => setImporting(false));
+  };
 
   return (
     <section
@@ -1690,9 +1797,13 @@ function LanguageGate({
               <h1>
                 {unavailable
                   ? "The local caption engine is unavailable"
-                  : selected
-                    ? `Preparing ${selected.label}`
-                    : "Preparing language setup"}
+                  : importing && file
+                    ? `Importing ${file.name}`
+                    : /^analysing/.test(stage)
+                      ? `Analysing ${stage.replace(/^analysing\s*/, "")}`
+                    : selected
+                      ? `Preparing ${selected.label}`
+                      : "Preparing language setup"}
               </h1>
             </div>
             {unavailable && (
@@ -1710,12 +1821,54 @@ function LanguageGate({
               <button
                 className="language-option"
                 key={language.id}
-                onClick={() => onSelect(language.id)}
+                onClick={() => choose(language.id)}
                 type="button"
               >
                 {language.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* IMPORT A RECORDING (2026-11-13, at the user's request: the studio
+            should caption a video, not only a room). One quiet text action
+            under the three pills -- they stay the screen. Choosing a file
+            changes what the pills mean, so the line above them says so. */}
+        {selecting && (
+          <div className="media-import">
+            <input
+              ref={picker}
+              type="file"
+              accept="video/*,audio/*"
+              hidden
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                event.target.value = "";
+              }}
+            />
+            {file ? (
+              <>
+                <p className="media-import-name">{file.name}</p>
+                <p className="media-import-hint">
+                  Choose the language spoken in it
+                </p>
+                <button
+                  className="media-import-action"
+                  onClick={() => setFile(null)}
+                  type="button"
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <button
+                className="media-import-action"
+                onClick={() => picker.current?.click()}
+                type="button"
+              >
+                Import a video
+              </button>
+            )}
           </div>
         )}
 
@@ -1905,6 +2058,7 @@ export function LiveStudio() {
     session,
     languageError,
     selectLanguage,
+    importMedia,
     scheduleWord,
     clockEpoch,
     playheadMs,
@@ -1912,6 +2066,33 @@ export function LiveStudio() {
     lastEventAt,
   } = useCaptionStream({reducedMotion: settings.reducedMotion});
   const elapsed = useElapsed(startedAt);
+  const [media, setMedia] = useState<ImportedMedia | null>(null);
+  useEffect(() => () => {
+    if (media) URL.revokeObjectURL(media.url);
+  }, [media]);
+  const handleImport = useCallback(async (file: File, language: string) => {
+    setMedia({
+      url: URL.createObjectURL(file),
+      name: file.name,
+      video: file.type
+        ? file.type.startsWith("video/")
+        : /\.(mp4|m4v|mov|webm|mkv)$/i.test(file.name),
+    });
+    if (!(await importMedia(file, language))) setMedia(null);
+  }, [importMedia]);
+  const handleSelect = useCallback((language: string) => {
+    setMedia(null);
+    void selectLanguage(language);
+  }, [selectLanguage]);
+  // The picker being up means no session is running, whatever was imported
+  // for the last one.
+  const activeMedia =
+    session.state === "loading" || session.state === "listening"
+      ? media
+      : null;
+  const mediaMode = activeMedia
+    ? (activeMedia.video ? "video" : "audio")
+    : "none";
   const activeLanguage = session.languages.find(
     (language) => language.id === session.language,
   );
@@ -1945,7 +2126,9 @@ export function LiveStudio() {
     paragraphs.length > 0,
     settings.captionScale,
     view,
-    settings.lightStage ? "light" : "dark",
+    // The picture changes how much of the stage the captions may take, which
+    // is a row-count change the resize observer cannot see either.
+    `${settings.lightStage ? "light" : "dark"}:${mediaMode}`,
   );
   const stageParagraphs = view === "stage"
     ? selectStableCaptionStack(
@@ -2049,6 +2232,7 @@ export function LiveStudio() {
       data-motion={settings.enhancedMotion ? "enhanced" : "legacy"}
       data-layout={settings.rollingCaptions ? "rolling" : "stack"}
       data-plate={settings.captionRules ? "rules" : "box"}
+      data-media={mediaMode}
       data-language={session.language ?? "pending"}
       lang={session.language === "ko" ? "ko" : "en"}
       style={studioStyle}
@@ -2131,6 +2315,12 @@ export function LiveStudio() {
               a removal: the same label, the same brackets, the same white, the
               same vibration -- moved to where it is legible. `autocwi cc`,
               which renders to the design system's own layout, is untouched. */}
+          {activeMedia && (
+            <MediaBackdrop media={activeMedia} playheadMs={playheadMs} />
+          )}
+          {activeMedia && (
+            <StageSound sound={speechActive ? null : model.sound} />
+          )}
           <CaptionFeed
             paragraphs={stageParagraphs}
             timingWords={timingWords}
@@ -2145,7 +2335,7 @@ export function LiveStudio() {
             hangulWave={settings.hangulWave}
             enhancedMotion={settings.enhancedMotion}
           />
-          {!stageParagraphs.length && (
+          {!stageParagraphs.length && !activeMedia && (
             <div className="empty-stage">
               {/* One glyph, one line (2026-09-06, at the user's direction --
                   the circled plate and the "Speech will appear here" sub-line
@@ -2247,7 +2437,9 @@ export function LiveStudio() {
         <LanguageGate
           session={session}
           error={languageError}
-          onSelect={selectLanguage}
+          onSelect={handleSelect}
+          onImport={handleImport}
+          stage={String(model.bootStage ?? "")}
         />
       )}
     </main>

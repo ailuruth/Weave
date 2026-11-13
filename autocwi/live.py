@@ -37,6 +37,7 @@ import socket
 import threading
 import time
 import unicodedata
+import uuid
 import warnings
 import webbrowser
 from collections import deque
@@ -45,7 +46,7 @@ from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import numpy as np
 
@@ -5777,6 +5778,129 @@ def load_sound_event_detector(cfg: dict):
     )
 
 
+def build_media_score(events: Iterable[dict]) -> list[tuple[float, dict]]:
+    """Turn one finished pass over a recording into what the stage should play.
+
+    A live session shows the recognizer thinking: a hypothesis, then a commit,
+    then the endpoint's corrected text, then a later speaker correction, each
+    arriving when it happens to. A recording has no reason to show any of that,
+    because by the time anything is displayed the whole file has been heard.
+    So every word is reduced to its LAST state -- final text, final timing,
+    final speaker -- and scheduled on the source clock at its own onset.
+
+    Returns ``(release_s, event)`` pairs in release order. Words release at
+    their acoustic onset, which the studio's playhead reaches one read-ahead
+    delay later: every word is on screen, in its final form, for that whole
+    delay before it is spoken. Level events keep their own times (they are the
+    studio's clock) and non-speech sounds release when they start and end.
+    """
+
+    finals: dict[str, dict] = {}
+    order: dict[str, int] = {}
+    verified: dict[int, list[str]] = {}
+    timeline: list[tuple[float, int, dict]] = []
+    seq = 0
+
+    def keep(word: dict) -> None:
+        nonlocal seq
+        word_id = str(word.get("word_id") or "")
+        if not word_id or not word.get("final", True):
+            return
+        if word_id not in order:
+            order[word_id] = seq
+        finals[word_id] = word
+        seq += 1
+
+    for ev in events:
+        kind = ev.get("type", "word")
+        if kind == "word":
+            keep(ev)
+        elif kind == "verification":
+            words = [w for w in ev.get("words") or [] if w.get("word_id")]
+            for word in words:
+                keep(word)
+            # The endpoint pass is the utterance's whole final word list: a
+            # word it left out was a mis-hearing it removed.
+            verified[int(ev.get("utterance", 0))] = [
+                str(w["word_id"]) for w in words
+            ]
+        elif kind == "level":
+            seq += 1
+            timeline.append((float(ev.get("t", 0.0)), seq, ev))
+        elif kind == "sound":
+            seq += 1
+            edge = "start" if ev.get("state") == "start" else "end"
+            timeline.append((float(ev.get(edge, 0.0)), seq, ev))
+
+    for word_id, word in finals.items():
+        kept = verified.get(int(word.get("utterance", 0)))
+        if kept is not None and word_id not in kept:
+            continue
+        release = float(word.get("t", word.get("start", 0.0)))
+        timeline.append((max(0.0, release), order[word_id], {
+            **word, "type": "word", "final": True,
+        }))
+    timeline.sort(key=lambda item: (item[0], item[1]))
+    return [(release, ev) for release, _, ev in timeline]
+
+
+def analysed_events(
+    events: Iterable[dict],
+    *,
+    duration_s: float = 0.0,
+    progress: Callable[[float], None] | None = None,
+    ready: Callable[[], None] | None = None,
+    cancelled: Callable[[], bool] | None = None,
+    _clock=None,
+    _sleep=None,
+):
+    """Hear the whole recording first, then play it back on the source clock.
+
+    ``events`` must come from an UNPACED source (`file_blocks(realtime=False)`),
+    so the first phase runs as fast as the models do -- measured 17 s for the
+    68 s PR film. Nothing is yielded until it finishes. The second phase yields
+    `build_media_score`'s events against a real-time clock, which is what the
+    studio's playhead and the picture it slaves are timed from.
+    """
+
+    clock = _clock or time.monotonic
+    sleep = _sleep or time.sleep
+    heard: list[dict] = []
+    reported = -1.0
+    try:
+        for ev in events:
+            if cancelled is not None and cancelled():
+                return
+            heard.append(ev)
+            if (progress is not None and duration_s > 0
+                    and ev.get("type") == "level"):
+                done = min(1.0, float(ev.get("t", 0.0)) / duration_s)
+                if done - reported >= 0.02:
+                    reported = done
+                    progress(done)
+    finally:
+        # This generator replaces the pipeline's as the one the session loop
+        # closes, so the pipeline's own teardown has to be passed on.
+        close = getattr(events, "close", None)
+        if close is not None:
+            close()
+    score = build_media_score(heard)
+    del heard
+    if ready is not None:
+        ready()
+    started = clock()
+    for release, ev in score:
+        while True:
+            if cancelled is not None and cancelled():
+                return
+            wait_s = started + release - clock()
+            if wait_s <= 0:
+                break
+            # Short sleeps, so a reload is honoured inside a long silence.
+            sleep(min(wait_s, 0.2))
+        yield ev
+
+
 def _is_durable_record(ev: dict) -> bool:
     """Which events are written to live_events.jsonl (durable text + haptics).
 
@@ -5991,6 +6115,34 @@ def apply_verifier_backend(verifier: EndpointVerifier, cfg: dict):
 # SSE broadcast server
 # ---------------------------------------------------------------------------
 
+# What the studio may import. Containers librosa can pull an audio track out
+# of; the picture never reaches this process -- the browser plays its own copy.
+MEDIA_SUFFIXES = frozenset({
+    ".mp4", ".m4v", ".mov", ".webm", ".mkv",
+    ".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg",
+})
+MEDIA_MAX_BYTES = 4 * 2**30
+
+
+def media_has_audio(path: Path) -> bool:
+    """Can the recognizer's own loader read sound out of this file?
+
+    Asked at import, with the SAME loader `file_blocks` uses, so a silent or
+    undecodable upload is refused at the picker instead of ending the session
+    loop after the models have loaded.
+    """
+
+    import librosa
+
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            data, _ = librosa.load(str(path), sr=SR, mono=True, duration=1.0)
+    except Exception:
+        return False
+    return len(data) > 0
+
+
 class LiveLanguageSession:
     """Thread-safe language choice shared by the startup thread and local UI.
 
@@ -6023,6 +6175,10 @@ class LiveLanguageSession:
         self.on_reset: Callable[[], None] | None = None
         self._generation = 0
         self._restart = threading.Event()
+        # An imported recording, captioned in place of the microphone for ONE
+        # session. Attached at the picker, cleared by the next page load.
+        self._media: Path | None = None
+        self._media_name: str | None = None
         if language:
             self._selected.set()
 
@@ -6031,7 +6187,32 @@ class LiveLanguageSession:
             "state": self._stage,
             "language": self._language,
             "languages": [dict(item) for item in self.languages],
+            "media": self._media_name,
         }
+
+    def attach_media(self, path: Path, name: str) -> dict:
+        """Caption ``path`` instead of the microphone in the next session.
+
+        Only while the picker is up: the source is resolved once per session,
+        and swapping it under a running capture is the hot-swap this module
+        refuses for languages too.
+        """
+
+        with self._lock:
+            if self._stage != "selecting":
+                raise RuntimeError(
+                    "a capture is already running; reload the studio to "
+                    "import a recording"
+                )
+            previous, self._media, self._media_name = self._media, path, name
+            snapshot = self._snapshot_locked()
+        if previous is not None and previous != path:
+            previous.unlink(missing_ok=True)
+        return snapshot
+
+    def media(self) -> Path | None:
+        with self._lock:
+            return self._media
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -6055,7 +6236,10 @@ class LiveLanguageSession:
             self._generation += 1
             self._selected.clear()
             self._restart.set()
+            stale, self._media, self._media_name = self._media, None, None
             snapshot = self._snapshot_locked()
+        if stale is not None:
+            stale.unlink(missing_ok=True)
         # Outside the lock: the callback takes the broadcaster's.
         if self.on_reset is not None:
             self.on_reset()
@@ -6093,11 +6277,7 @@ class LiveLanguageSession:
             if self._stage == "selecting":
                 self._stage = "loading"
             self._selected.set()
-            return {
-                "state": self._stage,
-                "language": self._language,
-                "languages": [dict(item) for item in self.languages],
-            }
+            return self._snapshot_locked()
 
     def wait_for_language(self) -> str:
         self._selected.wait()
@@ -6243,6 +6423,7 @@ def make_handler(
     korean_font_path: Path | None = None,
     runtime_config: dict | None = None,
     language_session: LiveLanguageSession | None = None,
+    media_dir: Path | None = None,
 ):
     static_root = static_root.resolve() if static_root is not None else None
 
@@ -6396,8 +6577,82 @@ def make_handler(
             else:
                 self.send_error(404)
 
+        def _receive_media(self) -> None:
+            """Store an imported recording for the next session.
+
+            The body is the file itself, streamed to disk in blocks: a film is
+            far too large to hold in memory or to wrap in JSON. Nothing leaves
+            this machine -- the studio and this server are one origin.
+            """
+
+            # A page on another site can POST a body at a loopback port
+            # without a preflight. Only the studio itself may fill the disk.
+            origin = self.headers.get("Origin")
+            if origin and urlsplit(origin).hostname not in (
+                "127.0.0.1", "localhost", "::1",
+                (self.headers.get("Host") or "").rsplit(":", 1)[0],
+            ):
+                self._send_json({"error": "cross-origin import refused"},
+                                status=403)
+                return
+            name = parse_qs(urlsplit(self.path).query).get("name", [""])[0]
+            suffix = Path(name).suffix.lower()
+            if suffix not in MEDIA_SUFFIXES:
+                self._send_json(
+                    {"error": f"unsupported file type {suffix or name!r}"},
+                    status=415,
+                )
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MEDIA_MAX_BYTES:
+                self._send_json(
+                    {"error": "the recording is empty or larger than "
+                              f"{MEDIA_MAX_BYTES // 2**30} GB"},
+                    status=413,
+                )
+                return
+            media_dir.mkdir(parents=True, exist_ok=True)
+            target = media_dir / f"{uuid.uuid4().hex}{suffix}"
+            remaining = length
+            try:
+                with open(target, "wb") as handle:
+                    while remaining > 0:
+                        block = self.rfile.read(min(remaining, 1 << 20))
+                        if not block:
+                            break
+                        handle.write(block)
+                        remaining -= len(block)
+                if remaining:
+                    raise OSError("upload ended early")
+                if not media_has_audio(target):
+                    target.unlink(missing_ok=True)
+                    self._send_json(
+                        {"error": "no audio track could be read from that file"},
+                        status=415,
+                    )
+                    return
+                snapshot = language_session.attach_media(
+                    target, Path(name).name
+                )
+            except RuntimeError as exc:
+                target.unlink(missing_ok=True)
+                self._send_json({"error": str(exc)}, status=409)
+                return
+            except OSError as exc:
+                target.unlink(missing_ok=True)
+                self._send_json({"error": str(exc)}, status=400)
+                return
+            self._send_json(snapshot, status=201)
+
         def do_POST(self):
             path = urlsplit(self.path).path
+            if (path == "/session/media" and language_session is not None
+                    and media_dir is not None):
+                self._receive_media()
+                return
             if path != "/session/language" or language_session is None:
                 self.send_error(404)
                 return
@@ -6426,7 +6681,8 @@ def make_handler(
 
         def do_OPTIONS(self):
             path = urlsplit(self.path).path
-            if path != "/session/language" or language_session is None:
+            if (path not in ("/session/language", "/session/media")
+                    or language_session is None):
                 self.send_error(404)
                 return
             # The exported app is same-origin. This preflight exists only for
@@ -6519,6 +6775,7 @@ def _start_server(
     runtime_config: dict | None = None,
     language_session: LiveLanguageSession | None = None,
     host: str = "127.0.0.1",
+    media_dir: Path | None = None,
 ):
     broadcaster = Broadcaster()
     handler = make_handler(
@@ -6530,6 +6787,7 @@ def _start_server(
         korean_font_path=korean_font_path,
         runtime_config=runtime_config,
         language_session=language_session,
+        media_dir=media_dir,
     )
     server = None
     for p in range(port, port + 10):
@@ -6993,6 +7251,9 @@ def run_live(args, cfg: dict, device: str) -> None:
             runtime_config=runtime_config,
             language_session=language_session,
             host=getattr(args, "host", "127.0.0.1"),
+            # Imports only make sense where the picker runs: a `--lang` run
+            # is already capturing by the time a browser can ask.
+            media_dir=out / "imports" if selection_required else None,
         )
 
         def _on_reload() -> None:
@@ -7083,7 +7344,15 @@ def run_live(args, cfg: dict, device: str) -> None:
         # video, making a healthy Korean model look catastrophically inaccurate.
         source_file = getattr(args, "file", None)
         start_s = getattr(args, "start", None)
-        if getattr(args, "sample", False) and not source_file:
+        # A recording imported at the picker outranks the command line for
+        # this one session, and always plays from its first frame: the studio
+        # slaves its own copy of the picture to this source clock.
+        imported = language_session.media()
+        if imported is not None:
+            source_file = str(imported)
+            start_s = 0.0
+            print(f"[live] captioning imported recording: {imported.name}")
+        elif getattr(args, "sample", False) and not source_file:
             source_file = sample_clip_path(lang)
             if start_s is None:
                 # The PR film changes treatment at 28 s -- before it is the titles
@@ -7099,12 +7368,17 @@ def run_live(args, cfg: dict, device: str) -> None:
         if start_s is None:
             start_s = 0.0
         # --once processes to EOF and exits; a loop would never reach EOF.
-        loop = getattr(args, "loop", False) and not getattr(args, "once", False)
+        loop = (getattr(args, "loop", False) and imported is None
+                and not getattr(args, "once", False))
         if loop and source_file:
             print("[live] looping clip — Ctrl-C to quit")
         if source_file:
-            blocks = file_blocks(source_file, realtime=realtime, loop=loop,
-                                 start_s=float(start_s))
+            # An import is heard in full before any of it is shown, so its
+            # source runs unpaced; `analysed_events` restores the clock.
+            blocks = file_blocks(source_file,
+                                 realtime=realtime and (
+                                     imported is None or bool(whisper_model)),
+                                 loop=loop, start_s=float(start_s))
         elif node_link is not None:
             blocks = net_blocks(stop, node_link)
         else:
@@ -7146,9 +7420,17 @@ def run_live(args, cfg: dict, device: str) -> None:
             else:
                 print(f"[live] reusing the warm {lang} stack — new session")
             model, draft_model, verifier, tracker, detector, onset = stack
-            if broadcaster is not None and not language_session.restart_pending():
-                language_session.set_stage("listening")
-            announce("listening", lang)
+
+            def _listening() -> None:
+                if (broadcaster is not None
+                        and not language_session.restart_pending()):
+                    language_session.set_stage("listening")
+                announce("listening", lang)
+
+            # A recording is not "listening" until it has been analysed: the
+            # gate stays up over the progress, and comes down on the replay.
+            if imported is None:
+                _listening()
             # The level meter reports the array's bearing when one is attached.
             # Built here rather than inside `streaming_events` so the node's
             # direction can reach it without threading the link through the
@@ -7191,6 +7473,20 @@ def run_live(args, cfg: dict, device: str) -> None:
                 speaker_tracker=tracker, sound_detector=detector,
                 onset_detector=onset,
             )
+            if imported is not None:
+                import librosa
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    media_s = float(librosa.get_duration(path=str(imported)))
+                events = analysed_events(
+                    events,
+                    duration_s=media_s,
+                    progress=lambda done: announce(
+                        f"analysing {round(done * 100)}%", lang),
+                    ready=_listening,
+                    cancelled=language_session.restart_pending,
+                )
         events_path = out / "live_events.jsonl"
 
         if getattr(args, "once", False):  # headless: process source to EOF, no server
