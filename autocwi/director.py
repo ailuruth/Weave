@@ -54,10 +54,10 @@ LOUDNESS_PIVOT = 2.0 / 9.0
 
 DEFAULTS = {
     "enabled": True,
-    "arousal_low": 1.30,
-    "arousal_high": 1.60,
-    "pop_floor": 0.62,
-    "calm_gain": 0.35,
+    "arousal_low": 1.40,
+    "arousal_high": 2.50,
+    "pop_floor": 0.75,
+    "calm_gain": 0.20,
 }
 
 

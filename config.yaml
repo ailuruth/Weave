@@ -779,13 +779,21 @@ live:
   # material before trusting these on it.
   import_director:
     enabled: true
-    arousal_low: 1.30
-    arousal_high: 1.60
-    # What every word of an aroused sentence is raised to, on the normalised
-    # loudness channel (2.3.5 baseline = 0.222, 2.3.6 ceiling = 1.0).
-    pop_floor: 0.62
+    # RE-FITTED 2026-11-13 TO THE PIXEL MEASUREMENT (86 trusted words of
+    # assets/reference_specs/pr_film_pixels.json), where the first values were
+    # fitted to hand labels. The gate is now a RAMP: the film's lines are not
+    # two sizes -- the reply to the sergeant (arousal 1.68) pops at ~1.15x and
+    # the sergeant himself (2.3-3.5) at ~1.4-1.6x. Mean size error per word
+    # 0.122x -> 0.107x, correlation +0.45 -> +0.52. What is left is ten words
+    # the film pops for their MEANING (wow, God, more, gasps, big), which no
+    # setting here reaches.
+    arousal_low: 1.40
+    arousal_high: 2.50
+    # What every word of a fully aroused sentence is raised to, on the
+    # normalised loudness channel (2.3.5 baseline = 0.222, ceiling = 1.0).
+    pop_floor: 0.75
     # How much of a word's own above-baseline loudness a CALM sentence keeps.
-    calm_gain: 0.35
+    calm_gain: 0.20
   endpoint_max_s: 30.0
   # Cold-start window only (first 6 words); after that the mapping uses
   # percentiles of the speaker's own word history.
