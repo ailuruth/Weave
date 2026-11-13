@@ -2518,6 +2518,29 @@ export function LiveStudio() {
             <Mic2 size={14} />
             {number(level.rms_db, -72).toFixed(1)} dBFS
           </span>
+          {/* EXPORT, for the person who finishes the captions by hand. Shown
+              once a recording has been analysed -- the files are written
+              before the first caption is. Plain links: the server names the
+              download after the recording. */}
+          {activeMedia && session.state === "listening" && (
+            <details className="export-menu">
+              <summary>Export</summary>
+              <div role="menu">
+                <a role="menuitem" href="/session/captions.srt" download>
+                  SubRip <span>.srt</span>
+                </a>
+                <a role="menuitem" href="/session/captions.vtt" download>
+                  WebVTT <span>.vtt</span>
+                </a>
+                <a role="menuitem" href="/session/captions.jsx" download>
+                  After Effects script <span>.jsx</span>
+                </a>
+                <a role="menuitem" href="/session/captions.json" download>
+                  Caption spec <span>.cwi.json</span>
+                </a>
+              </div>
+            </details>
+          )}
           {activeLanguage && (
             <span className="language-pill">
               <Globe2 size={13} />

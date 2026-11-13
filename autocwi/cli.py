@@ -113,7 +113,9 @@ def build_parser() -> argparse.ArgumentParser:
     lv.add_argument("--import", dest="import_file", default=None, metavar="FILE",
                     help="caption a recording the way the studio's Import "
                          "does: transcribed whole, analysed, then played. "
-                         "No picture -- for probes and headless checks.")
+                         "Writes OUT/exports/NAME.{srt,vtt,cwi.json,"
+                         "aftereffects.jsx}; add --once to export and exit "
+                         "without opening the studio.")
     lv.add_argument("--sample", action="store_true",
                     help="stream the bundled sample for the selected language")
     # The PR film changes treatment at 28 s: before it is the titles demo on

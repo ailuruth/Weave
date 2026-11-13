@@ -2985,3 +2985,66 @@ button {
 .studio-shell[data-cues="true"] .word-glyph {
   text-rendering: geometricPrecision;
 }
+
+/* ── EXPORT ──────────────────────────────────────────────────────────────
+   Chrome: the UI face, the one accent, no shadow. A disclosure rather than
+   four buttons, so the top bar gains one word. */
+.export-menu {
+  position: relative;
+  font: 400 12px/1 var(--font-ui);
+  letter-spacing: .02em;
+}
+
+.export-menu summary {
+  display: inline-flex;
+  align-items: center;
+  height: 29px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.export-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-menu[open] summary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.export-menu > div {
+  position: absolute;
+  z-index: 60;
+  top: 35px;
+  right: 0;
+  display: grid;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--bg);
+}
+
+.export-menu a {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 9px 10px;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.export-menu a:active {
+  opacity: .6;
+}
+
+.export-menu a span {
+  color: var(--muted);
+}

@@ -5855,6 +5855,8 @@ def analysed_events(
     ready: Callable[[], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
     direct: Callable[[list[dict]], list[dict]] | None = None,
+    on_score: Callable[[list[dict]], None] | None = None,
+    paced: bool = True,
     _clock=None,
     _sleep=None,
 ):
@@ -5911,11 +5913,15 @@ def analysed_events(
                 score[i] = (cue_start.get(word.get("cue"), score[i][0]), word)
             order = sorted(range(len(score)), key=lambda k: (score[k][0], k))
             score = [score[k] for k in order]
+    # The finished captions, before a frame of them is shown: this is what
+    # gets exported, so the files never depend on the replay being watched.
+    if on_score is not None:
+        on_score([ev for _, ev in score if ev.get("type") == "word"])
     if ready is not None:
         ready()
     started = clock()
     for release, ev in score:
-        while True:
+        while paced:
             if cancelled is not None and cancelled():
                 return
             wait_s = started + release - clock()
@@ -6247,6 +6253,18 @@ class LiveLanguageSession:
         with self._lock:
             self._media_name = name
             self._served_media = path
+
+    def set_exports(self, paths: dict[str, Path], stem: str) -> None:
+        with self._lock:
+            self._exports = dict(paths)
+            self._export_stem = stem
+
+    def export(self, kind: str) -> tuple[Path, str] | None:
+        """One exported caption file and the name to save it under."""
+
+        with self._lock:
+            path = getattr(self, "_exports", {}).get(kind)
+        return (path, path.name) if path is not None and path.is_file() else None
 
     def served_media(self) -> Path | None:
         """The file the studio may fetch as this session's picture."""
@@ -6611,6 +6629,26 @@ def make_handler(
                 self._send_json(language_session.begin_page_load())
             elif path == "/session/media-file" and language_session is not None:
                 self._send_media(language_session.served_media())
+            elif (path.startswith("/session/captions.")
+                  and language_session is not None):
+                found = language_session.export(path.rsplit(".", 1)[-1])
+                if found is None:
+                    self.send_error(404)
+                    return
+                target, name = found
+                body = target.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", {
+                    "srt": "application/x-subrip", "vtt": "text/vtt",
+                    "json": "application/json", "jsx": "text/javascript",
+                }.get(path.rsplit(".", 1)[-1], "application/octet-stream")
+                    + "; charset=utf-8")
+                self.send_header("Content-Disposition",
+                                 f'attachment; filename="{name}"')
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
             elif path == "/RobotoFlex.ttf" and font_path is not None:
                 self._send_file(
                     font_path,
@@ -7631,6 +7669,24 @@ def run_live(args, cfg: dict, device: str) -> None:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     media_s = float(librosa.get_duration(path=str(imported)))
+
+                def _export_captions(words: list[dict]) -> None:
+                    """Write the captions out for a person to work on."""
+
+                    from .export import write_exports
+
+                    name = (language_session.snapshot().get("media")
+                            or imported.name)
+                    stem = Path(name).stem
+                    try:
+                        paths = write_exports(
+                            words, out / "exports", stem, cfg, name, media_s)
+                    except Exception as exc:  # noqa: BLE001 - never stop playback
+                        print(f"[live] caption export failed: {exc}")
+                        return
+                    language_session.set_exports(paths, stem)
+                    print("[live] captions exported: "
+                          + ", ".join(str(p) for p in paths.values()))
                 events = analysed_events(
                     events,
                     duration_s=media_s,
@@ -7641,6 +7697,10 @@ def run_live(args, cfg: dict, device: str) -> None:
                     direct=lambda words: soften(assign_cues(direct_recording(
                         settle_speakers(words),
                         live_cfg.get("import_director")))),
+                    on_score=_export_captions,
+                    # `--once` is the export command: nothing is watching, so
+                    # nothing is replayed.
+                    paced=not getattr(args, "once", False),
                 )
         events_path = out / "live_events.jsonl"
 

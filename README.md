@@ -42,7 +42,24 @@ Measured on the bundled PR film against a hand transcript of its captions from 0
 | Words whose text changed after appearing | 32 of 170 | 0 of 173 |
 | Words whose colour changed after appearing | 70 of 170 | 0 of 173 |
 
-Speaker changes land on 7 of the film's 10, with 8 more where the film has none: attribution is the open problem. There is no pause, seek or export yet.
+Speaker changes land on 8 of the film's 10, with 2 more where the film has none. There is no pause or seek yet.
+
+### Export for a captioner
+
+Once a recording is analysed, **Export** in the top bar downloads the captions, and they are also written to `OUT/exports/`:
+
+| File | For |
+|---|---|
+| `NAME.srt` | SubRip: any caption tool, editor or player. Text and line timing. |
+| `NAME.vtt` | WebVTT: the same lines, plus who speaks (coloured with the CWI palette), when each word starts, and which words are loud or soft. |
+| `NAME.aftereffects.jsx` | A script for the design system's After Effects template. It builds one `LINE` / `BOX LINE` pair per caption, timed, with its animation markers and speaker colour set. **Not yet run in After Effects** — check the first line it builds. |
+| `NAME.cwi.json` | This project's CaptionSpec: every word with its measurements. Replays with `autocwi cc`. |
+
+To export without opening the studio:
+
+```bash
+.venv/bin/python -m autocwi live --import clip.mp4 --lang en --once --out out
+```
 
 ## Commands
 
