@@ -6,22 +6,9 @@
 
 [Project Page](https://nobel2040ne.github.io/Weave/)
 
-Weave turns live speech into expressive captions for Deaf and hard of hearing viewers. It automates [Caption with Intention](https://captionwithintention.org): colour shows who is speaking, motion shows when each word is spoken, and a variable font shows how it is said. It works in English and Korean and runs offline.
+Weave captions a video with [Caption with Intention](https://captionwithintention.org), the caption design system for Deaf and hard of hearing viewers. Each speaker gets a colour. Each word turns to that colour as it is spoken. The type grows and shrinks with the voice.
 
-![The studio running: a dark stage of rolling captions, each word coloured by its speaker](docs/figure/fig5.png)
-
-## Quick start
-
-You need Python 3.11, Node.js and ffmpeg, on macOS (Apple Silicon) or Linux.
-
-```bash
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/fetch_font.py             # fonts, 12 MB
-.venv/bin/python scripts/fetch_streaming_model.py  # models, 2.2 GB
-npm --prefix web install && npm --prefix web run build
-.venv/bin/python -m autocwi live --sample          # opens 127.0.0.1:7337
-```
+You give Weave a video. It returns the video with those captions drawn on it. It works in English and Korean and runs on your own machine.
 
 ## Caption a video
 
@@ -29,18 +16,33 @@ npm --prefix web install && npm --prefix web run build
 .venv/bin/python -m autocwi caption clip.mp4 --lang en     # or ko, multi
 ```
 
-This writes the captioned video to `out/exports/`, with the captions as `.srt`, `.vtt`, an After Effects script and `.cwi.json`. In the studio, choose **Import a video** and then **Export**.
+This writes the captioned video to `out/exports/`, with the captions as `.srt`, `.vtt`, an After Effects script and `.cwi.json`. A sound only file comes back as captions on a black frame.
 
-## Commands
+## Install
+
+You need Python 3.11, Node.js, ffmpeg and Chrome, on macOS (Apple Silicon) or Linux.
+
+```bash
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python scripts/fetch_font.py             # fonts, 12 MB
+.venv/bin/python scripts/fetch_streaming_model.py  # models, 2.2 GB
+npm --prefix web install && npm --prefix web run build
+```
+
+## Live captions
+
+Weave can also caption a microphone while people speak, in a studio that opens in the browser.
+
+![The studio running: a dark stage of rolling captions, each word coloured by its speaker](docs/figure/fig5.png)
 
 ```bash
 .venv/bin/python -m autocwi live                  # captions from the microphone
 .venv/bin/python -m autocwi live --lang ko        # en, ko or multi
 .venv/bin/python -m autocwi live --sample         # the bundled film, no microphone
-.venv/bin/python -m autocwi cc spec.json          # play a finished caption file
 ```
 
-`autocwi --help` lists the rest.
+In the studio you can also choose **Import a video** to watch a recording being captioned, and **Export** to save the results.
 
 ## Documentation
 
