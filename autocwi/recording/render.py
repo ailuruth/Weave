@@ -39,6 +39,8 @@ CHROME_FLAGS = (
     "--disable-checker-imaging",
 )
 WINDOW = (1600, 1000)
+CANVAS = (1280, 720, 30)
+COPIED_AUDIO = frozenset({".mp4", ".m4v", ".mov", ".m4a", ".aac"})
 MIN_STEP_S = 1e-4
 DELIVERY_TIMEOUT_S = 10.0
 
@@ -104,7 +106,7 @@ FRAME_RECT = r"""
 (() => {
   const stage = document.querySelector(".caption-stage");
   const video = document.querySelector(".stage-media");
-  if (!stage || !video || !video.videoWidth) return null;
+  if (!stage || !video || (NEEDS_PICTURE && !video.videoWidth)) return null;
   const box = stage.getBoundingClientRect();
   const read = (name) => parseFloat(stage.style.getPropertyValue(name));
   const rect = {
@@ -169,6 +171,7 @@ class Picture:
     height: int
     fps: Fraction
     frames: int
+    own: bool = True
 
 
 def find_chrome() -> str:
@@ -192,7 +195,9 @@ def probe_picture(media: Path) -> Picture:
         capture_output=True, text=True, check=True).stdout
     data = json.loads(out)
     if not data.get("streams"):
-        raise RuntimeError(f"{media.name} has no picture to draw captions on")
+        width, height, rate = CANVAS
+        frames = math.ceil(float(data["format"]["duration"]) * rate)
+        return Picture(width, height, Fraction(rate), frames, own=False)
     stream = data["streams"][0]
     fps = Fraction(stream["r_frame_rate"])
     frames = math.ceil(float(data["format"]["duration"]) * fps)
@@ -272,14 +277,24 @@ def _await_delivery(page: _Page, event_id: int) -> None:
 
 
 def _encoder(media: Path, picture: Picture, out: Path) -> subprocess.Popen:
+    """ffmpeg, waiting for caption frames on stdin. A recording with no picture gets a black one."""
+    size = f"{picture.width}:{picture.height}"
+    captions = ["-f", "image2pipe", "-framerate", str(picture.fps), "-c:v", "png", "-i", "-"]
+    if picture.own:
+        inputs = ["-i", str(media), *captions]
+        graph = f"[1:v]scale={size}[captions];[0:v][captions]overlay=eof_action=pass[out]"
+        sound = "0:a?"
+    else:
+        canvas = f"color=c=black:s={picture.width}x{picture.height}:r={picture.fps}"
+        inputs = ["-f", "lavfi", "-i", canvas, *captions, "-i", str(media)]
+        graph = f"[1:v]scale={size}[captions];[0:v][captions]overlay=shortest=1[out]"
+        sound = "2:a"
+    audio = ["-c:a", "copy"] if media.suffix.lower() in COPIED_AUDIO else [
+        "-c:a", "aac", "-b:a", "192k"]
     return subprocess.Popen(
-        ["ffmpeg", "-y", "-v", "error", "-i", str(media),
-         "-f", "image2pipe", "-framerate", str(picture.fps), "-c:v", "png", "-i", "-",
-         "-filter_complex",
-         f"[1:v]scale={picture.width}:{picture.height}[captions];"
-         "[0:v][captions]overlay=eof_action=pass[out]",
-         "-map", "[out]", "-map", "0:a?", "-c:v", "libx264", "-crf", "18",
-         "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart", str(out)],
+        ["ffmpeg", "-y", "-v", "error", *inputs, "-filter_complex", graph,
+         "-map", "[out]", "-map", sound, "-c:v", "libx264", "-crf", "18",
+         "-pix_fmt", "yuv420p", *audio, "-movflags", "+faststart", str(out)],
         stdin=subprocess.PIPE)
 
 
@@ -351,7 +366,9 @@ def render_recording(
             page.call("Emulation.setDefaultBackgroundColorOverride",
                       color={"r": 0, "g": 0, "b": 0, "a": 0})
             page.call("Page.navigate", url=studio_url)
-            rect = page.wait_for(FRAME_RECT, 120.0, "the studio to load the recording")
+            rect = page.wait_for(
+                FRAME_RECT.replace("NEEDS_PICTURE", "true" if picture.own else "false"),
+                120.0, "the studio to load the recording")
             page.call("Emulation.setVirtualTimePolicy", policy="pause")
             page.value("window.__renderHold()")
             until_next = clock.settle()

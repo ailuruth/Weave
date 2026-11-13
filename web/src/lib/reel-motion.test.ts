@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  countLetters,
+  countSounds,
   quietLoudnessEdge,
   reelPlan,
   type ReelMotion,
@@ -31,7 +31,7 @@ function near(actual: number, expected: number) {
 }
 
 function spoken(text: string, scale: number, spokenMs: number, voicedFraction = 1): ReelWord {
-  return {scale, spokenMs, voicedFraction, letters: countLetters(text)};
+  return {scale, spokenMs, voicedFraction, letters: countSounds(text)};
 }
 
 test("an ordinary word rises and falls on the film's clock, with no hold", () => {
@@ -113,6 +113,22 @@ test("the quiet edge is where the size mapping stops shrinking", () => {
 });
 
 test("letters are counted without punctuation", () => {
-  assert.equal(countLetters("wow,"), 3);
-  assert.equal(countLetters("..."), 1);
+  assert.equal(countSounds("wow,"), 3);
+  assert.equal(countSounds("louder"), 6);
+  assert.equal(countSounds("..."), 1);
+});
+
+test("a Hangul block counts the sounds written inside it", () => {
+  assert.equal(countSounds("널리"), 5);
+  assert.equal(countSounds("야생동물들을"), 15);
+  assert.equal(countSounds("칭한다."), 8);
+});
+
+test("a Korean word read at an ordinary pace is not drawn out", () => {
+  const plan = reelPlan(
+    reel,
+    {scale: 1, spokenMs: 895, voicedFraction: 1, letters: countSounds("야생동물들을")},
+    undefined, rest);
+  assert.equal(plan.turnLagMs, 0);
+  assert.ok(plan.liftEm < 0.2);
 });

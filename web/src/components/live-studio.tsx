@@ -51,7 +51,7 @@ import {
   type QuietRun,
 } from "@/lib/caption-cues";
 import {
-  countLetters,
+  countSounds,
   quietLoudnessEdge,
   reelPlan,
   type ReelPlan,
@@ -485,7 +485,7 @@ const MotionWord = memo(function MotionWord({
           scale: motion.voice.scale,
           spokenMs,
           voicedFraction: voicedFraction(word),
-          letters: countLetters(word.text),
+          letters: countSounds(word.text),
         },
         quietRun,
         {

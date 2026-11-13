@@ -83,8 +83,24 @@ export function quietLoudnessEdge(reel: ReelMotion): number {
   return reel.scalePoints.find(([, above]) => above >= 0)?.[0] ?? 0;
 }
 
-export function countLetters(text: string): number {
-  return Math.max(1, text.replace(/[^\p{L}\p{N}]/gu, "").length);
+const HANGUL_FIRST = 0xac00;
+const HANGUL_LAST = 0xd7a3;
+const SILENT_INITIAL = 11;
+
+/** How many sounds a word is written with: letters, or the jamo inside each Hangul block. */
+export function countSounds(text: string): number {
+  let sounds = 0;
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code >= HANGUL_FIRST && code <= HANGUL_LAST) {
+      const index = code - HANGUL_FIRST;
+      const initial = Math.floor(index / 588) === SILENT_INITIAL ? 0 : 1;
+      sounds += initial + 1 + (index % 28 === 0 ? 0 : 1);
+    } else if (/[\p{L}\p{N}]/u.test(character)) {
+      sounds += 1;
+    }
+  }
+  return Math.max(1, sounds);
 }
 
 export function reelPlan(

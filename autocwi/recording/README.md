@@ -141,6 +141,8 @@ How it works (`render.py`):
 
 Checked on the PR film: 1,648 frames at 1280 by 720 in 164 s, analysis included. "louder" is spoken from 16.50 to 17.26 s; in the rendered frames it starts to grow at 16.50 s and is back by 17.50 s.
 
+A recording with no picture (a podcast, a voice memo) is drawn on a black 1280 by 720 frame at 30 frames a second. Checked on the Korean sample, `assets/sample-ko.wav`: 400 frames, Hangul in Noto Sans KR, the sound re-encoded to AAC.
+
 It needs Chrome or Chromium (`CHROME` names another executable) and an ffmpeg with `libx264`. A recording with a variable frame rate is drawn at its nominal rate.
 
 ## How a recording is shown
@@ -176,6 +178,7 @@ What watching the film against ours changed, each confirmed in frames first:
 - Quiet words shrink as a group, once, before they are spoken, and stay small to the end of the line.
 - The row's sideways-reveal animation clips the row to its own box and restarts when the row's width changes. A growing word changes the width, so "louder" was drawn with its tops and bottoms cut off. It is off for recordings.
 - A very big word moves its neighbours; ordinary pops only overlap.
+- "Drawn out" counts sounds, not characters. The rule compares a word's voiced length with what its letters account for, and a Hangul block holds two or three sounds. Counting blocks, 3 of the 13 words of the Korean sample floated as drawn out, in neutral read narration where nothing is. Counting the jamo inside each block, 1 does. English is unchanged: none of the PR film's 173 words moves.
 
 ## Limits
 
