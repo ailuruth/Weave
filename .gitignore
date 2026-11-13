@@ -61,3 +61,6 @@ scripts/*
 !scripts/fetch_font.py
 !scripts/fetch_streaming_model.py
 !scripts/hw/
+
+.agents/
+skills-lock.json
