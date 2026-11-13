@@ -1,63 +1,29 @@
 # Contributing
 
-## Setup
-
-Python 3.11 exactly, Node.js, and ffmpeg (`brew install ffmpeg`).
-
-```bash
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/fetch_font.py             # fonts, ~12 MB
-.venv/bin/python scripts/fetch_streaming_model.py  # models, ~2.2 GB
-npm --prefix web install && npm --prefix web run build
-```
-
-Always `.venv/bin/python`, never the system Python. After the downloads the app is fully offline. `fetch_streaming_model.py` takes `--korean-only`, `--speaker-only`, `--sortformer-only` and `--onset-only`.
-
-The recorded-video pipeline additionally wants Whisper (downloads on first `transcribe`) and an `HF_TOKEN` for pyannote diarization — inference still runs locally, the token only authorises the download. `--stub` runs it model-free.
-
-## See it run
-
-```bash
-.venv/bin/python -m autocwi live --sample          # bundled clip, no mic
-.venv/bin/python -m autocwi live                   # your microphone
-.venv/bin/python -m autocwi live --list-devices    # if the wrong mic is picked
-```
-
-Words appear before they are spoken, turn to a speaker colour as they are said, and pop as they turn. macOS asks for microphone permission per terminal app on the first run; a busy port is a leftover process (`pkill -f "autocwi live"`).
+Set up with the Quick start in [README.md](README.md). Use `.venv/bin/python`, never the system Python.
 
 ## Before you push
 
 ```bash
-npm --prefix web run check        # lint + reducer tests + static build
+npm --prefix web run lint
+npm --prefix web run test
+npm --prefix web run build
 ```
 
-`check` runs lint first and stops there if it fails. **Lint is red on `main`** — 18 `react-hooks/refs` errors in `live-studio.tsx`. Run the stages separately (`npm run lint`, `npm run test`, `npm run build`) and make sure your change does not add to the count.
+Lint has 10 known errors in `live-studio.tsx`. Do not add to them.
 
-The Python suite and the measurement probes are development tooling and are not distributed with the project. If you have them, run `pytest` too — it is offline by design and must stay that way.
+## Rules
 
-## Ground rules
-
-Breaking one of these makes the captions wrong in a way the tests do not catch.
-
-- **Local and offline.** No cloud inference, no telemetry. Permitted network: the one-time downloads and the LAN link to the hardware node.
-- **Every tunable lives in `config.yaml`**, with a comment citing its CWI section. A magic number in code is a bug to report.
-- **The CaptionSpec is a versioned contract** (`autocwi/schema.py`). Consumers read only it. Extend with optional fields; a breaking change bumps the version.
-- **A settled caption never re-animates.** A word gets its motion once, at its own moment on the acoustic timeline. Corrections update it in place and must never restart it. This is the load-bearing visual invariant.
-- **The design system outranks everything** — read the relevant section of [captionwithintention.org](https://captionwithintention.org) before changing any typography or motion.
-- **Language is chosen before capture** and locked for the session.
-- **The frontend stays statically exportable**: no required Node server, route handler, server action, cookie or rewrite.
+* Models run locally. Add no cloud call and no telemetry.
+* Put every tunable value in `config.yaml`.
+* Keep the caption file format in `autocwi/schema.py` compatible. Add optional fields only.
+* A word moves once. A correction updates it in place and never restarts its motion.
+* The design system at [captionwithintention.org](https://captionwithintention.org) decides typography and motion.
+* The language is chosen before capture and stays fixed for the session.
+* The studio must build to static files. Add no Node server.
 
 ## Making a change
 
-Start in `config.yaml`: change a value, re-run `live --sample`, watch it.
+Change a value in `config.yaml`, run `autocwi live --sample`, and watch the result. For a visual change, attach a screenshot to the pull request.
 
-For anything visual, **do not tune by eye**. There is a probe for each question — clipping, colour, row clearance, word overlap, whether a settled word moved again — and each takes `--broken` or an equivalent negative control. **Run that first: a check that has never been seen to fail is not evidence.**
-
-Work on a branch. A pull request says what changed, how it was verified (which probes, and a screenshot for anything visual), and which config values moved.
-
-This project captures a microphone in a room full of people. If you find a way audio or transcripts leave the machine on a path that is not documented as opt-in, report it privately rather than in a public issue.
-
-## Next
-
-[ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together · [the project page](https://nobel2040ne.github.io/Weave/) for what a caption does, and why.
+If you find a way that audio or transcripts leave the machine, report it privately.

@@ -1,204 +1,45 @@
 # Architecture
 
-Weave has three modes that share one analysis philosophy and one word-data shape:
+Weave has three modes. They share one word format.
 
-- **live** — captions from a microphone, in real time (the primary product);
-- **offline** — a batch pipeline over recorded media that ends at `spec.json`;
-- **`cc`** — the closed-caption renderer that plays a finished spec and is the motion reference the other two are measured against.
+* **live** captions a microphone in real time.
+* **caption** captions a recording and writes the files.
+* **cc** plays a finished caption file.
 
-## System diagram
+An older batch pipeline, `autocwi run`, also writes a caption file from recorded media.
 
-```
-live: startup UI ─► lock en/ko ─► load matching local recognizer ─► begin capture
+## How live captions flow
 
-      mic/file ─► lossless batcher ─► input gain ─┬─► EN 1120ms ─► read-ahead/commit ─┐
-      (recognizer copy only; prosody reads raw)   ├─► 160ms draft (readahead only) ──┤
-                                                  ├─► Parakeet verifier ─► final ────┤
-                                                  └─► KO 174M/320ms ─► final ────────┤
-                                                                                     ├─► CaptionSpec/SSE
-      audio ─► native Streaming Sortformer ─► provisional turn slots ────────────────┤
-            └─► endpoint segmentation + identity embedding ─► stable/corrected ──────┘        │
-                                      unknown | provisional | stable | corrected             ├─► Next.js studio
-                                                                                             │   (static export)
-                                                                                             ├─► legacy live.html
-                                                                                             └─► durable haptics
+1. Python captures audio and recognizes words with a local model.
+2. Python measures each word's loudness and pitch and decides who spoke.
+3. The server sends each word to the browser as an event.
+4. The studio shows the word in white before it is spoken.
+5. The word turns to its speaker's colour and moves as it is said.
 
-browser: SSE ─► revision reducer ─► per-word reveal queue ─► stable word identity
-                                                        ├─► measured audience stack
-                                                        ├─► acoustic sequential reveal
-                                                        ├─► per-character voice envelope
-                                                        └─► complete Transcript history
-         level ─► separate meter frame (never caption layout)
+## Modules
 
-offline:  media ─► transcribe ─► diarize ─► prosody ─► fuse ─► spec.json
-          (audio) (asr)         (diarize)  (prosody)  (fuse)      │
-                 words.json  segments.json prosody.json           ├─► future haptic module
-                                                                  └─► cc ─► captions.html
-
-reference:  screen recordings ─► measured per glyph ─► assets/reference_specs/*.json
-```
-
-## Module map
-
-### Live engine
-
-| Module | Responsibility |
+| Module | What it does |
 |---|---|
-| `autocwi/live.py` | The live engine and startup controller. Locks the English/Korean choice before capture, loads the matching recognizer, batches the mic/file source losslessly, applies adaptive input gain (recognizer copy only), runs recognition and hybrid diarization, and serves the replayable HTTP + SSE endpoints. |
-| `autocwi/sortformer.py` | Thread-safe bridge to the native Core ML diarizer. Keeps its timeline off the ASR thread and projects speaker spans onto words. |
-| `native/sortformer/` | Swift 6 helper (pinned to FluidAudio 0.15.5) that runs NVIDIA Streaming Sortformer v2.1 in Core ML on Apple Silicon and emits finalized/tentative speaker timelines. |
+| `autocwi/live.py` | Capture, recognition, speakers and the local server |
+| `autocwi/recording/` | Captioning a recording |
+| `autocwi/schema.py` | The caption file format |
+| `autocwi/check.py` | Checks a caption file |
+| `autocwi/ccpage.py` | Plays a finished caption file |
+| `autocwi/haptics.py` | Turns words and direction into motor cues |
+| `web/` | The studio, built to static files that Python serves |
+| `native/sortformer/` | Speaker separation on Apple Silicon |
+| `scripts/hw/` | The Raspberry Pi node |
+| `config.yaml` | Every tunable value |
 
-### Frontend
+## The caption file
 
-| Module | Responsibility |
-|---|---|
-| `web/` | Next.js App Router studio. Builds to a static export that Python serves at `/`. Provides the pre-capture language gate, the Stage/Transcript views, presentation settings, speaker cards, and the voice indicators — with no Node runtime. |
-| `web/src/lib/caption-store.ts` | Pure event reducer: stable word identity, independent revision channels, source/finality authority, and the reveal deadline policy. |
-| `web/src/lib/caption-paragraphs.ts` | Pure layout partitioner: Transcript keeps complete paragraphs; Stage flattens them into rows on a measured em budget and keeps as many as it measures room for. |
-| `web/src/hooks/use-caption-stream.ts` | Client boundary for the language session, the event stream, the reveal scheduler, reconnect state, and the `?demo=1` preview. |
-| `autocwi/recording/` | Captions a recording: transcribes it whole, times each word, directs sizes and speakers by sentence, exports, and draws the captioned video. Its `README.md` explains the stages. |
-| `autocwi/check.py` | `autocwi check FILE` checks a caption file for faults the schema cannot express, such as two speakers in one colour. |
-| `autocwi/livepage.py` | Generates the legacy `live.html` renderer (kept as a fallback and diagnostic tool). |
-| `autocwi/live_render_core.js` | Dependency-free ordering/reduction core shared by the legacy page and its Node tests. |
+`CaptionSpec` in `autocwi/schema.py` is the contract between analysis and anything that draws captions. It holds each word's text, time, speaker, loudness and pitch. Add optional fields freely. A change that breaks old files raises the version.
 
-### Reference renderer (`cc`)
+Live events use the same word shape and carry a stable `word_id`. A corrected word arrives again under the same id.
 
-| Module | Responsibility |
-|---|---|
-| `autocwi/ccpage.py` | Generates `captions.html` (and `tuner.html` with `--tune`). Because the text is known in advance, read-ahead, the color sweep through a word, and per-word motion are all exact. Playback is a pure function of time, so scrubbing reproduces a frame exactly. |
-| `autocwi/ccprosody.py` | Python mirror of the page's typography map, plus its inversion (measured emphasis → the loudness/pitch that reproduce it). Pinned to the JavaScript by a golden grid so the two can't drift. |
-| `autocwi/refmeasure.py` | Shared pixel-measurement code: glyph segmentation, color-turn timing, scroll recovery. One implementation so the recording and our own render are measured identically. |
+## Rules that hold everywhere
 
-### Offline pipeline
-
-| Module | Responsibility |
-|---|---|
-| `autocwi/asr.py` | Offline ASR (faster-whisper): word timestamps + confidence. |
-| `autocwi/diarize.py` | pyannote diarization (gated weights → `HF_TOKEN`); relabels speakers to S1, S2… by first appearance. |
-| `autocwi/prosody.py` | Per-word loudness (RMS dB) and pitch (median F0 + voiced fraction), restricted to ASR word spans. |
-| `autocwi/fuse.py` | Assigns words to speakers, normalizes loudness/pitch per speaker, assigns the palette, and emits a validated CaptionSpec. |
-| `autocwi/schema.py` | The CaptionSpec models (Pydantic v2) plus JSON I/O. **The versioned contract.** |
-| `autocwi/audio.py` | ffmpeg/ffprobe helpers: probe duration/fps, extract 16 kHz mono wav. |
-| `autocwi/stubs.py` | Deterministic placeholder stages (`--stub`) so the pipeline runs with zero models. |
-| `autocwi/device.py` | Compute-device selection (cuda → mps → cpu) and seeding. |
-| `autocwi/cli.py` | Subcommands: `live`, `caption`, `check`, `run`, `cc`, `tune`, `transcribe`, `diarize`, `prosody`, `fuse`. |
-
-## Data contract
-
-**`CaptionSpec` (`spec.json`)** is the stable, versioned (currently `"1.0"`) boundary between analysis and any consumer. Renderers and the future haptic module read only this — never the internal model objects.
-
-Key semantics:
-
-- `words[].loudness` / `pitch` — normalized **within each speaker** (5th–95th percentile of that speaker's own values), so the mapping reflects each voice's own range. Raw `loudness_db` / `pitch_hz` are kept alongside.
-- `words[].voiced_frac` — used to neutralize pitch styling on unvoiced words.
-- Optional speaker-lifecycle fields: `speaker_status` (`unknown | provisional | stable | corrected`), `speaker_confidence`, `speaker_change_probability`, `speaker_revision_id`, and `overlap`. A legacy word with none of these is treated as a stable assignment to its existing `speaker`.
-- `mapping` — how consumers should style: `loudness_to {axis, min, max, unit}` and `pitch_to {axis, min, max, invert, domain_hz}`. When `domain_hz` is set, the consumer maps **raw Hz** over that domain (CWI's absolute pitch convention).
-
-Example additive word fields:
-
-```json
-{
-  "speaker": "S1",
-  "speaker_status": "provisional",
-  "speaker_confidence": 0.72,
-  "speaker_change_probability": 0.81,
-  "speaker_revision_id": 4,
-  "overlap": false
-}
-```
-
-Every field here is optional and `1.0` files still validate. Absence means "legacy stable", **not** `unknown`.
-
-**Live events** (SSE `/events`, logged to `out/live_events.jsonl`) use the same word shape plus `type: "word"`, `final: true`, `utterance`, a stable `word_id`, revision counters, and `t` (absolute stream onset). Display clients also receive `type: "hypothesis"`, `"cue"`, `"commit"`, and `"verification"` events during the speech lifecycle; only `type: "word"` events are durable. Reconnect replays from `Last-Event-ID` without replaying motion.
-
-The renderer compares text, timing, speaker, finality, source authority, and SSE id rather than trusting arrival order, so a delayed provisional event cannot downgrade a settled word.
-
-## Live rendering
-
-The browser reduces the event stream into stable, per-word DOM nodes and presents them from a **playhead** that runs `display.read_ahead_delay_s` behind the acoustic clock. Because ASR delivers a word after it was spoken, that delay is what lets a word be on screen *before* its own colour turn — CWI 2.2.1's read-ahead, without predicting anything. The pipeline:
-
-```text
-SSE event
-  → merge by word_id (revisions collapse onto the same node)
-  → recover acoustic time from `level.t`; the playhead trails it by the delay
-  → freeze each word's turn moment: onset − clockOffset + delay
-  → hand that to CSS as one `--turn-delay`
-  → the browser schedules the 2.2.2 colour turn, the 2.2.3 pop and the
-    2.3 per-character voice phase off it — no JS timer, no queue
-```
-
-There is no reveal scheduler. Slots, gaps and backlog ceilings would be guessing, from arrival order, a moment the recording already carries.
-
-The load-bearing invariant: **text may be revised only ahead of the playhead.** Once the colour turn passes a word it is frozen — spelling included — so corrections land in the read-ahead zone where they are invisible. A settled word's typography returns exactly to normal. The frontend's non-negotiables are listed in [web/README.md](web/README.md), and [the project page](https://nobel2040ne.github.io/Weave/) shows the playhead running.
-
-## Speaker attribution
-
-Attribution runs live with four states — `unknown`, `provisional`, `stable`, `corrected` — and only `stable`/`corrected` may signal a speaker change. Timing and identity are separate evidence: Streaming Sortformer supplies continuous provisional turn slots, and at each endpoint a segmentation pass plus a full-turn voice embedding verifies the durable identity (ERes2Net for English, CAM++ for Korean). [the project page](https://nobel2040ne.github.io/Weave/) shows the four states and what each one may claim.
-
-## Design decisions
-
-- **Per-speaker loudness, absolute pitch.** Loudness is relative to a voice's own range; CWI's pitch→weight scale is explicitly absolute (80 Hz heavy ↔ 250 Hz thin), which also makes voice-to-voice contrast visible.
-- **Accuracy-first live path.** The streaming model gives fast provisional text; the endpoint verifier owns the durable result, aligned back onto the streaming timeline rather than re-rendering the sentence.
-- **Verified text is durable; attribution is revisable** under the same `word_id`.
-- **Backlog is lossless.** Capture blocks carry their source-clock position and drain into catch-up batches, so no audio is skipped.
-- **Two-layer level handling.** Adaptive gain drives only the recognizer's copy; raw captured loudness still feeds prosody, so size reflects true loudness.
-- **SSE over stdlib `http.server`.** One-way, automatic reconnect, no extra dependencies, replay from `Last-Event-ID`.
-- **Stable `word_id` nodes** survive every revision; an update never replaces the stage, the line, or the word.
-- **Stubs are first-class** (`--stub`): the contract is testable with no models.
-
-## Extension points
-
-**Haptics** — two lanes answering different questions. *Direction* is local: the node reads the array bearing and actuates itself, with no dependency on this contract, and it is what the wearable ships with because the word lane waits on the endpoint verifier. *Salience* is the contract's, and is opt-in: consume final `type: "word"` events or read `spec.json`; ignore hypotheses, cues, commits and provisional speaker changes; apply same-`word_id` revisions without re-actuating. It must never import analysis code. Anything needing sub-second latency belongs in the first lane.
-
----
-
-## Glossary
-
-**Weave** — this project. Text, voice, speaker and direction are recognised independently and woven together per word.
-
-**Caption with Intention (CWI)** — the design system implemented here, from the Chicago Hearing Society. Its three pillars:
-
-| Pillar | Question | How |
-|---|---|---|
-| **Attribution** | who is speaking | one colour per speaker, in wheel order |
-| **Synchronization** | when a word is spoken | it turns to that colour and pops as it is said |
-| **Intonation** | how it was said | a variable font: louder is larger, pitch moves weight and width |
-
-**Open captions** — burned into the view, not toggleable. Live mode renders these.
-
-### Speech processing
-
-| Term | Meaning |
-|---|---|
-| **ASR** | automatic speech recognition; runs locally here |
-| **Streaming ASR** | emits words as you speak, before the sentence ends — required for live |
-| **Diarization** | who spoke when. It separates speakers; it does not name them |
-| **Prosody** | the measurable qualities of *how* speech sounds: loudness, pitch, timing |
-| **Endpoint** | the moment a phrase finishes. A more accurate pass runs there |
-| **Onset** | the beginning of a word — the moment its colour turn is scheduled for |
-| **WER / CER** | word / character error rate, the standard accuracy metrics |
-
-### Models
-
-| Name | Role |
-|---|---|
-| **Nemotron** | the English streaming recognizer |
-| **Parakeet** | its endpoint verifier — owns the durable text |
-| **Zipformer** | the Korean streaming recognizer (174M, causal) |
-| **Sortformer** | streaming diarization, in Core ML on Apple Silicon |
-| **ERes2Net / CAM++** | voice embeddings that confirm identity at an endpoint (EN / KO) |
-| **Roboto Flex / Noto Sans KR** | the variable fonts; their axes are what carry intonation |
-
-### Data & runtime
-
-**CaptionSpec (`spec.json`)** — the versioned contract: words, timing, speaker, loudness, pitch, and how to style them. **Every consumer reads only this**, never the internal model objects. Defined in `autocwi/schema.py`.
-
-**SSE** — a one-way stream from Python to the browser over plain HTTP. Live captions arrive as `word` events; the browser reconnects and replays by itself.
-
-**Stage** — the audience-facing caption surface. **Transcript** — the complete history, by speaker and utterance. **Voice Compass** — the rail dial: volume, pitch, texture, and where each speaker is.
-
-**Haptics** — a motor ring that pulses on speaker changes and emphasis, never on every word. It consumes the same contract and imports no analysis code.
-
-### Run modes
-
-**live** — microphone to captions, in real time. The product. **`cc`** — plays a finished `spec.json` with the text known in advance, so it renders the exact reference motion. The benchmark, not the product. **offline** — a batch pipeline ending at `spec.json`, kept as the contract's reference generator.
+* Text changes only before a word turns colour. After that the word is fixed.
+* A word moves once. A correction never restarts its motion.
+* Models run on the machine by default.
+* Tunable values live in `config.yaml`, not in code.
