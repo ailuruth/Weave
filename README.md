@@ -71,6 +71,14 @@ To get the recording back with the captions drawn on it, exactly as the studio m
 
 That writes `OUT/exports/NAME.captioned.mp4`. The studio itself draws every frame in headless Chrome, and ffmpeg lays the frames over the original picture and keeps the original sound.
 
+To check a caption file, yours or an edited one, against the design system:
+
+```bash
+.venv/bin/python -m autocwi check out/exports/NAME.cwi.json
+```
+
+It reports speakers whose colours are the same or too close to tell apart, colours too dark for the caption box, words out of order or outside the recording, a size channel that never moves, and overlong lines. It exits 1 on an error.
+
 ## Commands
 
 Live — the product. Language is locked before capture.

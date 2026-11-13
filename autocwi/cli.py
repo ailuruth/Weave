@@ -91,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
     tn.add_argument("--media", default=None)
     tn.add_argument("--no-open", dest="no_open", action="store_true")
 
+    ck = sub.add_parser(
+        "check", help="check a caption file (spec.json / NAME.cwi.json) "
+                      "against the design system; exits 1 on an error")
+    ck.add_argument("spec")
+
     lv = sub.add_parser("live", help="live CWI captions from the microphone")
     lv.add_argument("--out", default="out")
     lv.add_argument("--config", default=None)
@@ -332,6 +337,12 @@ def stage_fuse(args, cfg, _device) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
+    if args.cmd == "check":
+        from .check import check_file, report
+
+        findings = check_file(args.spec)
+        print(report(findings))
+        raise SystemExit(1 if any(f.severity == "error" for f in findings) else 0)
     cfg = load_config(args.config)
     seed_everything(cfg["seed"])
     device = pick_device()
