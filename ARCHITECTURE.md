@@ -23,7 +23,6 @@ An older batch pipeline, `autocwi run`, also writes a caption file from recorded
 | `autocwi/live.py` | Capture, recognition, speakers and the local server |
 | `autocwi/recording/` | Captioning a recording |
 | `autocwi/schema.py` | The caption file format |
-| `autocwi/check.py` | Checks a caption file |
 | `autocwi/ccpage.py` | Plays a finished caption file |
 | `autocwi/haptics.py` | Turns words and direction into motor cues |
 | `web/` | The studio, built to static files that Python serves |
