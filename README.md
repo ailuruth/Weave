@@ -37,7 +37,6 @@ This writes the captioned video to `out/exports/`, with the captions as `.srt`, 
 .venv/bin/python -m autocwi live                  # captions from the microphone
 .venv/bin/python -m autocwi live --lang ko        # en, ko or multi
 .venv/bin/python -m autocwi live --sample         # the bundled film, no microphone
-.venv/bin/python -m autocwi check clip.cwi.json   # check a caption file
 .venv/bin/python -m autocwi cc spec.json          # play a finished caption file
 ```
 
@@ -53,7 +52,7 @@ This writes the captioned video to `out/exports/`, with the captions as `.srt`, 
 
 ## Related work
 
-Other open implementations of Caption with Intention are [opencaptions](https://github.com/broomva/opencaptions), [caption-with-intention](https://github.com/mjkang-estrella/caption-with-intention), [Alive-Caption](https://github.com/Segyun/Alive-Caption), [sightline](https://github.com/samadon1/sightline), [CIG](https://github.com/jutopia03/CIG-Caption-with-Intention-Generator-) and [Voxsama's studio](https://github.com/Voxsama/Caption-with-intention). The idea for `autocwi check`, which checks a caption file for mistakes, comes from opencaptions.
+Other open implementations of Caption with Intention are [opencaptions](https://github.com/broomva/opencaptions), [caption-with-intention](https://github.com/mjkang-estrella/caption-with-intention), [Alive-Caption](https://github.com/Segyun/Alive-Caption), [sightline](https://github.com/samadon1/sightline), [CIG](https://github.com/jutopia03/CIG-Caption-with-Intention-Generator-) and [Voxsama's studio](https://github.com/Voxsama/Caption-with-intention).
 
 ## License
 
