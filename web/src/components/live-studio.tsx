@@ -45,6 +45,12 @@ import {
 import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
 import {
+  activeCue,
+  buildCues,
+  CUE_HOLD_MS,
+  CUE_LEAD_MS,
+} from "@/lib/caption-cues";
+import {
   captionMotionFor,
   characterVoiceTypes,
   emphasisOf,
@@ -415,7 +421,11 @@ const MotionWord = memo(function MotionWord({
     memo.hold.set(id, holdTarget);
     setHoldAmount((current) => (current === holdTarget ? current : holdTarget));
   }, [holdSettled, holdTarget, holdAmount, id, memo]);
-  const holdEnvelope = holdEmphasis >= HOLD_ENVELOPE_EMPHASIS;
+  /* THE FILM'S CLOCK, for a captioned video: one short bell on every word,
+     the same length whatever the emphasis, with no held crest and no tail
+     stretched to the next word. */
+  const film = runtime.filmMotion ?? null;
+  const holdEnvelope = !film && holdEmphasis >= HOLD_ENVELOPE_EMPHASIS;
   /* How long this word takes to come back down: long enough to reach the
      next word's turn, so the stage is never still while anyone is talking. */
   const fallRef = useRef<number | null>(null);
@@ -497,7 +507,12 @@ const MotionWord = memo(function MotionWord({
     "--sync-pop": motion.sync.scale.toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
     "--word-lift-em": `${runtime.wordLiftEmEnhanced}em`,
-    "--motion-duration": `${duration.toFixed(0)}ms`,
+    "--motion-duration": `${(film ? film.riseMs + film.fallMs : duration).toFixed(0)}ms`,
+    ...(film ? {
+      "--film-lead": `${film.leadMs}ms`,
+      "--film-crouch-em": `${film.crouchEm}em`,
+      "--film-crouch-ms": `${film.crouchMs}ms`,
+    } : {}),
     // The 2.3 crest takes its own window so its rise tracks the colour wipe
     // instead of leading it (`crestDurationMs`); the pop and wave keep the
     // natural window.
@@ -513,8 +528,10 @@ const MotionWord = memo(function MotionWord({
       : (enhancedMotion ? "voice-phase-film" : "voice-phase"),
     /* The two halves of the split envelope. Only read when `data-tail` is
        `extended`; harmless otherwise. */
-    "--rise-ms": `${(crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
-    "--fall-ms": `${fallDurationMs(crestMs, fallRef.current ?? 0).toFixed(0)}ms`,
+    "--rise-ms": `${(film ? film.riseMs : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
+    "--fall-ms": `${(film
+      ? film.fallMs
+      : fallDurationMs(crestMs, fallRef.current ?? 0)).toFixed(0)}ms`,
     "--sync-envelope": enhancedMotion ? "word-sync-pop-film" : "word-sync-pop",
     // CWI 2.3 is a WORD-level property: in intonation.mov every glyph of
     // "louder" is the same size and weight, and every glyph of "softer" is
@@ -640,12 +657,13 @@ const MotionWord = memo(function MotionWord({
   useLayoutEffect(() => {
     const element = wordRef.current;
     const armed = armedRef.current;
+    if (film) return;  // a fixed fall: there is no neighbour to stretch to
     if (!element || fallRef.current !== null || !(paceGapS > 0)) return;
     if (armed !== null && performance.now() >= armed.turnAtMs) return;
     fallRef.current = paceGapS;
     element.style.setProperty(
       "--fall-ms", `${fallDurationMs(crestMs, paceGapS).toFixed(0)}ms`);
-  }, [crestMs, paceGapS]);
+  }, [crestMs, film, paceGapS]);
 
   return (
     <span
@@ -1700,6 +1718,40 @@ function MediaBackdrop({
       player.play().catch(() => undefined);
     });
   }, [playheadMs]);
+  /* WHERE THE PICTURE ACTUALLY IS. The video is letterboxed inside the stage,
+     and a caption is placed against the FRAME -- 91% of the way down the
+     picture, sized at 4.2% of its height -- not against the stage around it.
+     Published as CSS variables on the stage so the caption feed, a sibling,
+     can use them. */
+  useEffect(() => {
+    const player = ref.current;
+    const stage = player?.parentElement;
+    if (!player || !stage) return;
+    const place = () => {
+      const sw = stage.clientWidth;
+      const sh = stage.clientHeight;
+      const vw = player.videoWidth || 16;
+      const vh = player.videoHeight || 9;
+      const fit = Math.min(sw / vw, sh / vh);
+      const w = vw * fit;
+      const h = vh * fit;
+      stage.style.setProperty("--frame-w", `${w.toFixed(2)}px`);
+      stage.style.setProperty("--frame-h", `${h.toFixed(2)}px`);
+      stage.style.setProperty("--frame-left", `${((sw - w) / 2).toFixed(2)}px`);
+      stage.style.setProperty("--frame-top", `${((sh - h) / 2).toFixed(2)}px`);
+    };
+    place();
+    player.addEventListener("loadedmetadata", place);
+    const observer = new ResizeObserver(place);
+    observer.observe(stage);
+    return () => {
+      player.removeEventListener("loadedmetadata", place);
+      observer.disconnect();
+      for (const name of ["--frame-w", "--frame-h", "--frame-left", "--frame-top"]) {
+        stage.style.removeProperty(name);
+      }
+    };
+  }, []);
   return (
     <video
       ref={ref}
@@ -2154,6 +2206,32 @@ export function LiveStudio() {
       },
     )
     : paragraphs;
+  /* A RECORDING SHOWS ONE CAPTION LINE AT A TIME, the way a captioned film
+     does -- see `caption-cues.ts`. The rolling stack above is still computed
+     (its memory must not skip words) but is not what is drawn. */
+  const cues = useMemo(() => buildCues(timingWords), [timingWords]);
+  const cue = cues.length
+    ? activeCue(cues, playheadMs, {leadMs: CUE_LEAD_MS, holdMs: CUE_HOLD_MS})
+    : null;
+  const cueParagraphs = useMemo<CaptionParagraph[]>(() => (cue ? [{
+    id: `cue:${cue.cue}`,
+    speaker: cue.words[0]?.word.speaker ?? null,
+    status: "stable",
+    utterance: Number(cue.words[0]?.word.utterance ?? 0),
+    words: cue.words,
+  }] : []), [cue]);
+  /* Keyed on the WORDS carrying a caption line, not on a picture being up:
+     a sound-only recording, or one run from the command line for a probe, is
+     presented the same way. A live session's words carry none. */
+  const cueMode = cues.length > 0;
+  const stageRuntime = useMemo(
+    () => (cueMode ? {...runtime, filmMotion: runtime.videoMotion} : runtime),
+    [cueMode, runtime],
+  );
+  const shownParagraphs = cueMode ? cueParagraphs : stageParagraphs;
+  /* The film's caption is white on a black plate whatever the studio's
+     theme, so the light-stage substitutions do not apply over a picture. */
+  const lightCaptions = settings.lightStage && !cueMode;
   /* CWI 2.4.4/2.4.5: sound labels yield to speech. */
   const speechEndMs = useMemo(() => {
     let newest = Number.NEGATIVE_INFINITY;
@@ -2178,9 +2256,9 @@ export function LiveStudio() {
   const speakerColors = useSpeakerColors(
     paragraphs,
     runtime,
-    settings.lightStage,
+    lightCaptions,
   );
-  const fallbackColor = (settings.lightStage && runtime.paletteLight.length
+  const fallbackColor = (lightCaptions && runtime.paletteLight.length
     ? runtime.paletteLight
     : runtime.palette)[0];
   const activeColor = currentParagraph
@@ -2203,7 +2281,7 @@ export function LiveStudio() {
     // specifies against 2.4.1's 90%-black box. The light stage has no box, and
     // white measures 1.05:1 on it, so it takes the same-semantic legible value
     // the way palette_light does. Both arrive from config.yaml.
-    "--read-ahead-color": settings.lightStage
+    "--read-ahead-color": lightCaptions
       ? runtime.readAheadColorLight
       : runtime.readAheadColor,
     "--read-ahead-opacity": runtime.readAheadOpacity,
@@ -2235,6 +2313,7 @@ export function LiveStudio() {
       data-layout={settings.rollingCaptions ? "rolling" : "stack"}
       data-plate={settings.captionRules ? "rules" : "box"}
       data-media={mediaMode}
+      data-cues={cueMode ? "true" : "false"}
       data-language={session.language ?? "pending"}
       lang={session.language === "ko" ? "ko" : "en"}
       style={studioStyle}
@@ -2324,11 +2403,11 @@ export function LiveStudio() {
             <StageSound sound={speechActive ? null : model.sound} />
           )}
           <CaptionFeed
-            paragraphs={stageParagraphs}
+            paragraphs={shownParagraphs}
             timingWords={timingWords}
             speakerColors={speakerColors}
             intensity={settings.motionIntensity}
-            runtime={runtime}
+            runtime={stageRuntime}
             clockEpoch={clockEpoch}
             scheduleWord={scheduleWord}
             playheadMs={playheadMs}

@@ -284,6 +284,26 @@ motion:
       word_motion_enhanced_emphasis_ms: 626
       # How long AFTER the colour turn the size cue starts.
       crest_lag_ms: 0
+      # THE FILM'S OWN MOTION CLOCK, FOR A CAPTIONED VIDEO (2026-11-13).
+      # Measured per frame off PR_Flim.mp4 from 0:28 (88 trusted words, 24 fps;
+      # assets/reference_specs/pr_film_pixels.json), relative to the moment
+      # half a word's ink is coloured:
+      #   frame   -1    0    +1   +2   +3   +4   +5   +6
+      #   pop    .19  .59  .86  1.0  .95  .78  .27  .05   (share of its peak)
+      #   lift   .04  .58  .92  1.0  .79  .46  .19  .06
+      # So the motion begins ~40 ms before the wipe starts, peaks ~125 ms after
+      # it, and is over ~290 ms after it. The live values above run 0.58 s and
+      # peak 6 frames late against that; they stay as they are for the live
+      # stage, where the longer tail was asked for. These apply only when a
+      # recording is shown one caption line at a time.
+      video_motion:
+        lead_ms: 40
+        rise_ms: 163
+        fall_ms: 209
+        # Every word dips ~1.7 px (of 30 px type) over the ~4 frames before it
+        # rises -- a crouch before the jump.
+        crouch_em: 0.057
+        crouch_ms: 130
       # A WORD THAT WAITS RISES, AND LANDS AS IT TURNS.
       character_wave_falloff: 1.0
       # ...and no floor, for the same reason.

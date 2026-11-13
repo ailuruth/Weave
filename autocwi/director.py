@@ -129,3 +129,77 @@ def direct_recording(words: list[dict], settings: dict | None = None) -> list[di
                 "sentence_arousal": round(gate, 3),
             }
     return directed
+
+
+# ---------------------------------------------------------------------------
+# Caption lines
+# ---------------------------------------------------------------------------
+
+# The film's longest caption is 50 characters ("I've seen Forrest Gump many
+# times but now I'm like"), on one line at 4.2% of the frame height. A little
+# room above that, because a recognizer punctuates where the film did not.
+CUE_MAX_CHARS = 54
+# A line does not end on a word that belongs to what follows it.
+_LEADS_ON = frozenset(
+    "a an the to of in on at by for with and but or so that what which who "
+    "when where how if as is are was were be i you he she we they it my your "
+    "his her our their this these those".split())
+_CLAUSE_END = (",", ";", ":", "\u2014", "\u2013")
+
+
+def _cue_text_len(words: list[dict]) -> int:
+    return sum(len(str(w.get("text", ""))) for w in words) + max(0, len(words) - 1)
+
+
+def _word_end_s(word: dict) -> float:
+    return float(word.get("t", 0.0)) + max(
+        0.0, float(word.get("end", 0.0)) - float(word.get("start", 0.0)))
+
+
+def _split_line(words: list[dict], max_chars: int) -> list[list[dict]]:
+    if len(words) < 2 or _cue_text_len(words) <= max_chars:
+        return [words]
+    total = _cue_text_len(words)
+    best, best_cost = 1, float("inf")
+    for i in range(1, len(words)):
+        left, right = words[:i], words[i:]
+        cost = abs(_cue_text_len(left) - _cue_text_len(right)) / total
+        prev, nxt = words[i - 1], words[i]
+        # Where a captioner breaks: after a clause, at a pause, or where the
+        # speaker changes -- in that order of how much each is worth.
+        if str(prev.get("text", "")).rstrip().endswith(_CLAUSE_END):
+            cost -= 0.6
+        if prev.get("speaker") != nxt.get("speaker"):
+            cost -= 0.8
+        cost -= min(0.5, max(0.0, float(nxt.get("t", 0.0)) - _word_end_s(prev)) * 1.5)
+        if str(prev.get("text", "")).strip(".,;:!?\"'").lower() in _LEADS_ON:
+            cost += 0.25
+        if cost < best_cost:
+            best, best_cost = i, cost
+    return (_split_line(words[:best], max_chars)
+            + _split_line(words[best:], max_chars))
+
+
+def assign_cues(words: list[dict], max_chars: int = CUE_MAX_CHARS) -> list[dict]:
+    """Give every word the number of the caption line it is shown in.
+
+    A caption on a film is one line, on screen whole, replaced by the next.
+    A sentence is the unit (the recognizer's utterances are sentences for a
+    recording), and one too long for a line is split where a captioner would
+    split it. The film does exactly this: "I've seen Forrest Gump many times
+    but now I'm like" / "wow wow oh my God I can feel so much more." is one
+    spoken sentence on two captions.
+    """
+
+    out: list[dict] = []
+    cue = 0
+    i = 0
+    while i < len(words):
+        j = i
+        while j < len(words) and words[j].get("utterance") == words[i].get("utterance"):
+            j += 1
+        for line in _split_line(words[i:j], max_chars):
+            out.extend({**word, "cue": cue} for word in line)
+            cue += 1
+        i = j
+    return out

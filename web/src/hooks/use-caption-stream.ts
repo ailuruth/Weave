@@ -54,6 +54,18 @@ export interface LanguageSession {
   languages: LiveLanguageOption[];
 }
 
+/** Pop and lift timing read off the PR film -- see `video_motion` in
+   config.yaml for the per-frame measurement. */
+export interface FilmMotion {
+  /** How long before the colour wipe starts the motion begins. */
+  leadMs: number;
+  riseMs: number;
+  fallMs: number;
+  /** The dip before the rise, in em, and how long it takes. */
+  crouchEm: number;
+  crouchMs: number;
+}
+
 export interface RuntimeConfig {
   palette: string[];
   /** Speaker colors for the light stage: same hues, darkened to >=4.5:1. */
@@ -116,6 +128,11 @@ export interface RuntimeConfig {
   wordMotionEnhancedEmphasisMs: number;
   /** Enhanced: how far the size cue trails the turn, ms. */
   crestLagMs: number;
+  /** The film's measured motion clock, served for captioned video. */
+  videoMotion: FilmMotion;
+  /** Set by the studio, never served: the clock above, switched on for a
+     recording shown one caption line at a time. */
+  filmMotion?: FilmMotion | null;
   /** Enhanced: narrower 2.3 size deadband. */
   voiceScaleDeadbandEnhanced: number;
   /** Enhanced: slope of the continuous loudness ramp. */
@@ -213,6 +230,7 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   wordMotionEnhancedMs: 500,
   wordMotionEnhancedEmphasisMs: 0,
   crestLagMs: 40,
+  videoMotion: {leadMs: 40, riseMs: 163, fallMs: 209, crouchEm: 0.057, crouchMs: 130},
   voiceScaleDeadbandEnhanced: 0.1,
   voiceScaleResponseEnhanced: 0.5,
   voiceScalePivotEnhanced: 0.1,

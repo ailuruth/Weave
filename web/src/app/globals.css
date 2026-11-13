@@ -2447,48 +2447,61 @@ button {
   display: none;
 }
 
-/* THE CAPTIONS KEEP THE BOTTOM THIRD, in either layout. `max-height` is what
-   `useStageLayout` reads to count rows, so the row budget follows this number
-   and nothing else has to be told. `top: auto` + `bottom` + `flex-end` are the
-   same three load-bearing declarations the rolling layout uses. */
-.studio-shell[data-media="video"] .caption-feed {
-  top: auto;
-  bottom: 3%;
-  max-height: 27%;
-  justify-content: flex-end;
+/* ONE CAPTION LINE, WHERE THE FILM PUTS IT (2026-11-13, at the user's
+   request: the video caption must match the reference in size, style and
+   position so the two can be measured against each other).
+
+   Every number here was read off PR_Flim.mp4 (1280x720), as a fraction of the
+   FRAME, which `MediaBackdrop` publishes as --frame-*:
+     type size   x-height 16 px -> 30 px type      4.2% of the frame height
+     plate       rows 624-675, 52 px tall          top 86.67%, height 7.22%
+     baseline    row 657.5                         91.3% of the frame height
+     side pad    ~11 px                            .37em
+     plate ink   ~88-90% black, square corners     CWI 2.4.1's box
+     alignment   centred on the frame
+   The rolling stack, its history, the two rules and the gradient field are
+   all the LIVE stage's; none of them is drawn here. */
+.studio-shell[data-cues="true"] .caption-feed {
+  left: var(--frame-left, 0px);
+  right: auto;
+  width: var(--frame-w, 100%);
+  top: calc(var(--frame-top, 0px) + var(--frame-h, 100cqh) * .8667);
+  bottom: auto;
+  height: calc(var(--frame-h, 100cqh) * .0722);
+  max-height: none;
+  padding: 0;
+  /* A popped word rises out of the plate over the picture. It does in the
+     film too -- clipping it at the plate is what would be wrong. */
+  overflow: visible;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--frame-h, 100cqh) * .042 * var(--caption-scale, 1));
 }
 
-/* CWI 2.4.1's box exists so type survives whatever the picture is doing
-   behind it. Rows here come and go, so the plate is one soft field under the
-   whole caption band instead of a box per row: it takes the stage's own
-   ground, so both themes keep the contrast they were measured at. */
-.studio-shell[data-media="video"] .caption-stage::after {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 38%;
-  pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--stage-bg) 94%, transparent) 0%,
-    color-mix(in srgb, var(--stage-bg) 86%, transparent) 62%,
-    transparent 100%
-  );
+.studio-shell[data-cues="true"] .caption-feed .caption-paragraph[data-row-id] {
+  width: auto;
+  max-width: none;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 1;
 }
 
-/* History over a film is clutter the picture has to compete with (first
-   build: five receding rows across the middle of the frame). The live row and
-   the one before it stay; anything older is gone, not dimmed. */
-.studio-shell[data-media="video"] .caption-paragraph:nth-last-child(n+3) {
-  opacity: 0;
+.studio-shell[data-cues="true"] .caption-feed .caption-surface {
+  height: 100%;
+  max-width: none;
+  padding: 0 .37em;
+  border: 0;
+  background: rgba(0, 0, 0, .9);
+  box-shadow: none;
 }
 
-.studio-shell[data-media="video"][data-layout="rolling"]
-  .caption-paragraph:nth-last-child(2) {
-  opacity: .7;
+.studio-shell[data-cues="true"] .caption-feed .caption-words {
+  flex-wrap: nowrap;
+  max-width: none;
+  padding: 0;
+  white-space: nowrap;
 }
 
 /* CWI 2.4.4, on the picture: white, bracketed, on its own plate, at the top
@@ -2626,4 +2639,115 @@ button {
   color: var(--muted);
   font: 400 14px/1.43 var(--font-ui);
   letter-spacing: -.224px;
+}
+
+/* ── THE FILM'S MOTION CLOCK, for a captioned video ──────────────────────
+   Keyframes fitted to the per-frame measurement in config.yaml
+   (`video_motion`): one short bell, starting `--film-lead` before the colour
+   wipe, the same for every word. Rise and fall are separate animations so the
+   two durations stay independent, exactly as on the live clock.
+
+   Stops are the film's own samples, re-expressed as fractions of each half:
+     rise  (163 ms, from -40 ms)  .19 at 23%  .59 at 49%  .86 at 75%  1 at 100%
+     fall  (209 ms)               .87 at 20%  .62 at 40%  .23 at 60%  .05 at 80%
+   The fall is the mean of the film's pop and lift returns, which differ by
+   less than one 24 fps sample can resolve. NO UNDERSHOOT and no tail: the
+   film's words come straight back to rest, and every one of them does. */
+.studio-shell[data-cues="true"][data-motion="enhanced"]
+  .caption-word[data-tail="extended"] {
+  animation:
+    reel-phase-rise var(--rise-ms) linear
+      calc(var(--turn-delay) - var(--film-lead, 0ms)) forwards,
+    reel-phase-fall var(--fall-ms) linear
+      calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms)) forwards;
+}
+
+/* The crouch is listed FIRST so the rise, which fills forwards, owns the
+   transform from the moment it starts; before that the crouch's own forwards
+   fill holds the dip the rise's first stop picks up from. */
+.studio-shell[data-cues="true"][data-motion="enhanced"]
+  .caption-word[data-tail="extended"] .word-glyph {
+  animation-name: reel-crouch, reel-lift-rise, reel-lift-fall;
+  animation-duration: var(--film-crouch-ms, 130ms), var(--rise-ms), var(--fall-ms);
+  animation-timing-function: ease-out, linear, linear;
+  animation-delay:
+    calc(var(--turn-delay) - var(--film-lead, 0ms) - var(--film-crouch-ms, 130ms)),
+    calc(var(--turn-delay) - var(--film-lead, 0ms)),
+    calc(var(--turn-delay) - var(--film-lead, 0ms) + var(--rise-ms));
+  animation-fill-mode: forwards, forwards, forwards;
+}
+
+@keyframes reel-phase-rise {
+  0% { --voice-phase: 0; }
+  23% { --voice-phase: .19; }
+  49% { --voice-phase: .59; }
+  75% { --voice-phase: .86; }
+  100% { --voice-phase: 1; }
+}
+
+@keyframes reel-phase-fall {
+  0% { --voice-phase: 1; }
+  20% { --voice-phase: .87; }
+  40% { --voice-phase: .62; }
+  60% { --voice-phase: .23; }
+  80% { --voice-phase: .05; }
+  100% { --voice-phase: 0; }
+}
+
+@keyframes reel-crouch {
+  0% { transform: translate3d(-50%, 0, 0) scale(1); }
+  100% { transform: translate3d(-50%, var(--film-crouch-em, .057em), 0) scale(1); }
+}
+
+@keyframes reel-lift-rise {
+  0% { transform: translate3d(-50%, var(--film-crouch-em, .057em), 0) scale(1); }
+  23% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.19), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .19));
+  }
+  49% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.59), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .59));
+  }
+  75% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.86), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .86));
+  }
+  100% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
+      scale(var(--sync-pop));
+  }
+}
+
+@keyframes reel-lift-fall {
+  0% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
+      scale(var(--sync-pop));
+  }
+  20% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.87), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .87));
+  }
+  40% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.62), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .62));
+  }
+  60% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.23), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .23));
+  }
+  80% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.05), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .05));
+  }
+  100% { transform: translate3d(-50%, 0, 0) scale(1); }
 }

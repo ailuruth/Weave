@@ -32,6 +32,9 @@ export interface CaptionWord {
   /** The SPEAKER's running median F0, for 2.3.7's register half. */
   pitch_register_hz?: number;
   voiced_frac?: number;
+  /** The caption line this word is shown in. Recordings only -- the server
+     assigns it once the whole file is known. */
+  cue?: number;
   spectral_centroid_hz?: number;
   pitch_confidence?: number;
   delivery_force?: number;

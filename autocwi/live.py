@@ -51,7 +51,7 @@ from urllib.parse import parse_qs, urlsplit
 import numpy as np
 
 from autocwi import haptics, netaudio
-from autocwi.director import direct_recording
+from autocwi.director import assign_cues, direct_recording
 
 SR = 16_000
 BLOCK = 1024  # samples per audio block (~64 ms)
@@ -5896,8 +5896,19 @@ def analysed_events(
         slots = [i for i, (_, ev) in enumerate(score) if ev.get("type") == "word"]
         revised = direct([score[i][1] for i in slots])
         if len(revised) == len(slots):
+            # A CAPTION LINE ARRIVES WHOLE. Words that share a `cue` are all
+            # released when the first of them is, so the line can be drawn
+            # complete, in white, before its first word is spoken (2.2.1) --
+            # released one by one, a line would grow as it was read.
+            cue_start: dict[object, float] = {}
             for i, word in zip(slots, revised):
-                score[i] = (score[i][0], word)
+                if "cue" in word:
+                    cue_start[word["cue"]] = min(
+                        cue_start.get(word["cue"], score[i][0]), score[i][0])
+            for i, word in zip(slots, revised):
+                score[i] = (cue_start.get(word.get("cue"), score[i][0]), word)
+            order = sorted(range(len(score)), key=lambda k: (score[k][0], k))
+            score = [score[k] for k in order]
     if ready is not None:
         ready()
     started = clock()
@@ -7006,6 +7017,13 @@ def _studio_runtime_config(
         "wordMotionEnhancedEmphasisMs": live_sync.get(
             "word_motion_enhanced_emphasis_ms", 0),
         "crestLagMs": live_sync.get("crest_lag_ms", 40),
+        "videoMotion": {
+            "leadMs": (live_sync.get("video_motion") or {}).get("lead_ms", 40),
+            "riseMs": (live_sync.get("video_motion") or {}).get("rise_ms", 163),
+            "fallMs": (live_sync.get("video_motion") or {}).get("fall_ms", 209),
+            "crouchEm": (live_sync.get("video_motion") or {}).get("crouch_em", 0.057),
+            "crouchMs": (live_sync.get("video_motion") or {}).get("crouch_ms", 130),
+        },
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),
         "voiceScaleResponseEnhanced": live_sync.get(
@@ -7533,8 +7551,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                         f"analysing {round(done * 100)}%", lang),
                     ready=_listening,
                     cancelled=language_session.restart_pending,
-                    direct=lambda words: direct_recording(
-                        words, live_cfg.get("import_director")),
+                    direct=lambda words: assign_cues(direct_recording(
+                        words, live_cfg.get("import_director"))),
                 )
         events_path = out / "live_events.jsonl"
 
