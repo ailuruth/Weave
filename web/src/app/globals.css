@@ -3343,6 +3343,16 @@ button {
   --rail-width: var(--panel-width);
 }
 
+.view-switcher {
+  transition: translate var(--dur-base) var(--ease-standard);
+}
+
+@media (min-width: 721px) {
+  .studio-shell[data-editor="open"] .view-switcher {
+    translate: calc((var(--rail-width) + var(--space-4)) / -2) 0;
+  }
+}
+
 .studio-shell[data-editor="open"] .signal-rail {
   display: block;
   overflow: hidden;
