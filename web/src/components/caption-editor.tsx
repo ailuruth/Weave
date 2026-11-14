@@ -2,7 +2,6 @@
 
 import {RotateCcw, Undo2, X} from "lucide-react";
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -13,43 +12,25 @@ import {
   NORMAL_SIZE,
   breakBefore,
   clockLabel,
-  firstChange,
   joinPrevious,
   lineAt,
   linesOf,
   moveStart,
   nextSpeaker,
-  playWindow,
   removeWord,
   setSize,
   setSpeaker,
   setText,
-  type CaptionDocument,
   type EditLine,
   type EditWord,
 } from "@/lib/caption-edit";
 import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
+import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
-const CAPTIONS_URL = "/session/captions";
-const HISTORY_LIMIT = 50;
 const NUDGE_S = 0.05;
 const SIZE_SNAP = 0.03;
-
-async function request(body?: object): Promise<CaptionDocument> {
-  const response = await fetch(CAPTIONS_URL, body ? {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify(body),
-  } : undefined);
-  const value = await response.json().catch(() => null) as
-    (CaptionDocument & {error?: string}) | null;
-  if (!response.ok || !value) {
-    throw new Error(value?.error ?? "The captions could not be reached.");
-  }
-  return value;
-}
 
 function sizeLabel(size: number): string {
   if (size < NORMAL_SIZE - SIZE_SNAP) return "Small";
@@ -231,7 +212,7 @@ export function CaptionEditor({
   positionS,
   playing,
   seek,
-  changed,
+  captions,
 }: {
   colors: SpeakerColorMap;
   close: () => void;
@@ -239,29 +220,14 @@ export function CaptionEditor({
   positionS: number;
   playing: boolean;
   seek: (positionS: number) => void;
-  /** The captions changed; this span of the recording is what changed. */
-  changed: (span: {startS: number; endS: number}) => void;
+  captions: CaptionDocumentState;
 }) {
-  const [doc, setDoc] = useState<CaptionDocument | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const {doc, error, busy, canUndo, commit, undo, revert} = captions;
+  const [picked, setSelected] = useState<number | null>(null);
   const [wholeLine, setWholeLine] = useState(true);
-  const [history, setHistory] = useState<EditWord[][]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    request()
-      .then((value) => {
-        if (!cancelled) setDoc(value);
-      })
-      .catch((reason: Error) => {
-        if (!cancelled) setError(reason.message);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const selected = picked !== null && doc && doc.words.length
+    ? Math.min(picked, doc.words.length - 1)
+    : null;
 
   const lines = useMemo<EditLine[]>(() => linesOf(doc?.words ?? []), [doc]);
   const current = lines.find((entry) => positionS >= entry.start && positionS <= entry.end)
@@ -273,65 +239,6 @@ export function CaptionEditor({
       currentRef.current?.scrollIntoView({block: "nearest"});
     }
   }, [currentFirst, playing]);
-
-  const run = useCallback(async (
-    body: object,
-    optimistic?: EditWord[],
-  ): Promise<CaptionDocument | null> => {
-    const before = doc;
-    if (!before) return null;
-    setBusy(true);
-    setError(null);
-    if (optimistic) setDoc({...before, words: optimistic});
-    try {
-      const next = await request(body);
-      setDoc((current) =>
-        current && next.generation < current.generation ? current : next);
-      setSelected((index) => index === null || !next.words.length
-        ? null
-        : Math.min(index, next.words.length - 1));
-      return next;
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "That change was refused.");
-      setDoc(await request().catch(() => before));
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }, [doc]);
-
-  const announce = useCallback((words: EditWord[], focus: number) => {
-    const window = playWindow(words, focus);
-    if (window) changed({startS: window.from, endS: window.until});
-  }, [changed]);
-
-  const commit = useCallback(async (words: EditWord[], focus: number) => {
-    if (!doc) return;
-    const before = doc.words;
-    const next = await run({action: "adjust", words}, words);
-    if (!next) return;
-    setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
-    announce(next.words, focus);
-  }, [announce, doc, run]);
-
-  const undo = useCallback(async () => {
-    const previous = history.at(-1);
-    if (!previous || !doc) return;
-    const focus = firstChange(doc.words, previous);
-    const next = await run({action: "adjust", words: previous}, previous);
-    if (!next) return;
-    setHistory((past) => past.slice(0, -1));
-    announce(next.words, focus);
-  }, [announce, doc, history, run]);
-
-  const revert = useCallback(async () => {
-    if (!doc) return;
-    const before = doc.words;
-    const next = await run({action: "revert"});
-    if (!next) return;
-    setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
-    announce(next.words, 0);
-  }, [announce, doc, run]);
 
   const word = doc && selected !== null ? doc.words[selected] : undefined;
   const line = selected !== null ? lineAt(lines, selected) : null;
@@ -345,8 +252,8 @@ export function CaptionEditor({
             className="icon-button"
             type="button"
             aria-label="Undo"
-            title="Undo"
-            disabled={!history.length || busy}
+            title="Undo (⌘Z)"
+            disabled={!canUndo}
             onClick={() => void undo()}
           >
             <Undo2 size={15} />

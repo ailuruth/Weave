@@ -3153,7 +3153,7 @@ button {
 
 .timeline-track {
   position: relative;
-  height: 96px;
+  height: 116px;
   margin: 0 16px;
   overflow: hidden;
   cursor: default;
@@ -3227,6 +3227,75 @@ button {
 
 .timeline-line span {
   pointer-events: none;
+}
+
+.timeline-line[data-editable="true"] {
+  cursor: grab;
+}
+
+.timeline-line[data-dragging="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+  cursor: grabbing;
+}
+
+.timeline-line i[data-edge] {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+}
+
+.timeline-line i[data-edge="start"] {
+  left: 0;
+}
+
+.timeline-line i[data-edge="end"] {
+  right: 0;
+}
+
+.timeline-sounds {
+  position: absolute;
+  top: 97px;
+  left: 0;
+  right: 0;
+  height: 18px;
+  pointer-events: none;
+}
+
+.timeline-sounds span {
+  position: absolute;
+  top: 0;
+  height: 18px;
+  min-width: 3px;
+  padding: 0 6px;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+  background: var(--surface-soft);
+  color: var(--muted-2);
+  font: italic 400 11px/18px var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-speed {
+  min-width: 40px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text);
+  font: 400 12px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.timeline-speed:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .timeline-line:hover {

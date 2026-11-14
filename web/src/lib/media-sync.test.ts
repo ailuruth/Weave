@@ -110,3 +110,13 @@ test("a paused recording stands on the frame under the playhead", () => {
     {kind: "still", atS: 60},
   );
 });
+
+test("at a slower speed the recording runs at that speed and leans from it", () => {
+  assert.deepEqual(
+    mediaSyncAction({...playing, playheadMs: 10_000, currentTimeS: 10, rate: 0.5}),
+    {kind: "trim", rate: 0.5},
+  );
+  const behind = mediaSyncAction({...playing, playheadMs: 10_000, currentTimeS: 9.9, rate: 0.5});
+  assert.equal(behind.kind, "trim");
+  assert.ok(behind.kind === "trim" && behind.rate > 0.5 && behind.rate <= 0.525);
+});

@@ -39,7 +39,9 @@ import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
 import {CaptionEditor} from "@/components/caption-editor";
 import {RecordingTimeline} from "@/components/recording-timeline";
-import {useHeldAnimations} from "@/hooks/use-held-animations";
+import {useCaptionDocument, type CaptionSpan} from "@/hooks/use-caption-document";
+import {useStageAnimations} from "@/hooks/use-stage-animations";
+import {lineForPlayhead, linesOf, retimeLine} from "@/lib/caption-edit";
 import {useRecordingTransport} from "@/hooks/use-recording-transport";
 import {
   lineAt as timelineLineAt,
@@ -1739,10 +1741,12 @@ function MediaBackdrop({
   media,
   playheadMs,
   held,
+  rate,
 }: {
   media: ImportedMedia;
   playheadMs: number;
   held: boolean;
+  rate: number;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -1755,6 +1759,7 @@ function MediaBackdrop({
       ended: player.ended,
       durationS: player.duration,
       held,
+      rate,
     });
     if (action.kind === "hold") {
       if (!player.paused) player.pause();
@@ -1770,7 +1775,7 @@ function MediaBackdrop({
       if (player.playbackRate !== action.rate) player.playbackRate = action.rate;
       return;
     }
-    player.playbackRate = 1;
+    player.playbackRate = rate;
     player.currentTime = action.atS;
     if (action.kind !== "play") return;
     // Browsers refuse playback with sound until the page has had a gesture.
@@ -1778,7 +1783,7 @@ function MediaBackdrop({
       player.muted = true;
       player.play().catch(() => undefined);
     });
-  }, [playheadMs, held]);
+  }, [playheadMs, held, rate]);
   useEffect(() => {
     const unmute = () => {
       if (ref.current) ref.current.muted = false;
@@ -2301,7 +2306,7 @@ export function LiveStudio() {
   );
 
   const stageRef = useRef<HTMLDivElement>(null);
-  useHeldAnimations(stageRef, held);
+  useStageAnimations(stageRef, held ? 0 : transport.ready ? transport.rate : 1);
   const {
     toggle: transportToggle,
     seek: transportSeek,
@@ -2311,31 +2316,6 @@ export function LiveStudio() {
     durationS: transportDuration,
     ready: transportReady,
   } = transport;
-  useEffect(() => {
-    if (!transportReady) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.defaultPrevented) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
-      const position = transportPosition.current ?? 0;
-      const step = event.altKey ? 1 / 30 : event.shiftKey ? 5 : 1;
-      let handled = true;
-      if (event.key === " " || event.key === "k") transportToggle();
-      else if (event.key === "ArrowLeft") transportSeek(position - step);
-      else if (event.key === "ArrowRight") transportSeek(position + step);
-      else if (event.key === "ArrowUp") transportSeek(previousLineStart(transportLines, position));
-      else if (event.key === "ArrowDown") {
-        const next = nextLineStart(transportLines, position);
-        if (next !== null) transportSeek(next);
-      } else if (event.key === "Home") transportSeek(0);
-      else if (event.key === "End") transportSeek(transportDuration);
-      else handled = false;
-      if (handled) event.preventDefault();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [transportReady, transportToggle, transportSeek, transportPosition, transportLines,
-      transportDuration]);
   // Which words start a row. Persisted so a later edit to earlier text cannot
   // re-chunk rows the viewer has already read -- see selectStableCaptionStack.
   // Held as lazily-initialised state rather than a ref: the object identity is
@@ -2412,13 +2392,64 @@ export function LiveStudio() {
   const cueId = cue?.cue ?? null;
   const cueLeadS = runtime.videoMotion.cueLeadMs / 1000;
   const cueHoldS = runtime.videoMotion.cueHoldMs / 1000;
-  const afterEdit = useCallback(({startS, endS}: {startS: number; endS: number}) => {
+  const afterEdit = useCallback(({startS, endS, follow}: CaptionSpan) => {
     void transportReload().then(() => {
+      if (!follow) return;
       const position = transportPosition.current ?? 0;
       const span = [{cue: 0, startS, endS, text: "", speaker: null}];
       if (!timelineLineAt(span, position, cueLeadS, cueHoldS)) transportSeek(startS);
     });
   }, [transportReload, transportPosition, transportSeek, cueLeadS, cueHoldS]);
+  const captions = useCaptionDocument(transportReady, afterEdit);
+  const {
+    doc: captionsDoc,
+    commit: captionsCommit,
+    undo: captionsUndo,
+    redo: captionsRedo,
+  } = captions;
+  useEffect(() => {
+    if (!transportReady) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const position = transportPosition.current ?? 0;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        void (event.shiftKey ? captionsRedo() : captionsUndo());
+        return;
+      }
+      if (event.metaKey || event.ctrlKey) return;
+      if ((event.key === "[" || event.key === "]") && captionsDoc) {
+        const line = lineForPlayhead(linesOf(captionsDoc.words), position);
+        if (line) {
+          event.preventDefault();
+          void captionsCommit(retimeLine(
+            captionsDoc.words, line.first, line.last,
+            event.key === "[" ? position : line.start,
+            event.key === "]" ? position : line.end,
+          ), line.first, false);
+        }
+        return;
+      }
+      const step = event.altKey ? 1 / 30 : event.shiftKey ? 5 : 1;
+      let handled = true;
+      if (event.key === " " || event.key === "k") transportToggle();
+      else if (event.key === "ArrowLeft") transportSeek(position - step);
+      else if (event.key === "ArrowRight") transportSeek(position + step);
+      else if (event.key === "ArrowUp") transportSeek(previousLineStart(transportLines, position));
+      else if (event.key === "ArrowDown") {
+        const next = nextLineStart(transportLines, position);
+        if (next !== null) transportSeek(next);
+      } else if (event.key === "Home") transportSeek(0);
+      else if (event.key === "End") transportSeek(transportDuration);
+      else handled = false;
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [transportReady, transportToggle, transportSeek, transportPosition, transportLines,
+      transportDuration, captionsDoc, captionsCommit, captionsUndo, captionsRedo]);
   const cueSize = runtime.cueLook.size;
   const widenMax = runtime.videoMotion.widenMax;
   useLayoutEffect(() => {
@@ -2631,7 +2662,12 @@ export function LiveStudio() {
               same vibration -- moved to where it is legible. `autocwi cc`,
               which renders to the design system's own layout, is untouched. */}
           {activeMedia && (
-            <MediaBackdrop media={activeMedia} playheadMs={playheadMs} held={held} />
+            <MediaBackdrop
+              media={activeMedia}
+              playheadMs={playheadMs}
+              held={held}
+              rate={transport.ready ? transport.rate : 1}
+            />
           )}
           {activeMedia && (
             <StageSound sound={speechActive ? null : model.sound} />
@@ -2665,6 +2701,7 @@ export function LiveStudio() {
         {transport.ready && (
           <RecordingTimeline
             transport={transport}
+            captions={captions}
             colors={speakerColors}
             currentCue={cueId}
           />
@@ -2682,7 +2719,7 @@ export function LiveStudio() {
             positionS={Math.max(0, playheadMs / 1000)}
             playing={transport.playing}
             seek={transportSeek}
-            changed={afterEdit}
+            captions={captions}
           />
         ) : (<>
         <section className="rail-section compass-section">

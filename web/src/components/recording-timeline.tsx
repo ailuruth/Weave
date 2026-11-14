@@ -17,7 +17,9 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 import type {RecordingTransport} from "@/hooks/use-recording-transport";
+import {linesOf, moveLine, retimeLine, type EditWord} from "@/lib/caption-edit";
 import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
 import {
   fitView,
@@ -37,23 +39,80 @@ type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 const ZOOM_STEP = 1.6;
 const BAR_PX = 3;
+const SNAP_PX = 8;
+const DRAG_PX = 3;
+const SPEEDS = [1, 0.75, 0.5];
+
+type DragMode = "move" | "start" | "end";
+
+interface Drag {
+  cue: number;
+  mode: DragMode;
+  x0: number;
+  moved: boolean;
+  /** Released and sent: kept on screen until the new score arrives. */
+  sent: boolean;
+  /** Where the line goes, placed exactly as the change will place it. */
+  span: {startS: number; endS: number} | null;
+}
+
+/** The words after dragging line `cue` by `deltaS`, with its moving edges snapped. */
+function dragged(
+  words: readonly EditWord[],
+  cue: number,
+  mode: DragMode,
+  deltaS: number,
+  snap: (seconds: number) => number,
+): {words: EditWord[]; first: number} | null {
+  const line = linesOf(words).find((entry) => words[entry.first].line === cue);
+  if (!line) return null;
+  if (mode === "move") {
+    const start = snap(line.start + deltaS);
+    const end = snap(line.end + deltaS);
+    const delta = start !== line.start + deltaS ? start - line.start : end - line.end;
+    return {words: moveLine(words, line.first, line.last, delta), first: line.first};
+  }
+  return {
+    words: mode === "start"
+      ? retimeLine(words, line.first, line.last, snap(line.start + deltaS), line.end)
+      : retimeLine(words, line.first, line.last, line.start, snap(line.end + deltaS)),
+    first: line.first,
+  };
+}
+
+function spanOf(words: readonly EditWord[], cue: number): {startS: number; endS: number} | null {
+  const mine = words.filter((word) => word.line === cue);
+  if (!mine.length) return null;
+  return {startS: mine[0].start, endS: Math.max(...mine.map((word) => word.end))};
+}
 
 export function RecordingTimeline({
   transport,
+  captions,
   colors,
   currentCue,
 }: {
   transport: RecordingTransport;
+  captions: CaptionDocumentState;
   colors: SpeakerColorMap;
   /** The caption line under the playhead, to mark its block. */
   currentCue: number | null;
 }) {
-  const {durationS, lines, levels, positionRef, playing, seek, play, pause, toggle} = transport;
+  const {
+    durationS, lines, sounds, levels, positionRef, playing, rate, generation,
+    seek, play, pause, toggle, setRate,
+  } = transport;
   const [view, setView] = useState<View>(() => fitView(durationS));
   const [fittedTo, setFittedTo] = useState(durationS);
   if (fittedTo !== durationS) {
     setFittedTo(durationS);
     setView(fitView(durationS));
+  }
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [scoreSeen, setScoreSeen] = useState(generation);
+  if (scoreSeen !== generation) {
+    setScoreSeen(generation);
+    if (drag?.sent) setDrag(null);
   }
   const [width, setWidth] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -65,7 +124,6 @@ export function RecordingTimeline({
   useEffect(() => {
     viewRef.current = view;
   }, [view]);
-
 
   useEffect(() => {
     const track = trackRef.current;
@@ -124,12 +182,17 @@ export function RecordingTimeline({
     return () => track.removeEventListener("wheel", onWheel);
   }, [durationS]);
 
+  const span = Math.max(1e-6, view.endS - view.startS);
+  const perPx = span / Math.max(1, width);
+  const at = (seconds: number) => ((seconds - view.startS) / span) * 100;
+  const position = () => positionRef.current ?? 0;
+
   const timeAt = (clientX: number) => {
     const track = trackRef.current;
     if (!track) return 0;
     const box = track.getBoundingClientRect();
     const share = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-    return view.startS + share * (view.endS - view.startS);
+    return view.startS + share * span;
   };
 
   const startScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -153,8 +216,64 @@ export function RecordingTimeline({
     if (scrub.resume) play();
   };
 
-  const span = Math.max(1e-6, view.endS - view.startS);
-  const at = (seconds: number) => ((seconds - view.startS) / span) * 100;
+  const snapTo = (cue: number) => {
+    const marks = [position(), ...lines.filter((line) => line.cue !== cue)
+      .flatMap((line) => [line.startS, line.endS])];
+    return (seconds: number) => {
+      let best = seconds;
+      let distance = SNAP_PX * perPx;
+      for (const mark of marks) {
+        if (Math.abs(mark - seconds) < distance) {
+          best = mark;
+          distance = Math.abs(mark - seconds);
+        }
+      }
+      return best;
+    };
+  };
+
+  const placed = (current: Drag, clientX: number) => {
+    const words = captions.doc?.words;
+    if (!words) return null;
+    return dragged(words, current.cue, current.mode, (clientX - current.x0) * perPx,
+      snapTo(current.cue));
+  };
+
+  const startDrag = (event: ReactPointerEvent<HTMLButtonElement>, cue: number) => {
+    if (event.button !== 0 || !captions.doc || captions.busy) return;
+    const edge = (event.target as HTMLElement).closest<HTMLElement>("[data-edge]")?.dataset.edge;
+    const mode: DragMode = edge === "start" || edge === "end" ? edge : "move";
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({cue, mode, x0: event.clientX, moved: false, sent: false, span: null});
+  };
+  const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!drag || drag.sent) return;
+    const moved = drag.moved || Math.abs(event.clientX - drag.x0) > DRAG_PX;
+    if (!moved) return;
+    const next = placed(drag, event.clientX);
+    setDrag({...drag, moved, span: next ? spanOf(next.words, drag.cue) : null});
+  };
+  const endDrag = (event: ReactPointerEvent<HTMLButtonElement>, startS: number) => {
+    if (!drag || drag.sent) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (!drag.moved) {
+      setDrag(null);
+      seek(startS);
+      return;
+    }
+    const next = placed(drag, event.clientX);
+    if (!next) {
+      setDrag(null);
+      return;
+    }
+    setDrag({...drag, sent: true, span: spanOf(next.words, drag.cue)});
+    void captions.commit(next.words, next.first, false).then((ok) => {
+      if (!ok) setDrag(null);
+    });
+  };
+
   const {step, ticks} = useMemo(() => rulerTicks(view, width), [view, width]);
   const bars = useMemo(
     () => levelBars(levels, view, Math.max(1, Math.floor(width / BAR_PX))),
@@ -164,8 +283,11 @@ export function RecordingTimeline({
     const h = Math.max(0.04, height) * 100;
     return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_PX - 1}v${h}h-${BAR_PX - 1}z`;
   }).join(""), [bars]);
-  const shownLines = lines.filter((line) => line.endS > view.startS && line.startS < view.endS);
-  const position = () => positionRef.current ?? 0;
+  const shownLines = lines
+    .map((line) => (drag?.span && drag.cue === line.cue ? {...line, ...drag.span} : line))
+    .filter((line) => line.endS > view.startS && line.startS < view.endS);
+  const shownSounds = sounds.filter((sound) => sound.endS > view.startS && sound.startS < view.endS);
+  const editable = Boolean(captions.doc);
 
   return (
     <section className="timeline" aria-label="Timeline">
@@ -207,6 +329,15 @@ export function RecordingTimeline({
           </span>
         </div>
         <div className="timeline-zoom">
+          <button
+            type="button"
+            className="timeline-speed"
+            aria-label={`Playback speed ${rate}×`}
+            title="Playback speed"
+            onClick={() => setRate(SPEEDS[(SPEEDS.indexOf(rate) + 1) % SPEEDS.length])}
+          >
+            {rate}×
+          </button>
           <button
             type="button"
             className="icon-button"
@@ -265,16 +396,40 @@ export function RecordingTimeline({
               type="button"
               className="timeline-line"
               data-current={line.cue === currentCue}
+              data-dragging={drag?.cue === line.cue && drag.moved}
+              data-editable={editable}
               style={{
                 left: `${at(line.startS)}%`,
                 width: `${Math.max(0.2, at(line.endS) - at(line.startS))}%`,
                 "--line-color": speakerColor(line.speaker, colors),
               } as CSSVars}
               title={line.text}
-              onClick={() => seek(line.startS)}
+              onPointerDown={(event) => startDrag(event, line.cue)}
+              onPointerMove={moveDrag}
+              onPointerUp={(event) => endDrag(event, line.startS)}
+              onPointerCancel={() => setDrag(null)}
+              onClick={(event) => {
+                if (event.detail === 0) seek(line.startS);
+              }}
             >
+              {editable && <i data-edge="start" aria-hidden="true" />}
               <span>{line.text}</span>
+              {editable && <i data-edge="end" aria-hidden="true" />}
             </button>
+          ))}
+        </div>
+        <div className="timeline-sounds" aria-label="Sounds">
+          {shownSounds.map((sound) => (
+            <span
+              key={`${sound.startS}:${sound.label}`}
+              style={{
+                left: `${at(sound.startS)}%`,
+                width: `${Math.max(0.2, at(sound.endS) - at(sound.startS))}%`,
+              }}
+              title={`[${sound.label}]`}
+            >
+              [{sound.label}]
+            </span>
           ))}
         </div>
         <div className="timeline-playhead" ref={playheadRef} aria-hidden="true" />

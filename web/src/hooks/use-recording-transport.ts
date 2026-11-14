@@ -6,9 +6,11 @@ import {
   dueBetween,
   scoreLevels,
   scoreLines,
+  scoreSounds,
   seekBatch,
   type Score,
   type TimelineLine,
+  type TimelineSound,
 } from "@/lib/transport";
 
 /** How many events the stage is handed on a seek: as many as it keeps. */
@@ -26,9 +28,13 @@ export interface StageFeed {
 export interface RecordingTransport {
   ready: boolean;
   playing: boolean;
+  /** Playback speed; 1 is real time. */
+  rate: number;
+  setRate: (rate: number) => void;
   durationS: number;
   generation: number;
   lines: TimelineLine[];
+  sounds: TimelineSound[];
   levels: Array<[number, number]>;
   /** Where the picture is, in seconds, updated every frame without a render. */
   positionRef: React.RefObject<number>;
@@ -44,6 +50,8 @@ export interface RecordingTransport {
 export function useRecordingTransport(enabled: boolean, feed: StageFeed): RecordingTransport {
   const [score, setScore] = useState<Score | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [rate, setRateState] = useState(1);
+  const rateRef = useRef(1);
   const scoreRef = useRef<Score | null>(null);
   const feedRef = useRef(feed);
   const positionRef = useRef(0);
@@ -142,6 +150,12 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
     show(positionS, playingRef.current);
   }, [show]);
 
+  const setRate = useCallback((next: number) => {
+    rateRef.current = next;
+    setRateState(next);
+    if (startedRef.current) show(positionRef.current, playingRef.current);
+  }, [show]);
+
   const reload = useCallback(async () => {
     await load();
     show(positionRef.current, playingRef.current);
@@ -160,7 +174,8 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
         return;
       }
       const now = performance.now();
-      let position = anchorRef.current.positionS + (now - anchorRef.current.atMs) / 1000;
+      let position = anchorRef.current.positionS
+        + ((now - anchorRef.current.atMs) / 1000) * rateRef.current;
       if (position >= current.durationS) {
         position = current.durationS;
         playingRef.current = false;
@@ -180,13 +195,18 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
 
   const lines = useMemo(() => (score ? scoreLines(score.events) : []), [score]);
   const levels = useMemo(() => (score ? scoreLevels(score.events) : []), [score]);
+  const sounds = useMemo(
+    () => (score ? scoreSounds(score.events, score.durationS) : []), [score]);
 
   return {
     ready: Boolean(score) && enabled,
     playing,
+    rate,
+    setRate,
     durationS: score?.durationS ?? 0,
     generation: score?.generation ?? 0,
     lines,
+    sounds,
     levels,
     positionRef,
     play,

@@ -30,6 +30,7 @@ NEXT_PUBLIC_AUTOCWI_ORIGIN=http://127.0.0.1:7337 npm --prefix web run dev
 | `lib/transport.ts` | The score, the lines and the timeline's arithmetic |
 | `components/recording-timeline.tsx` | The timeline under the stage |
 | `components/caption-editor.tsx` | The caption editor in the rail |
+| `hooks/use-caption-document.ts` | The captions being edited, with undo and redo, shared by the editor and the timeline |
 | `app/globals.css` | Styles and animations |
 
 ## Rules

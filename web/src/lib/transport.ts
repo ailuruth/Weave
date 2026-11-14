@@ -272,3 +272,33 @@ export function levelBars(
   }
   return bars;
 }
+
+/** A sound caption, as the timeline draws it. */
+export interface TimelineSound {
+  startS: number;
+  endS: number;
+  label: string;
+}
+
+/** The sound captions of a score: each one that ended, and one still going at the end runs to `durationS`. */
+export function scoreSounds(events: readonly ScoreEntry[], durationS: number): TimelineSound[] {
+  const ended = new Map<string, TimelineSound>();
+  const started: Array<{startS: number; label: string}> = [];
+  for (const [, event] of events) {
+    if (event.type !== "sound") continue;
+    const label = String(event.label ?? event.category ?? "sound");
+    const startS = Number(event.start);
+    if (!Number.isFinite(startS)) continue;
+    if (event.state === "end") {
+      const endS = Number(event.end);
+      ended.set(`${startS}:${label}`, {startS, endS: Number.isFinite(endS) ? endS : startS, label});
+    } else {
+      started.push({startS, label});
+    }
+  }
+  for (const {startS, label} of started) {
+    const key = `${startS}:${label}`;
+    if (!ended.has(key)) ended.set(key, {startS, endS: Math.max(startS, durationS), label});
+  }
+  return [...ended.values()].sort((a, b) => a.startS - b.startS);
+}

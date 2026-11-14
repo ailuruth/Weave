@@ -13,6 +13,8 @@ export interface MediaSyncInput {
   toleranceS?: number;
   /** Playback is paused: show the frame at the playhead and stay there. */
   held?: boolean;
+  /** The speed the recording plays at; 1 is real time. */
+  rate?: number;
 }
 
 export type MediaSyncAction =
@@ -46,6 +48,7 @@ export function mediaSyncAction({
   durationS,
   toleranceS = MEDIA_SYNC_TOLERANCE_S,
   held = false,
+  rate = 1,
 }: MediaSyncInput): MediaSyncAction {
   if (!Number.isFinite(playheadMs) || playheadMs < 0) return {kind: "hold"};
   const target = playheadMs / 1000;
@@ -57,8 +60,8 @@ export function mediaSyncAction({
   if (paused || ended) return {kind: "play", atS: target};
   const error = currentTimeS - target;
   if (Math.abs(error) > toleranceS) return {kind: "seek", atS: target};
-  if (Math.abs(error) <= MEDIA_SYNC_DEADBAND_S) return {kind: "trim", rate: 1};
+  if (Math.abs(error) <= MEDIA_SYNC_DEADBAND_S) return {kind: "trim", rate};
   const lean = Math.max(-MEDIA_SYNC_MAX_TRIM,
     Math.min(MEDIA_SYNC_MAX_TRIM, -error * 0.5));
-  return {kind: "trim", rate: 1 + lean};
+  return {kind: "trim", rate: rate * (1 + lean)};
 }

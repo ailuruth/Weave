@@ -2,16 +2,21 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  MIN_LINE_S,
   breakBefore,
   clockLabel,
   firstChange,
   joinPrevious,
   lineAt,
+  lineForPlayhead,
+  lineRoom,
   linesOf,
+  moveLine,
   moveStart,
   nextSpeaker,
   playWindow,
   removeWord,
+  retimeLine,
   setSize,
   setSpeaker,
   setText,
@@ -107,4 +112,30 @@ test("times read as minutes, seconds and tenths", () => {
   assert.equal(clockLabel(0), "0:00.0");
   assert.equal(clockLabel(7.75), "0:07.8");
   assert.equal(clockLabel(125.04), "2:05.0");
+});
+
+test("a line stretched from its start keeps each word's share and stays clear of its neighbours", () => {
+  const out = retimeLine(WORDS, 2, 4, 2.4, 3.9);
+  assert.deepEqual(out.slice(2).map((w) => [w.start, w.end]), [[2.4, 2.9], [2.9, 3.4], [3.4, 3.9]]);
+  assert.equal(out[2].start, 2.4);
+  assert.equal(out[4].end, 3.9);
+  assert.ok(out[2].end <= out[3].start + 1e-9 && out[3].end <= out[4].start + 1e-9);
+  assert.equal(retimeLine(WORDS, 2, 4, 0.5, 3.9)[2].start, 1.7, "not before the previous word ends");
+  assert.equal(out[0], WORDS[0]);
+});
+
+test("a line moved too far stops at its neighbour, and a squeezed line keeps a minimum length", () => {
+  assert.equal(moveLine(WORDS, 2, 4, -5)[2].start, 1.7);
+  assert.equal(moveLine(WORDS, 0, 1, 10)[0].start, 1.0 + (3.0 - 1.7));
+  const short = retimeLine(WORDS, 2, 4, 3.8, 3.9);
+  assert.ok(short[4].end - short[2].start >= MIN_LINE_S - 1e-9);
+  assert.deepEqual(lineRoom(WORDS, 2, 4), {minS: 1.7, maxS: Number.POSITIVE_INFINITY});
+});
+
+test("the timing keys act on the line under the playhead, or the last one before it", () => {
+  const lines = linesOf(WORDS);
+  assert.equal(lineForPlayhead(lines, 3.4)?.first, 2);
+  assert.equal(lineForPlayhead(lines, 2.5)?.first, 0);
+  assert.equal(lineForPlayhead(lines, 0.2)?.first, 0);
+  assert.equal(lineForPlayhead([], 1), null);
 });

@@ -16,6 +16,7 @@ import {
   rulerTicks,
   scoreLevels,
   scoreLines,
+  scoreSounds,
   seekBatch,
   tickLabel,
   zoomView,
@@ -142,4 +143,17 @@ test("the waveform takes the loudest reading in each slice, and holds it across 
   assert.deepEqual(levelBars(sparse, {startS: -2, endS: 0}, 2), [0, 0]);
   assert.deepEqual(levelBars(levels, {startS: 0, endS: 0}, 3), [0, 0, 0]);
   assert.deepEqual(levelBars([], {startS: 0, endS: 2}, 2), [0, 0]);
+});
+
+test("sound captions span from their start to their end, or to the end of the recording", () => {
+  const events: ScoreEntry[] = [
+    [2.2, {type: "sound", state: "start", label: "Beep", start: 2.2, end: 2.2}],
+    [2.9, {type: "sound", state: "end", label: "Beep", start: 2.2, end: 2.9}],
+    [5.0, {type: "sound", state: "start", category: "music", start: 5.0, end: 5.0}],
+    [1.0, word("a", "Hi", 1.0, 0)],
+  ];
+  assert.deepEqual(scoreSounds(events, 8), [
+    {startS: 2.2, endS: 2.9, label: "Beep"},
+    {startS: 5.0, endS: 8, label: "music"},
+  ]);
 });

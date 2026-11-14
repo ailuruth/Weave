@@ -197,3 +197,70 @@ export function clockLabel(seconds: number): string {
   const rest = tenths - minutes * 600;
   return `${minutes}:${String(Math.floor(rest / 10)).padStart(2, "0")}.${rest % 10}`;
 }
+
+/** The shortest a caption line may be made by dragging it. */
+export const MIN_LINE_S = 0.2;
+
+/** Where a line may go without crossing its neighbours: from the word before it to the word after it. */
+export function lineRoom(
+  words: readonly EditWord[],
+  first: number,
+  last: number,
+): {minS: number; maxS: number} {
+  const start = words[first].start;
+  const end = Math.max(...words.slice(first, last + 1).map((word) => word.end));
+  return {
+    minS: first > 0 ? Math.min(words[first - 1].end, start) : 0,
+    maxS: last + 1 < words.length ? Math.max(words[last + 1].start, end) : Number.POSITIVE_INFINITY,
+  };
+}
+
+/** The line from `first` to `last` set to run from `startS` to `endS`, every word keeping its share of it. */
+export function retimeLine(
+  words: readonly EditWord[],
+  first: number,
+  last: number,
+  startS: number,
+  endS: number,
+): EditWord[] {
+  const oldStart = words[first].start;
+  const oldEnd = Math.max(...words.slice(first, last + 1).map((word) => word.end));
+  const {minS, maxS} = lineRoom(words, first, last);
+  let start = Math.max(minS, startS);
+  let end = Math.min(maxS, endS);
+  if (end - start < MIN_LINE_S) {
+    if (startS !== oldStart) start = Math.max(minS, end - MIN_LINE_S);
+    else end = Math.min(maxS, start + MIN_LINE_S);
+  }
+  const scale = (end - start) / Math.max(1e-6, oldEnd - oldStart);
+  const place = (t: number) => Number((start + (t - oldStart) * scale).toFixed(3));
+  return mapRange(words, first, last, (word) => ({
+    ...word,
+    start: place(word.start),
+    end: Math.max(place(word.start) + MIN_WORD_S / 2, place(word.end)),
+  }));
+}
+
+/** The same line moved by `deltaS`, as far as its neighbours allow. */
+export function moveLine(
+  words: readonly EditWord[],
+  first: number,
+  last: number,
+  deltaS: number,
+): EditWord[] {
+  const oldStart = words[first].start;
+  const oldEnd = Math.max(...words.slice(first, last + 1).map((word) => word.end));
+  const {minS, maxS} = lineRoom(words, first, last);
+  const delta = Math.min(maxS - oldEnd, Math.max(minS - oldStart, deltaS));
+  return retimeLine(words, first, last, oldStart + delta, oldEnd + delta);
+}
+
+/** The line a timing key acts on: the one under the playhead, else the last one before it, else the first. */
+export function lineForPlayhead(lines: readonly EditLine[], positionS: number): EditLine | null {
+  let found: EditLine | null = lines[0] ?? null;
+  for (const line of lines) {
+    if (line.start <= positionS) found = line;
+    else break;
+  }
+  return found;
+}
