@@ -54,7 +54,8 @@ import {
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 const ZOOM_STEP = 1.6;
-const BAR_PX = 4;
+const BAR_PX = 3;
+const BAR_INK_PX = 2;
 const SNAP_PX = 8;
 const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
@@ -430,7 +431,7 @@ export function RecordingTimeline({
   );
   const wave = useMemo(() => bars.map((height, index) => {
     const h = Math.max(0.06, height) * 100;
-    return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_PX - 1.5}v${h}h-${BAR_PX - 1.5}z`;
+    return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_INK_PX}v${h}h-${BAR_INK_PX}z`;
   }).join(""), [bars]);
   const rowKey = (line: {speaker: string | null; rainbow?: boolean}) =>
     line.rainbow ? RAINBOW_ROW : line.speaker ?? "";

@@ -15,6 +15,7 @@ const IDLE_MS = 900;
 const MIN_THUMB_PX = 24;
 
 type Thumb = {top: number; height: number} | null;
+type Edges = {above: boolean; below: boolean};
 
 export const OverlayScroll = forwardRef<HTMLElement, HTMLAttributes<HTMLElement> & {
   as?: "div" | "ol";
@@ -24,6 +25,7 @@ export const OverlayScroll = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>
   const scroller = useRef<HTMLElement>(null);
   useImperativeHandle(outer, () => scroller.current as HTMLElement);
   const [thumb, setThumb] = useState<Thumb>(null);
+  const [edges, setEdges] = useState<Edges>({above: false, below: false});
   const [active, setActive] = useState(false);
   const idle = useRef(0);
   const drag = useRef<{y: number; top: number} | null>(null);
@@ -32,6 +34,9 @@ export const OverlayScroll = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>
     const el = scroller.current;
     if (!el) return;
     const {scrollTop, scrollHeight, clientHeight} = el;
+    const above = scrollTop > 1;
+    const below = scrollHeight - clientHeight - scrollTop > 1;
+    setEdges((previous) => (previous.above === above && previous.below === below ? previous : {above, below}));
     if (scrollHeight <= clientHeight + 1) {
       setThumb(null);
       return;
@@ -68,7 +73,12 @@ export const OverlayScroll = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>
 
   const Tag = as;
   return (
-    <div className={`overlay-scroll ${frameClassName ?? ""}`} onPointerEnter={wake}>
+    <div
+      className={`overlay-scroll ${frameClassName ?? ""}`}
+      data-above={edges.above ? "true" : undefined}
+      data-below={edges.below ? "true" : undefined}
+      onPointerEnter={wake}
+    >
       <Tag
         {...rest}
         ref={scroller as never}

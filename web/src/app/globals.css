@@ -122,6 +122,9 @@
   --sheet-bg: #161719;
   --group-bg: #1f2023;
   --scrim: rgba(0, 0, 0, .6);
+  --cue-tint: 20%;
+  --cue-tint-hover: 30%;
+  --edge-fade: 28px;
   /* `--caption-width-cap` is NOT declared here -- see `.studio-shell`. */
 }
 
@@ -1063,7 +1066,7 @@ button {
    request). */
 
 .caption-stage.is-transcript {
-  background: var(--surface);
+  background: var(--rail-bg);
 }
 
 .transcript-feed {
@@ -3378,12 +3381,13 @@ button {
 .editor-bar > div {
   display: flex;
   gap: var(--space-1);
+  margin-right: -11px;
 }
 
 .editor-bar .icon-button:hover:not(:disabled),
 .settings-panel > header .icon-button:hover {
   color: var(--text);
-  background: var(--surface-selected);
+  background: transparent;
 }
 
 .editor-bar .icon-button:disabled {
@@ -3912,8 +3916,15 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  border-radius: var(--r-xs);
-  background: rgb(var(--tint) / .035);
+}
+
+.timeline-band[data-lane="audio"]::after,
+.timeline-row::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 1px;
+  background: var(--line);
 }
 
 .timeline-band[data-lane="audio"],
@@ -3978,7 +3989,7 @@ button {
 }
 
 .timeline-wave[data-played] path {
-  fill: var(--muted);
+  fill: var(--muted-2);
 }
 
 .timeline-lines {
@@ -3996,22 +4007,23 @@ button {
   overflow: hidden;
   border: 0;
   border-radius: var(--r-xs);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--muted);
+  container: cue / inline-size;
+  background: color-mix(in srgb, var(--line-color) var(--cue-tint), var(--rail-bg));
+  color: var(--text);
   font: 400 var(--text-2xs)/16px var(--font-ui);
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur-quick) ease;
+  transition: background var(--dur-quick) ease, box-shadow var(--dur-quick) ease;
 }
 
 .timeline-line::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 3px;
+  width: 2px;
   background: var(--line-color);
 }
+
 
 .timeline-line span {
   display: block;
@@ -4021,6 +4033,12 @@ button {
   pointer-events: none;
 }
 
+@container cue (max-width: 26px) {
+  .timeline-line span {
+    display: none;
+  }
+}
+
 /* ONE ROW PER SPEAKER (2026-11-14, at the user's request). Captions still play
    one at a time; the rows only separate who says what. A line dragged up or
    down changes its speaker. */
@@ -4028,8 +4046,6 @@ button {
   position: absolute;
   left: 0;
   right: 0;
-  border-radius: var(--r-xs);
-  background: rgb(var(--tint) / .035);
 }
 
 .timeline-lanes li[data-lane="captions"] {
@@ -4229,7 +4245,7 @@ i.rainbow-dot,
 }
 
 .inspector[data-more="true"] {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--edge-fade)), transparent);
 }
 
 .caption-editor > .caption-list-frame {
@@ -4283,7 +4299,7 @@ i.rainbow-dot,
 .inspector-actions {
   display: flex;
   flex: none;
-  margin-right: -10px;
+  margin-right: -9px;
 }
 
 .inspector-actions .icon-button:hover:not(:disabled) {
@@ -4296,7 +4312,8 @@ i.rainbow-dot,
   cursor: default;
 }
 
-.inspector-actions .inspector-delete {
+.inspector-actions .inspector-delete:hover:not(:disabled),
+.inspector-actions .inspector-delete:focus-visible {
   color: var(--danger);
 }
 
@@ -4718,13 +4735,12 @@ i.rainbow-dot,
 }
 
 .timeline-line:hover {
-  background: var(--segment-active);
-  color: var(--text);
+  background: color-mix(in srgb, var(--line-color) var(--cue-tint-hover), var(--rail-bg));
 }
 
 .timeline-line[data-current="true"] {
+  background: color-mix(in srgb, var(--line-color) var(--cue-tint-hover), var(--rail-bg));
   box-shadow: inset 0 0 0 1.5px var(--text);
-  color: var(--text);
 }
 
 .timeline-line[data-editable="true"] {
@@ -4962,6 +4978,21 @@ i.rainbow-dot,
   flex: 1 1 auto;
   min-height: 0;
   scrollbar-width: none;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--edge-above, 0px),
+    #000 calc(100% - var(--edge-below, 0px)),
+    transparent
+  );
+}
+
+.overlay-scroll[data-above="true"] > :first-child {
+  --edge-above: var(--edge-fade);
+}
+
+.overlay-scroll[data-below="true"] > :first-child {
+  --edge-below: var(--edge-fade);
 }
 
 .overlay-scroll > :first-child::-webkit-scrollbar {
