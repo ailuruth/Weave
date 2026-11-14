@@ -3761,7 +3761,8 @@ button {
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: var(--space-5);
+  gap: 0;
+  margin-right: calc((16px - var(--control-icon)) / 2);
 }
 
 .timeline-zoom {
@@ -3772,7 +3773,6 @@ button {
 .timeline-speed {
   display: grid;
   place-items: center;
-  min-width: 48px;
   height: var(--control-h);
   padding: 0 var(--space-4);
   overflow: hidden;
