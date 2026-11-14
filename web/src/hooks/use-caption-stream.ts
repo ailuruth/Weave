@@ -397,6 +397,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
   const [playheadMs, setPlayheadMs] = useState(Number.NEGATIVE_INFINITY);
   const [clockEpoch, setClockEpoch] = useState<number | null>(null);
   const [speakerOrder, setSpeakerOrder] = useState<string[]>([]);
+  const [stagings, setStagings] = useState(0);
   const [startedAt] = useState(() => Date.now());
   const [lastEventAt, setLastEventAt] = useState<number | null>(null);
 
@@ -763,6 +764,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
           setSpeakerOrder(Array.isArray(event.speakers)
             ? event.speakers.map(String)
             : []);
+          setStagings((count) => count + 1);
           return;
         }
         if (event.type === "boot") {
@@ -992,6 +994,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     clockEpoch,
     playheadMs,
     speakerOrder,
+    stagings,
     startedAt,
     lastEventAt,
     dispatch,

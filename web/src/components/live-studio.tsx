@@ -2208,6 +2208,7 @@ export function LiveStudio() {
     clockEpoch,
     playheadMs,
     speakerOrder,
+    stagings,
     startedAt,
     lastEventAt,
   } = useCaptionStream({reducedMotion: settings.reducedMotion});
@@ -2524,6 +2525,7 @@ export function LiveStudio() {
             <StageSound sound={speechActive ? null : model.sound} />
           )}
           <CaptionFeed
+            key={stagings}
             paragraphs={shownParagraphs}
             timingWords={timingWords}
             speakerColors={speakerColors}

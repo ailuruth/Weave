@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import deque
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 
@@ -19,6 +20,7 @@ from .captions import (
 from .score import replay_score
 
 Score = list[tuple[float, dict]]
+REMEMBERED_ADJUSTMENTS = 64
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,7 @@ class CaptionDesk:
         self._score = self._first = opened(score, self._speakers)
         self._first_speakers = list(self._speakers)
         self._known = {str(word.get("word_id")): word for word in words}
+        self._recent: deque[list[str]] = deque()
         self._generation = 0
         self._order: Play | Stop | None = Play()
         self._tail_s = float(tail_s)
@@ -75,6 +78,10 @@ class CaptionDesk:
             speakers = speaker_order(words, self._speakers)
             self._set(rescore(self._score, words, speakers), speakers, generation, then)
             self._known.update((word["word_id"], word) for word in words)
+            self._recent.append([word["word_id"] for word in words])
+            while len(self._recent) > REMEMBERED_ADJUSTMENTS:
+                for word_id in self._recent.popleft():
+                    self._known.pop(word_id, None)
             return self.document()
 
     def revert(self, then: Play | Stop | None = None) -> dict:
@@ -104,7 +111,6 @@ class CaptionDesk:
         self,
         *,
         cancelled: Callable[[], bool],
-        restaged: Callable[[], None] | None = None,
         _clock=None,
         _sleep=None,
     ) -> Iterator[dict]:
@@ -117,11 +123,8 @@ class CaptionDesk:
                     self._lock.wait(0.2)
                 order, self._order = self._order, None
                 score, speakers = self._score, list(self._speakers)
-            clear = {"type": RESTAGE, "speakers": speakers}
-            if restaged is not None:
-                restaged()
             if isinstance(order, Stop):
-                yield clear
+                yield {"type": RESTAGE, "speakers": speakers}
                 continue
             part = window(score, order.start_s, order.end_s, self._tail_s)
             yield from replay_score(

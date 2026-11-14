@@ -80,6 +80,16 @@ test("a finished recording plays again when the playhead is sent back into it", 
   );
 });
 
+test("a recording that ends a moment ahead of the playhead is left finished", () => {
+  assert.deepEqual(
+    mediaSyncAction({
+      playheadMs: 59_980, currentTimeS: 60, paused: true, ended: true,
+      durationS: 60,
+    }),
+    {kind: "none"},
+  );
+});
+
 test("unknown duration does not block playback", () => {
   assert.deepEqual(
     mediaSyncAction({

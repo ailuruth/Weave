@@ -6098,13 +6098,14 @@ class LiveLanguageSession:
                 job, done = self._video_job, self._video
             if done is not None and done.is_file():
                 return done
-            if job is None:
-                return None
-            drawn = job()
-            with self._lock:
-                if self._video_job is job:
-                    self._video = drawn
-            return drawn
+            while job is not None:
+                drawn = job()
+                with self._lock:
+                    if self._video_job is job:
+                        self._video = drawn
+                        return drawn
+                    job = self._video_job
+            return None
 
     def served_media(self) -> Path | None:
         """The file the studio may fetch as this session's picture."""
@@ -6203,6 +6204,7 @@ class Broadcaster:
         self._next_id = 1
         self._history: deque[tuple[int, bytes]] = deque(maxlen=history_limit)
         self._latest_hypothesis: tuple[int, bytes] | None = None
+        self._restage: tuple[int, bytes] | None = None
         self._has_presented_to_client = False
 
     @staticmethod
@@ -6241,6 +6243,9 @@ class Broadcaster:
                     self._latest_hypothesis[0] > after):
                 replay.append(self._latest_hypothesis)
             replay = sorted(dict(replay).items())[-self._max_queue:]
+            if (self._restage is not None and self._restage[0] > after
+                    and self._restage not in replay):
+                replay = [self._restage, *replay[-(self._max_queue - 1):]]
             # Tell the renderer which retained records are history. Their
             # state must be reconstructed, but their already-finished CWI
             # motion must not replay after reconnect. The copied payload gets
@@ -6275,6 +6280,7 @@ class Broadcaster:
         with self._lock:
             self._history.clear()
             self._latest_hypothesis = None
+            self._restage = None
             # The next connection is a new audience, so its startup backlog
             # keeps first-paint motion exactly as the first one's did.
             self._has_presented_to_client = False
@@ -6290,6 +6296,12 @@ class Broadcaster:
             data = (f"id: {event_id}\n"
                     f"data: {json.dumps(obj, ensure_ascii=False)}\n\n").encode()
             event_type = obj.get("type", "word")
+            if event_type == RESTAGE:
+                # The stage starts over here, so nothing before it is replayed
+                # to a tab that connects later.
+                self._history.clear()
+                self._latest_hypothesis = None
+                self._restage = (event_id, data)
             durable = event_type in {"commit", "verification", RESTAGE} or (
                 event_type == "word" and obj.get("final", True)
             ) or (event_type == "sound" and obj.get("state") == "end")
@@ -6617,7 +6629,7 @@ def make_handler(
                 self._send_json({"error": str(exc)}, status=400)
                 return
             except (UnicodeDecodeError, json.JSONDecodeError, AttributeError,
-                    TypeError, ValueError):
+                    TypeError, ValueError, OverflowError, RecursionError):
                 self._send_json({"error": "invalid JSON body"}, status=400)
                 return
             self._send_json(document)
@@ -7573,7 +7585,6 @@ def run_live(args, cfg: dict, device: str) -> None:
                                 _video_job(score)))
                             if server is not None else None),
                         desk=language_session.set_desk if adjustable else None,
-                        restaged=broadcaster.reset if adjustable else None,
                     )),
                     paced=not (getattr(args, "once", False)
                                or getattr(args, "render", False)),
@@ -7581,7 +7592,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                     captions=(
                         Path(args.captions)
                         if getattr(args, "captions", None)
-                        and getattr(args, "import_file", None) else None),
+                        and getattr(args, "import_file", None)
+                        and language_session.media() is None else None),
                 )
         events_path = out / "live_events.jsonl"
 

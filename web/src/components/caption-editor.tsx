@@ -90,6 +90,14 @@ function WordInspector({
   const [text, setTextDraft] = useState(word.text);
   const [size, setSizeDraft] = useState(word.size);
   const [start, setStartDraft] = useState(word.start.toFixed(2));
+  const saved = `${word.text}|${word.size}|${word.start}`;
+  const [shown, setShown] = useState(saved);
+  if (shown !== saved) {
+    setShown(saved);
+    setTextDraft(word.text);
+    setSizeDraft(word.size);
+    setStartDraft(word.start.toFixed(2));
+  }
   const commitText = () => {
     if (text.trim() !== word.text) onText(text);
   };
@@ -257,14 +265,15 @@ export function CaptionEditor({
     if (optimistic) setDoc({...before, words: optimistic});
     try {
       const next = await request(body);
-      setDoc(next);
+      setDoc((current) =>
+        current && next.generation < current.generation ? current : next);
       setSelected((index) => index === null || !next.words.length
         ? null
         : Math.min(index, next.words.length - 1));
       return next;
     } catch (reason) {
-      setDoc(before);
       setError(reason instanceof Error ? reason.message : "That change was refused.");
+      setDoc(await request().catch(() => before));
       return null;
     } finally {
       setBusy(false);
@@ -412,7 +421,7 @@ export function CaptionEditor({
 
       {doc && word && selected !== null ? (
         <WordInspector
-          key={`${doc.generation}:${selected}:${word.id}`}
+          key={selected}
           word={word}
           startsLine={line?.first === selected}
           firstLine={line?.first === 0}

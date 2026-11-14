@@ -45,6 +45,7 @@ export function mediaSyncAction({
   if (!Number.isFinite(playheadMs) || playheadMs < 0) return {kind: "hold"};
   const target = playheadMs / 1000;
   if (Number.isFinite(durationS) && target >= durationS) return {kind: "none"};
+  if (ended && target >= durationS - toleranceS) return {kind: "none"};
   if (paused || ended) return {kind: "play", atS: target};
   const error = currentTimeS - target;
   if (Math.abs(error) > toleranceS) return {kind: "seek", atS: target};

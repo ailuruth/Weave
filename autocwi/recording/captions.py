@@ -12,6 +12,7 @@ CAPTIONS_MAX_BYTES = 16 * 2**20
 MIN_WORD_S = 0.05
 STEP_S = 0.001
 EDGE_S = 0.01
+SIZE_STEP = 1e-4
 UNKNOWN = "unknown"
 
 
@@ -76,14 +77,16 @@ def from_spec(spec: dict) -> tuple[list[dict], list[str]]:
             "size": word.get("loudness"),
             "line": line,
         })
-    speakers = [str(name) for name in (spec.get("speakers") or {}) if name != UNKNOWN]
+    named = spec.get("speakers")
+    speakers = [str(name) for name in (named if isinstance(named, dict) else {})
+                if name != UNKNOWN]
     return edits, speakers
 
 
 def _number(value, what: str, text: str) -> float:
     try:
         number = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         raise CaptionError(f'"{text}" has no {what} time') from None
     if not math.isfinite(number):
         raise CaptionError(f'"{text}" has no {what} time')
@@ -186,7 +189,7 @@ def revise(known: dict[str, dict], edits: Iterable[dict], generation: int) -> li
             )
         if entry["size"] is not None:
             word["loudness"] = round(entry["size"], 4)
-        if float(word.get("loudness") or 0.0) < LOUDNESS_PIVOT - 1e-6:
+        if float(word.get("loudness") or 0.0) < LOUDNESS_PIVOT - SIZE_STEP:
             word["soft"] = True
         else:
             word.pop("soft", None)
@@ -257,7 +260,7 @@ def window(
         elif kind == "word":
             if release < start_s - EDGE_S:
                 continue
-            if end_s is not None and onset_s(ev) > end_s + EDGE_S:
+            if end_s is not None and release >= end_s - EDGE_S:
                 continue
             part.append((max(0.0, release - start_s), ev))
         elif release >= start_s and (end_s is None or release <= end_s + tail_s):

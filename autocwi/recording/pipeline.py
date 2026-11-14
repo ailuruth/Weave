@@ -30,7 +30,6 @@ class RecordingHooks:
     exported: Callable[[dict[str, Path], str], None]
     scored: Callable[[list[tuple[float, dict]]], None] | None = None
     desk: Callable[[CaptionDesk], None] | None = None
-    restaged: Callable[[], None] | None = None
     analysing: Callable[[float], None] | None = None
 
 
@@ -147,4 +146,4 @@ def recording_events(
     desk = CaptionDesk(
         score, speakers, tail_s=delay_s + PREVIEW_TAIL_S, changed=changed)
     hooks.desk(desk)
-    yield from desk.events(cancelled=hooks.cancelled, restaged=hooks.restaged)
+    yield from desk.events(cancelled=hooks.cancelled)
