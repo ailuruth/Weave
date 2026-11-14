@@ -58,6 +58,7 @@ const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
 const JUMP_S = 0.15;
 const GLIDE_MS = 220;
+const PREVIEW_SETTLE_MS = 200;
 const ROW_H = 26;
 const ROW_GAP = 3;
 const RAINBOW_ROW = "~rainbow";
@@ -141,7 +142,7 @@ export function RecordingTimeline({
 }) {
   const {
     durationS, lines, sounds, levels, positionRef, playing, rate, generation,
-    seek, play, pause, toggle, setRate,
+    seek, play, pause, toggle, setRate, previewing,
   } = transport;
   const [view, setView] = useState<View>(() => fitView(durationS));
   const [fittedTo, setFittedTo] = useState(durationS);
@@ -164,6 +165,12 @@ export function RecordingTimeline({
   const viewRef = useRef(view);
   const scrubRef = useRef<{resume: boolean; pending: number | null} | null>(null);
   const shownRef = useRef<{at: number | null; glide: {from: number; startMs: number} | null}>({at: null, glide: null});
+  const previewRef = useRef({on: previewing, endedMs: -Infinity});
+  useEffect(() => {
+    const state = previewRef.current;
+    if (state.on && !previewing) state.endedMs = performance.now();
+    state.on = previewing;
+  }, [previewing]);
 
   useEffect(() => {
     viewRef.current = view;
@@ -185,7 +192,10 @@ export function RecordingTimeline({
       frame = requestAnimationFrame(draw);
       const actual = positionRef.current ?? 0;
       const shownState = shownRef.current;
-      if (shownState.at !== null && !scrubRef.current && !still()
+      const preview = previewRef.current;
+      const settled = !playing && !preview.on && now - preview.endedMs > PREVIEW_SETTLE_MS;
+      if (!settled) shownState.glide = null;
+      if (settled && shownState.at !== null && !scrubRef.current && !still()
         && Math.abs(actual - shownState.at) > JUMP_S && !shownState.glide) {
         shownState.glide = {from: shownState.at, startMs: now};
       }
