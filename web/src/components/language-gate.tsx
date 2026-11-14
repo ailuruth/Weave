@@ -224,7 +224,7 @@ export function LanguageGate({
     >
       <header className="gate-bar">
         <WeaveMark size={32} />
-        <p>Captions where the voice sets the type. Louder is wider and heavier, and every speaker has a color.</p>
+        <p>Designed by ailuruth</p>
       </header>
 
       <AxisWord ink={colourOf(active)} loud={selecting && hovered !== null} />
