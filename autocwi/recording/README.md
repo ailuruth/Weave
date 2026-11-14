@@ -30,6 +30,7 @@ A recording is known whole before its first frame is shown. Weave uses that to f
 * The renderer sets each animation's time itself. Chrome's animation clock keeps running while the page clock is paused.
 * Captions are drawn at 60 frames a second, whatever the recording's own rate. `--fps 120` raises it.
 * Chrome runs without its frame rate limit. Otherwise each screenshot waits about three 60 Hz frames, which was 90% of the drawing time. Chrome uses about three cores while it draws.
+* The studio applies events in `requestAnimationFrame`, so it only sees them when Chrome makes a frame. With the limit on, the first word turned 8 to 13 frames late, by a different amount each run.
 
 ## Limits
 
@@ -37,3 +38,4 @@ A recording is known whole before its first frame is shown. Weave uses that to f
 * Every threshold is fitted to one film, `docs/reference/PR_Flim.mp4`.
 * The After Effects script has not been run in After Effects.
 * The video needs Chrome and an ffmpeg with `libx264`.
+* Two renders of the same captions are not pixel identical. A word can land a fraction of a pixel or one frame apart.
