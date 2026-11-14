@@ -3377,7 +3377,7 @@ button {
 .editor-bar .icon-button:hover:not(:disabled),
 .settings-panel > header .icon-button:hover {
   color: var(--text);
-  background: var(--surface-selected);
+  background: transparent;
 }
 
 .editor-bar .icon-button:disabled {
@@ -4699,7 +4699,7 @@ i.rainbow-dot,
 }
 
 .card-icons .icon-button:hover:not(:disabled) {
-  background: var(--surface-selected);
+  background: transparent;
   color: var(--text);
 }
 
