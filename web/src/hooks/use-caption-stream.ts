@@ -555,6 +555,22 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     }
   }, []);
 
+  /* A SEEK LANDS IN ONE FRAME. `restage` empties the model at once, but
+     dispatched events wait for the next animation frame and the playhead for
+     the next tick, so every seek showed an empty stage for two frames, and a
+     dragged playhead blinked the caption on every frame. This applies both
+     in the same render as the restage. */
+  const settle = useCallback(() => {
+    flushPending();
+    const clock = clockRef.current;
+    if (!clock.started) return;
+    const playhead = presentationNowMs(
+      clock, performance.now(), runtimeRef.current.readAheadDelayMs);
+    setClockEpoch((current) => (current === clock.epoch ? current : clock.epoch));
+    publishedPlayheadRef.current = playhead;
+    setPlayheadMs(playhead);
+  }, [flushPending]);
+
   const showLevel = useCallback((event: CaptionEvent) => {
     const incoming = event as unknown as LevelEvent;
     setLevel(incoming);
@@ -1060,6 +1076,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     lastEventAt,
     dispatch,
     restage,
+    settle,
     driveClock,
     rebaseSchedule,
     showLevel,

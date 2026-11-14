@@ -19,6 +19,8 @@ const SEEK_KEEP = 150;
 export interface StageFeed {
   dispatch: (event: CaptionEvent) => void;
   restage: (speakers: string[]) => void;
+  /** Apply what a seek handed over in the same render as its restage. */
+  settle: () => void;
   driveClock: (acousticMs: number, held: boolean) => void;
   rebaseSchedule: () => void;
   showLevel: (event: CaptionEvent) => void;
@@ -80,6 +82,7 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
     const batch = seekBatch(current.events, acousticS, SEEK_KEEP);
     for (const event of batch.events) stage.dispatch(event);
     if (batch.level) stage.showLevel(batch.level);
+    stage.settle();
     nextRef.current = batch.next;
     positionRef.current = position;
     anchorRef.current = {positionS: position, atMs: performance.now()};

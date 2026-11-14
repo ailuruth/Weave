@@ -2370,6 +2370,7 @@ export function LiveStudio() {
     lastEventAt,
     dispatch,
     restage,
+    settle,
     driveClock,
     rebaseSchedule,
     showLevel,
@@ -2379,11 +2380,12 @@ export function LiveStudio() {
   const feed = useMemo(() => ({
     dispatch,
     restage,
+    settle,
     driveClock,
     rebaseSchedule,
     showLevel,
     readAheadDelayMs: runtime.readAheadDelayMs,
-  }), [dispatch, restage, driveClock, rebaseSchedule, showLevel, runtime.readAheadDelayMs]);
+  }), [dispatch, restage, settle, driveClock, rebaseSchedule, showLevel, runtime.readAheadDelayMs]);
   const transport = useRecordingTransport(
     !rendering && session.state === "listening" && Boolean(session.media),
     feed,
