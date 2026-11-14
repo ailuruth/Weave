@@ -374,3 +374,45 @@ export function presetOf(words: readonly EditWord[], index: number): CaptionPres
   const size = words[line.first].size;
   return CAPTION_PRESETS.find((preset) => Math.abs(preset.size - size) < 0.02) ?? null;
 }
+
+/**
+ * The line holding `index` with its text replaced. When the word count is
+ * unchanged each word keeps its place, time and measured voice; otherwise the
+ * line's span is shared out by letters among new words.
+ */
+export function setLineText(words: readonly EditWord[], index: number, text: string): EditWord[] {
+  const line = lineAt(linesOf(words), index);
+  if (!line) return [...words];
+  const parts = text.split(/\s+/).filter(Boolean);
+  if (!parts.length) return removeLine(words, index);
+  const count = line.last - line.first + 1;
+  if (parts.length === count) {
+    return words.map((word, at) =>
+      at >= line.first && at <= line.last ? {...word, text: parts[at - line.first]} : word);
+  }
+  const model = words[line.first];
+  const letters = parts.reduce((sum, part) => sum + part.length, 0);
+  const span = line.end - line.start;
+  let cursor = line.start;
+  const replaced = parts.map((part) => {
+    const length = (span * part.length) / letters;
+    const word: EditWord = {
+      ...model,
+      id: null,
+      text: part,
+      start: cursor,
+      end: cursor + Math.max(MIN_WORD_S, length),
+    };
+    cursor += length;
+    return word;
+  });
+  return [...words.slice(0, line.first), ...replaced, ...words.slice(line.last + 1)];
+}
+
+/** "1:02.5" or "62.5" as seconds; null when it is neither. */
+export function parseClock(text: string): number | null {
+  const match = text.trim().match(/^(?:(\d+):)?(\d+(?:\.\d*)?)$/);
+  if (!match) return null;
+  const seconds = Number(match[2]) + (match[1] ? Number(match[1]) * 60 : 0);
+  return Number.isFinite(seconds) ? seconds : null;
+}

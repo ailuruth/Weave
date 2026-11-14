@@ -82,3 +82,18 @@ test("rainbow and a speaker colour exclude each other, and a line can be removed
   assert.equal(back[0].rainbow, true);
   assert.deepEqual(removeLine(WORDS, 1).map((w) => w.text), ["Bye"]);
 });
+
+test("a line's text is replaced in place, keeping words when the count holds", async () => {
+  const {setLineText, parseClock} = await import("./caption-edit.ts");
+  const same = setLineText(WORDS, 0, "Hi there");
+  assert.deepEqual(same.slice(0, 2).map((w) => [w.text, w.id]), [["Hi", "Hello"], ["there", "there"]]);
+  const more = setLineText(WORDS, 1, "Hello out there");
+  assert.deepEqual(more.map((w) => w.text), ["Hello", "out", "there", "Bye"]);
+  assert.ok(more.slice(0, 3).every((w) => w.id === null && w.line === 0));
+  assert.equal(more[0].start, 1);
+  assert.ok(Math.abs(more[2].end - 2) < 0.06);
+  assert.deepEqual(setLineText(WORDS, 2, "  ").map((w) => w.text), ["Hello", "there"]);
+  assert.equal(parseClock("1:02.5"), 62.5);
+  assert.equal(parseClock("4.25"), 4.25);
+  assert.equal(parseClock("abc"), null);
+});
