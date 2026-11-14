@@ -4509,6 +4509,7 @@ i.rainbow-dot,
   justify-self: start;
   gap: var(--space-3);
   max-width: 100%;
+  padding-block: 1px;
 }
 
 .swatch {
@@ -4516,11 +4517,11 @@ i.rainbow-dot,
   --chip-edge: color-mix(in srgb, var(--dot) 62%, var(--rail-bg));
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: 1px solid var(--chip-edge);
-  border-radius: 6px;
+  border-radius: 5px;
   background: var(--chip-fill);
   color: color-mix(in srgb, var(--dot) 80%, var(--text));
   cursor: pointer;
@@ -4541,10 +4542,14 @@ i.rainbow-dot,
 }
 
 .swatch-new {
-  border-style: dashed;
   border-color: var(--control-line);
   background: transparent;
   color: var(--muted-2);
+}
+
+.swatch-new:hover {
+  border-color: var(--control-line);
+  color: var(--text);
 }
 
 .segmented {

@@ -124,6 +124,8 @@ export interface RuntimeConfig {
   syncPopFloorEnhanced: number;
   /** How far an ordinary word lifts, em -- the film's default treatment. */
   wordLiftEmEnhanced: number;
+  rainbowSlow: number;
+  rainbowPop: number;
   /** The enhanced size cue's whole window, ms, for an unemphasised word. */
   wordMotionEnhancedMs: number;
   /** ...and how much longer it runs at full emphasis, ms. */
@@ -234,6 +236,8 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   syncPopEnhanced: 0.55,
   syncPopFloorEnhanced: 0.5,
   wordLiftEmEnhanced: 0.045,
+  rainbowSlow: 2.4,
+  rainbowPop: 1.22,
   wordMotionEnhancedMs: 500,
   wordMotionEnhancedEmphasisMs: 0,
   crestLagMs: 40,

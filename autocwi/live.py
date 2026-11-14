@@ -7093,6 +7093,8 @@ def _studio_runtime_config(
         # resolves freezes at that amplitude for the rest of the session.
         "syncPopFloorEnhanced": live_sync.get("sync_pop_floor_enhanced", 0.5),
         "wordLiftEmEnhanced": live_sync.get("word_lift_em_enhanced", 0.045),
+        "rainbowSlow": float(live_sync.get("rainbow_slow", 2.4)),
+        "rainbowPop": float(live_sync.get("rainbow_pop", 1.22)),
         "wordMotionEnhancedMs": live_sync.get("word_motion_enhanced_ms", 500),
         "wordMotionEnhancedEmphasisMs": live_sync.get(
             "word_motion_enhanced_emphasis_ms", 0),

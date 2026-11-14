@@ -488,6 +488,15 @@ export function CaptionEditor({
         edge === "start" ? value : words[index].start,
         edge === "end" ? value : words[index].end), range[0]);
     };
+    const pickWord = (index: number, extend: boolean) => {
+      if (extend && anchorRef.current !== null
+        && anchorRef.current >= line.first && anchorRef.current <= line.last) {
+        setSel([Math.min(anchorRef.current, index), Math.max(anchorRef.current, index)]);
+        return;
+      }
+      anchorRef.current = index;
+      setSel(range && range[0] === index && range[1] === index ? null : [index, index]);
+    };
     return (
       <div
         className="inspector-body"
@@ -582,15 +591,13 @@ export function CaptionEditor({
                   "--s": word.size.toFixed(3),
                   "--ink": word.rainbow ? undefined : speakerColor(word.speaker, colors),
                 } as CSSVars}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  pickWord(index, event.shiftKey);
+                }}
                 onClick={(event) => {
-                  if (event.shiftKey && anchorRef.current !== null
-                    && anchorRef.current >= line.first && anchorRef.current <= line.last) {
-                    const from = Math.min(anchorRef.current, index);
-                    setSel([from, Math.max(anchorRef.current, index)]);
-                    return;
-                  }
-                  anchorRef.current = index;
-                  setSel(range && range[0] === index && range[1] === index ? null : [index, index]);
+                  if (event.detail === 0) pickWord(index, event.shiftKey);
                 }}
               >
                 {word.text}
@@ -638,7 +645,7 @@ export function CaptionEditor({
                 style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
                 onClick={() => recolour({speaker})}
               >
-                {!colour.rainbow && colour.speaker === speaker && <Check size={14} strokeWidth={2.5} />}
+                {!colour.rainbow && colour.speaker === speaker && <Check size={12} strokeWidth={2.75} />}
               </button>
             ))}
             <button
@@ -650,7 +657,7 @@ export function CaptionEditor({
               className="swatch rainbow-dot"
               onClick={() => recolour({rainbow: true})}
             >
-              {colour.rainbow && <Check size={14} strokeWidth={2.5} />}
+              {colour.rainbow && <Check size={12} strokeWidth={2.75} />}
             </button>
             <button
               type="button"
@@ -659,7 +666,7 @@ export function CaptionEditor({
               title={`New speaker (${speakerName(newSpeaker)})`}
               onClick={() => recolour({speaker: newSpeaker})}
             >
-              <Plus size={14} />
+              <Plus size={12} />
             </button>
           </div>
         </Section>

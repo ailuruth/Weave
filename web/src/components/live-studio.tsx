@@ -555,11 +555,14 @@ const MotionWord = memo(function MotionWord({
        proportional now (`sync_pop_floor_enhanced`) and there is nothing left
        for a gate to decide. `quietWord` still governs WEIGHT, which the film
        really does withhold, per line rather than per word. */
-    "--sync-pop": (reel?.resized ? 1 : motion.sync.scale).toFixed(3),
+    "--sync-pop": (word.rainbow
+      ? Math.max(runtime.rainbowPop, motion.sync.scale)
+      : reel?.resized ? 1 : motion.sync.scale).toFixed(3),
     /* ...AND WHAT AN UNEMPHASISED WORD DOES INSTEAD IS LIFT. */
     "--word-lift-em": `${(reel
       ? reel.liftEm : runtime.wordLiftEmEnhanced).toFixed(4)}em`,
-    "--motion-duration": `${(reel ? reel.riseMs + reel.fallMs : duration).toFixed(0)}ms`,
+    "--motion-duration": `${((reel ? reel.riseMs + reel.fallMs : duration)
+      * (word.rainbow ? runtime.rainbowSlow : 1)).toFixed(0)}ms`,
     ...(reel ? {
       "--reel-lead": `${reel.leadMs.toFixed(0)}ms`,
       "--reel-crouch-em": `${reel.crouchEm.toFixed(4)}em`,
@@ -569,7 +572,7 @@ const MotionWord = memo(function MotionWord({
     // The 2.3 crest takes its own window so its rise tracks the colour wipe
     // instead of leading it (`crestDurationMs`); the pop and wave keep the
     // natural window.
-    "--crest-duration": `${crestMs.toFixed(0)}ms`,
+    "--crest-duration": `${(crestMs * (word.rainbow ? runtime.rainbowSlow : 1)).toFixed(0)}ms`,
     /* The wide-script wipe sweeps over exactly this window. */
     "--sweep-duration": `${sweepMs.toFixed(0)}ms`,
     // Anticipation. 0ms on legacy -> `calc(turn-delay - 0ms)` is turn-delay.
@@ -581,10 +584,12 @@ const MotionWord = memo(function MotionWord({
       : (enhancedMotion ? "voice-phase-film" : "voice-phase"),
     /* The two halves of the split envelope. Only read when `data-tail` is
        `extended`; harmless otherwise. */
-    "--rise-ms": `${(reel ? reel.riseMs : crestMs * FILM_PEAK_FRACTION).toFixed(0)}ms`,
-    "--fall-ms": `${(reel
+    "--rise-ms": `${((reel ? reel.riseMs : crestMs * FILM_PEAK_FRACTION)
+      * (word.rainbow ? runtime.rainbowSlow : 1)).toFixed(0)}ms`,
+    "--fall-ms": `${((reel
       ? reel.fallMs
-      : fallDurationMs(crestMs, fallRef.current ?? 0)).toFixed(0)}ms`,
+      : fallDurationMs(crestMs, fallRef.current ?? 0))
+      * (word.rainbow ? runtime.rainbowSlow : 1)).toFixed(0)}ms`,
     "--sync-envelope": enhancedMotion ? "word-sync-pop-film" : "word-sync-pop",
     // CWI 2.3 is a WORD-level property: in intonation.mov every glyph of
     // "louder" is the same size and weight, and every glyph of "softer" is
@@ -709,8 +714,9 @@ const MotionWord = memo(function MotionWord({
     if (armed !== null && performance.now() >= armed.turnAtMs) return;
     fallRef.current = paceGapS;
     element.style.setProperty(
-      "--fall-ms", `${fallDurationMs(crestMs, paceGapS).toFixed(0)}ms`);
-  }, [crestMs, reel, paceGapS]);
+      "--fall-ms", `${(fallDurationMs(crestMs, paceGapS)
+        * (word.rainbow ? runtime.rainbowSlow : 1)).toFixed(0)}ms`);
+  }, [crestMs, reel, paceGapS, word.rainbow, runtime.rainbowSlow]);
 
   return (
     <span

@@ -282,6 +282,13 @@ motion:
       word_motion_enhanced_ms: 424
       # ...FOR AN UNEMPHASISED WORD.
       word_motion_enhanced_emphasis_ms: 626
+      # The reference film's speakerless WHOOOOOA!! is annotated "rainbow slow
+      # pop" (docs/reference/PR_Flim_Annotated.txt), and its frames at 48.4 to
+      # 49.1 s show the word swelling over its whole time on screen while the
+      # letters crossfade. A rainbow word's pop and crest run this many times
+      # slower, and swell to at least this scale.
+      rainbow_slow: 2.4
+      rainbow_pop: 1.22
       # How long AFTER the colour turn the size cue starts.
       crest_lag_ms: 0
       # THE FILM'S OWN MOTION CLOCK, FOR A CAPTIONED VIDEO (2026-11-13).
