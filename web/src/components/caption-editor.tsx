@@ -7,13 +7,15 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MutableRefObject,
+  type Ref,
 } from "react";
 import {
   CAPTION_PRESETS,
-  NORMAL_SIZE,
   applyPreset,
   breakBefore,
   insertLine,
+  isEmphasised,
   joinPrevious,
   lineAt,
   linesOf,
@@ -24,7 +26,8 @@ import {
   retimeLine,
   setColour,
   setLineText,
-  setSize,
+  splitPoint,
+  toggleEmphasis,
   type EditLine,
   type EditWord,
 } from "@/lib/caption-edit";
@@ -37,19 +40,10 @@ type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 const NEW_CAPTION = "Caption";
 /** Above this many characters a second a caption reads too fast, the common subtitle guideline. */
 const FAST_CPS = 20;
-const WORD_SIZES: ReadonlyArray<[string, number]> = [
-  ["Small", 0.08],
-  ["Normal", NORMAL_SIZE],
-  ["Large", 0.6],
-  ["Largest", 0.95],
-];
-
-function sizeName(size: number): string {
-  let best = WORD_SIZES[0];
-  for (const entry of WORD_SIZES) {
-    if (Math.abs(entry[1] - size) < Math.abs(best[1] - size)) best = entry;
-  }
-  return best[0];
+function speakerName(speaker: string | null): string {
+  if (!speaker) return "No speaker";
+  const n = /^S(\d+)$/.exec(speaker);
+  return n ? `Speaker ${n[1]}` : speaker;
 }
 
 function TimeField({
@@ -102,12 +96,19 @@ function CaptionText({
   autoFocus,
   onCommit,
   onFocus,
+  textRef,
+  caretRef,
 }: {
   text: string;
   autoFocus: boolean;
   onCommit: (text: string) => void;
   onFocus: () => void;
+  textRef?: Ref<HTMLTextAreaElement>;
+  caretRef?: MutableRefObject<number | null>;
 }) {
+  const remember = (el: HTMLTextAreaElement) => {
+    if (caretRef) caretRef.current = el.selectionStart;
+  };
   const [draft, setDraft] = useState(text);
   const [seen, setSeen] = useState(text);
   if (seen !== text) {
@@ -117,7 +118,9 @@ function CaptionText({
   return (
     <textarea
       className="card-text"
+      ref={textRef}
       value={draft}
+      onSelect={(event) => remember(event.currentTarget)}
       rows={1}
       spellCheck={false}
       autoFocus={autoFocus}
@@ -170,13 +173,13 @@ export function CaptionEditor({
   const {doc, error, busy, canUndo, commit, undo, revert} = captions;
   const [picked, setPicked] = useState<number | null>(focus?.index ?? null);
   const [typing, setTyping] = useState<number | null>(focus?.index ?? null);
-  const [chosenWord, setChosenWord] = useState<number | null>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const caretRef = useRef<number | null>(null);
   const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
   if (focus && focus.n !== focusSeen) {
     setFocusSeen(focus.n);
     setPicked(focus.index);
     setTyping(focus.index);
-    setChosenWord(null);
   }
 
   const words = doc?.words ?? [];
@@ -212,7 +215,7 @@ export function CaptionEditor({
   const choose = (line: EditLine) => {
     if (selectedLine?.first !== line.first) {
       setPicked(line.first);
-      setChosenWord(null);
+        caretRef.current = null;
       if (!playing) seek(line.start);
     }
   };
@@ -227,8 +230,7 @@ export function CaptionEditor({
       if (!ok) return;
       setPicked(added.index);
       setTyping(added.index);
-      setChosenWord(null);
-    });
+      });
   };
 
   const newSpeaker = nextSpeaker(doc?.speakers ?? []);
@@ -288,7 +290,7 @@ export function CaptionEditor({
 
       {doc && (
         <ol className="caption-cards" ref={listRef}>
-          {lines.map((line, number) => {
+          {lines.map((line) => {
             const selected = selectedLine?.first === line.first;
             const lineWords = words.slice(line.first, line.last + 1);
             const first = lineWords[0];
@@ -312,14 +314,13 @@ export function CaptionEditor({
                 onClick={() => choose(line)}
               >
                 <div className="card-head">
-                  <span className="card-number">{number + 1}</span>
                   <TimeField
                     label="Start"
                     value={line.start}
                     onChange={(value) => change(
                       retimeLine(words, line.first, line.last, value, line.end), line.first)}
                   />
-                  <span className="card-arrow" aria-hidden="true">→</span>
+                  <span className="card-arrow" aria-hidden="true">–</span>
                   <TimeField
                     label="End"
                     value={line.end}
@@ -327,34 +328,29 @@ export function CaptionEditor({
                       retimeLine(words, line.first, line.last, line.start, value), line.first)}
                   />
                   <span className="card-meta">
+                    {lineWords.map((word) => word.text).join(" ").length
+                      / Math.max(0.1, line.end - line.start) > FAST_CPS && (
+                      <span
+                        className="card-fast"
+                        title="Too many words for the time it is on screen. Give it longer, or shorten it."
+                      >
+                        Too fast to read
+                      </span>
+                    )}
                     <span
                       className="card-speaker"
                       style={{"--dot": first.rainbow ? undefined : speakerColor(first.speaker, colors)} as CSSVars}
                     >
                       <i className={first.rainbow ? "rainbow-dot" : undefined} />
-                      {first.rainbow ? "Rainbow" : first.speaker ?? "Unknown"}
+                      {first.rainbow ? "Rainbow" : speakerName(first.speaker)}
                     </span>
-                    <span title="Length">{(line.end - line.start).toFixed(1)}s</span>
-                    {(() => {
-                      const cps = lineWords.map((word) => word.text).join(" ").length
-                        / Math.max(0.1, line.end - line.start);
-                      return (
-                        <span
-                          className="card-cps"
-                          data-fast={cps > FAST_CPS ? "true" : "false"}
-                          title={cps > FAST_CPS
-                            ? `${Math.round(cps)} characters a second: too fast to read comfortably`
-                            : `${Math.round(cps)} characters a second`}
-                        >
-                          {Math.round(cps)} cps
-                        </span>
-                      );
-                    })()}
                   </span>
                 </div>
                 <CaptionText
                   text={lineWords.map((word) => word.text).join(" ")}
                   autoFocus={typing === line.first}
+                  textRef={selected ? textRef : undefined}
+                  caretRef={selected ? caretRef : undefined}
                   onFocus={() => {
                     choose(line);
                     if (typing !== null) setTyping(null);
@@ -372,8 +368,8 @@ export function CaptionEditor({
                             type="button"
                             role="radio"
                             aria-checked={!first.rainbow && first.speaker === speaker}
-                            aria-label={speaker}
-                            title={speaker}
+                            aria-label={speakerName(speaker)}
+                            title={speakerName(speaker)}
                             className="swatch"
                             style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
                             onClick={() => change(setColour(words, line.first, {speaker}, true), line.first, true)}
@@ -391,8 +387,8 @@ export function CaptionEditor({
                         <button
                           type="button"
                           className="swatch swatch-new"
-                          aria-label={`New speaker, ${newSpeaker}`}
-                          title={`New speaker (${newSpeaker})`}
+                          aria-label={`New speaker, ${speakerName(newSpeaker)}`}
+                          title={`New speaker (${speakerName(newSpeaker)})`}
                           onClick={() => change(
                             setColour(words, line.first, {speaker: newSpeaker}, true), line.first, true)}
                         >
@@ -401,8 +397,8 @@ export function CaptionEditor({
                       </div>
                     </div>
                     <div className="card-row">
-                      <span>Motion</span>
-                      <div className="segmented" role="radiogroup" aria-label="Motion">
+                      <span>Style</span>
+                      <div className="segmented" role="radiogroup" aria-label="Style">
                         {CAPTION_PRESETS.map((choice) => (
                           <button
                             key={choice.id}
@@ -419,7 +415,7 @@ export function CaptionEditor({
                       </div>
                     </div>
                     <div className="card-row">
-                      <span>Words</span>
+                      <span>Emphasis</span>
                       <div className="card-words">
                         {lineWords.map((word, offset) => {
                           const index = line.first + offset;
@@ -428,10 +424,9 @@ export function CaptionEditor({
                               key={`${index}:${word.text}`}
                               type="button"
                               className="card-word"
-                              data-chosen={chosenWord === index}
-                              data-size={sizeName(word.size).toLowerCase()}
-                              title={`${sizeName(word.size)}. Choose to change its size, or split the line here.`}
-                              onClick={() => setChosenWord(chosenWord === index ? null : index)}
+                              aria-pressed={isEmphasised(word)}
+                              title={isEmphasised(word) ? "Back to the size of its line" : "Make this word bigger"}
+                              onClick={() => change(toggleEmphasis(words, index), index, true)}
                             >
                               {word.text}
                             </button>
@@ -439,25 +434,6 @@ export function CaptionEditor({
                         })}
                       </div>
                     </div>
-                    {chosenWord !== null && chosenWord >= line.first && chosenWord <= line.last && (
-                      <div className="card-row">
-                        <span>Size</span>
-                        <div className="segmented" role="radiogroup" aria-label="Word size">
-                          {WORD_SIZES.map(([name, size]) => (
-                            <button
-                              key={name}
-                              type="button"
-                              role="radio"
-                              aria-checked={sizeName(words[chosenWord].size) === name}
-                              data-active={sizeName(words[chosenWord].size) === name}
-                              onClick={() => change(setSize(words, chosenWord, size, false), chosenWord, true)}
-                            >
-                              {name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                     <div className="card-actions">
                       <button
                         type="button"
@@ -470,13 +446,17 @@ export function CaptionEditor({
                       </button>
                       <button
                         type="button"
-                        disabled={chosenWord === null || chosenWord <= line.first || chosenWord > line.last}
-                        title="Choose a word above, then split the line before it"
+                        disabled={lineWords.length < 2}
+                        title="Split into two captions where the text cursor is"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
-                          if (chosenWord === null) return;
-                          change(breakBefore(words, chosenWord), chosenWord);
-                          setChosenWord(null);
-                        }}
+                          const draft = textRef.current?.value ?? lineWords.map((word) => word.text).join(" ");
+                          const at = splitPoint(draft, caretRef.current);
+                          if (!at) return;
+                          const typed = setLineText(words, line.first, draft);
+                          caretRef.current = null;
+                          change(breakBefore(typed, line.first + at), line.first);
+                                              }}
                       >
                         <Scissors size={13} />
                         Split
@@ -484,11 +464,11 @@ export function CaptionEditor({
                       <button
                         type="button"
                         disabled={line.first === 0}
-                        title="Join this line to the one above"
+                        title="Make this and the caption above one caption"
                         onClick={() => change(joinPrevious(words, line.first), line.first)}
                       >
                         <Merge size={13} />
-                        Merge up
+                        Join above
                       </button>
                       <button
                         type="button"

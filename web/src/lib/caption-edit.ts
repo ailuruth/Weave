@@ -371,8 +371,24 @@ export function removeLine(words: readonly EditWord[], index: number): EditWord[
 export function presetOf(words: readonly EditWord[], index: number): CaptionPreset | null {
   const line = lineAt(linesOf(words), index);
   if (!line) return null;
-  const size = words[line.first].size;
+  const size = Math.min(...words.slice(line.first, line.last + 1).map((word) => word.size));
   return CAPTION_PRESETS.find((preset) => Math.abs(preset.size - size) < 0.02) ?? null;
+}
+
+export const EMPHASIS_SIZE = 0.6;
+
+export function isEmphasised(word: EditWord): boolean {
+  return word.size >= EMPHASIS_SIZE - 0.02;
+}
+
+/** Make one word stand out from its line, or put it back to the size of the words around it. */
+export function toggleEmphasis(words: readonly EditWord[], index: number): EditWord[] {
+  const line = lineAt(linesOf(words), index);
+  if (!line) return [...words];
+  if (!isEmphasised(words[index])) return setSize(words, index, EMPHASIS_SIZE, false);
+  const plain = words.slice(line.first, line.last + 1).filter((word) => !isEmphasised(word));
+  const base = plain.length ? Math.min(...plain.map((word) => word.size)) : NORMAL_SIZE;
+  return setSize(words, index, base, false);
 }
 
 /**
@@ -415,4 +431,16 @@ export function parseClock(text: string): number | null {
   if (!match) return null;
   const seconds = Number(match[2]) + (match[1] ? Number(match[1]) * 60 : 0);
   return Number.isFinite(seconds) ? seconds : null;
+}
+
+/** Where to split typed text: the word boundary nearest the cursor, never an empty half. */
+export function splitPoint(text: string, caret: number | null): number {
+  const spans = [...text.matchAll(/\S+/g)].map((m) => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  if (spans.length < 2) return 0;
+  let k = Math.ceil(spans.length / 2);
+  if (caret !== null) {
+    k = spans.findIndex(([start, end]) => caret < end && (caret <= start || caret - start < (end - start) / 2));
+    if (k < 0) k = spans.length;
+  }
+  return Math.min(spans.length - 1, Math.max(1, k));
 }

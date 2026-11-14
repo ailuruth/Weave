@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {CAPTION_PRESETS, insertLine, linesOf, type EditWord} from "./caption-edit.ts";
+import {CAPTION_PRESETS, insertLine, linesOf, splitPoint, type EditWord} from "./caption-edit.ts";
 
 function word(text: string, start: number, end: number, line: number): EditWord {
   return {id: text, text, start, end, speaker: "S1", size: 0.2, line};
@@ -96,4 +96,23 @@ test("a line's text is replaced in place, keeping words when the count holds", a
   assert.equal(parseClock("1:02.5"), 62.5);
   assert.equal(parseClock("4.25"), 4.25);
   assert.equal(parseClock("abc"), null);
+});
+
+test("a caption splits at the word boundary nearest the cursor, never leaving a half empty", () => {
+  const text = "What's your sole purpose";
+  assert.equal(splitPoint(text, 12), 2);
+  assert.equal(splitPoint(text, 13), 2);
+  assert.equal(splitPoint(text, 15), 3);
+  assert.equal(splitPoint(text, 0), 1);
+  assert.equal(splitPoint(text, text.length), 3);
+  assert.equal(splitPoint(text, null), 2);
+  assert.equal(splitPoint("Gump!", 3), 0);
+});
+
+test("a tapped word stands out from its line, keeps the line's style, and taps back to its neighbours", async () => {
+  const {toggleEmphasis, presetOf} = await import("./caption-edit.ts");
+  const loud = toggleEmphasis(WORDS, 1);
+  assert.deepEqual(loud.map((w) => w.size), [0.2, 0.6, 0.2]);
+  assert.equal(presetOf(loud, 0)?.id, presetOf(WORDS, 0)?.id);
+  assert.deepEqual(toggleEmphasis(loud, 1).map((w) => w.size), [0.2, 0.2, 0.2]);
 });
