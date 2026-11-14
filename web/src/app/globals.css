@@ -3190,7 +3190,9 @@ button {
 
 .editor-lines p {
   margin: 0;
-  line-height: 1.75;
+  font-size: var(--text-md);
+  line-height: 1.6;
+  letter-spacing: var(--track-snug);
 }
 
 .editor-line-play {
@@ -3225,14 +3227,20 @@ button {
 }
 
 .editor-word {
-  margin: 0 1px 0 0;
-  padding: 1px var(--space-2);
-  border: 1px solid transparent;
+  margin: 0 var(--space-1) 0 0;
+  padding: 1px var(--space-1);
+  border: 0;
   border-radius: var(--r-xs);
   background: none;
   color: var(--text);
   font: inherit;
+  letter-spacing: inherit;
   cursor: pointer;
+  transition: background var(--dur-quick) ease;
+}
+
+.editor-word:active {
+  transform: none;
 }
 
 .editor-word[data-size="small"] {
@@ -3245,12 +3253,13 @@ button {
 }
 
 .editor-word:hover {
-  border-color: var(--control-line);
+  background: var(--segment-active);
 }
 
 .editor-word[data-selected="true"] {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--text);
 }
 
 .editor-inspector {
@@ -3642,8 +3651,9 @@ button {
   overflow: hidden;
   border: 0;
   border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--line-color) 22%, var(--rail-bg));
-  color: var(--text);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
   font: 400 var(--text-2xs)/14px var(--font-ui);
   text-align: left;
   cursor: pointer;
@@ -3671,11 +3681,13 @@ button {
 }
 
 .timeline-line:hover {
-  background: color-mix(in srgb, var(--line-color) 32%, var(--rail-bg));
+  background: var(--segment-active);
+  color: var(--text);
 }
 
 .timeline-line[data-current="true"] {
   box-shadow: inset 0 0 0 1.5px var(--text);
+  color: var(--text);
 }
 
 .timeline-line[data-editable="true"] {
