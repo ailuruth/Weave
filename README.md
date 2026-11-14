@@ -15,15 +15,17 @@ The clip is from [Sintel](https://durian.blender.org), © Blender Foundation, CC
 ## Caption a video
 
 ```bash
-./weave caption clip.mp4 --lang en     # or ko, multi
+./weave caption clip.mp4
 ```
+
+Weave works out whether the speech is English or Korean. Add `--lang en`, `--lang ko` or `--lang multi` to say so yourself.
 
 This writes the captioned video to `out/exports/`, with the captions as `.srt`, `.vtt`, an After Effects script and `.cwi.json`. A sound only file comes back as captions on a black frame.
 
 The captions are a first draft. To correct them, edit `out/exports/clip.cwi.json` and draw the video again from it, or use **Edit captions** in the studio.
 
 ```bash
-./weave caption clip.mp4 --lang en --captions out/exports/clip.cwi.json
+./weave caption clip.mp4 --captions out/exports/clip.cwi.json
 ```
 
 ## Install

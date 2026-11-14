@@ -3,8 +3,10 @@
 A recording is known whole before its first frame is shown. Weave uses that to fix the text, find where each word starts, and judge how a whole sentence was said.
 
 ```bash
-./weave caption clip.mp4 --lang en
+./weave caption clip.mp4
 ```
+
+The language is detected from the opening of the file when `--lang` is left out. `--verbose` prints the full log.
 
 ## Stages
 
@@ -29,13 +31,14 @@ In the studio, import a recording and choose **Edit captions**. Pick a word and 
 From the command line, edit `NAME.cwi.json` and hand it back:
 
 ```bash
-./weave caption clip.mp4 --lang en --captions out/exports/clip.cwi.json
+./weave caption clip.mp4 --captions out/exports/clip.cwi.json
 ```
 
 The file is used as written and nothing is transcribed. In it `loudness` is the size, `speaker` is the colour and `line_break` starts a caption line.
 
 | Part | Module |
 |---|---|
+| The command, its checks and what it prints | `caption_command.py`, `report.py`, `language.py` |
 | What may be adjusted, and how it is applied | `captions.py` |
 | The score the studio plays while it is adjusted | `desk.py` |
 

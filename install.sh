@@ -19,4 +19,4 @@ npm --prefix web run build --silent
 
 echo
 echo "Weave is installed. Caption a video with:"
-echo "  ./weave caption clip.mp4 --lang en"
+echo "  ./weave caption clip.mp4"
