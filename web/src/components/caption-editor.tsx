@@ -121,8 +121,12 @@ function CaptionText({
   caretRef: MutableRefObject<number | null>;
   onSelectRange: (value: string, start: number, end: number) => void;
 }) {
+  const reported = useRef<string | null>(null);
   const remember = (el: HTMLTextAreaElement) => {
     caretRef.current = el.selectionStart;
+    const selection = `${el.selectionStart}:${el.selectionEnd}:${el.value}`;
+    if (selection === reported.current) return;
+    reported.current = selection;
     onSelectRange(el.value, el.selectionStart, el.selectionEnd);
   };
   const own = useRef<HTMLTextAreaElement | null>(null);
