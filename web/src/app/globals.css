@@ -4507,6 +4507,30 @@ i.rainbow-dot,
   height: 16px;
   border-radius: 3px 3px 6px 6px;
   background: var(--accent);
+  transform-origin: 50% 0;
+  transition: transform var(--dur-quick) var(--ease-standard);
+}
+
+.timeline-track:hover .timeline-playhead::before {
+  transform: scale(1.08);
+}
+
+.timeline-playhead[data-held="true"]::before {
+  transform: scale(1.2);
+}
+
+.timeline-playhead[data-held="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.timeline-playhead[data-playing="true"]::before {
+  animation: head-start var(--dur-slow) var(--ease-standard);
+}
+
+@keyframes head-start {
+  40% {
+    transform: scale(1.22);
+  }
 }
 
 .timeline-playhead[data-outside="true"] {

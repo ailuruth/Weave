@@ -56,6 +56,8 @@ const BAR_PX = 4;
 const SNAP_PX = 8;
 const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
+const JUMP_S = 0.15;
+const GLIDE_MS = 220;
 const ROW_H = 26;
 const ROW_GAP = 3;
 const RAINBOW_ROW = "~rainbow";
@@ -161,6 +163,7 @@ export function RecordingTimeline({
   const timeRef = useRef<HTMLSpanElement>(null);
   const viewRef = useRef(view);
   const scrubRef = useRef<{resume: boolean; pending: number | null} | null>(null);
+  const shownRef = useRef<{at: number | null; glide: {from: number; startMs: number} | null}>({at: null, glide: null});
 
   useEffect(() => {
     viewRef.current = view;
@@ -176,9 +179,25 @@ export function RecordingTimeline({
 
   useEffect(() => {
     let frame = 0;
-    const draw = () => {
+    const still = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      || document.querySelector(".studio-shell")?.getAttribute("data-reduced-motion") === "true";
+    const draw = (now: number) => {
       frame = requestAnimationFrame(draw);
-      const position = positionRef.current ?? 0;
+      const actual = positionRef.current ?? 0;
+      const shownState = shownRef.current;
+      if (shownState.at !== null && !scrubRef.current && !still()
+        && Math.abs(actual - shownState.at) > JUMP_S && !shownState.glide) {
+        shownState.glide = {from: shownState.at, startMs: now};
+      }
+      if (scrubRef.current) shownState.glide = null;
+      let position = actual;
+      const glide = shownState.glide;
+      if (glide) {
+        const t = Math.min(1, (now - glide.startMs) / GLIDE_MS);
+        position = glide.from + (actual - glide.from) * (1 - (1 - t) ** 3);
+        if (t >= 1) shownState.glide = null;
+      }
+      shownState.at = position;
       const shown = viewRef.current;
       const span = shown.endS - shown.startS;
       const track = trackRef.current;
@@ -189,14 +208,14 @@ export function RecordingTimeline({
         track.style.setProperty("--played", `${Math.max(0, x).toFixed(1)}px`);
         head.dataset.outside = x < 0 || x > track.clientWidth ? "true" : "false";
       }
-      if (timeRef.current) timeRef.current.textContent = positionLabel(position);
+      if (timeRef.current) timeRef.current.textContent = positionLabel(actual);
       const scrub = scrubRef.current;
       if (scrub && scrub.pending !== null) {
         seek(scrub.pending);
         scrub.pending = null;
       }
       if (playing && !scrub) {
-        const followed = followView(shown, position, durationS);
+        const followed = followView(shown, actual, durationS);
         if (followed !== shown) setView(followed);
       }
     };
@@ -253,6 +272,7 @@ export function RecordingTimeline({
     if ((event.target as HTMLElement).closest(".timeline-line")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     scrubRef.current = {resume: playing, pending: timeAt(event.clientX)};
+    if (playheadRef.current) playheadRef.current.dataset.held = "true";
     if (playing) pause();
   };
   const moveScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -274,6 +294,7 @@ export function RecordingTimeline({
     const scrub = scrubRef.current;
     if (!scrub) return;
     scrubRef.current = null;
+    if (playheadRef.current) playheadRef.current.dataset.held = "false";
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -640,7 +661,12 @@ export function RecordingTimeline({
         <div className="timeline-hover" ref={hoverRef} data-visible="false" aria-hidden="true">
           <span />
         </div>
-        <div className="timeline-playhead" ref={playheadRef} aria-hidden="true" />
+        <div
+          className="timeline-playhead"
+          ref={playheadRef}
+          data-playing={playing ? "true" : "false"}
+          aria-hidden="true"
+        />
       </div>
       </div>
     </section>
