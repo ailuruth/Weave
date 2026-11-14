@@ -310,6 +310,7 @@ def render_score(
     publish: Callable[[dict], None],
     last_event_id: Callable[[], int],
     progress: Callable[[float], None] | None = None,
+    progress_every_s: float = 10.0,
     fps: int = RENDER_FPS,
 ) -> dict:
     """Replay `score` to the studio's render channel and write the captioned recording."""
@@ -330,7 +331,8 @@ def render_score(
     try:
         return render_recording(
             media, out, studio_url=studio_url, clock=clock,
-            last_event_id=last_event_id, progress=progress, fps=fps)
+            last_event_id=last_event_id, progress=progress,
+            progress_every_s=progress_every_s, fps=fps)
     finally:
         clock.finish()
         thread.join()
@@ -344,6 +346,7 @@ def render_recording(
     clock: StepClock,
     last_event_id: Callable[[], int],
     progress: Callable[[float], None] | None = None,
+    progress_every_s: float = 10.0,
     fps: int = RENDER_FPS,
 ) -> dict:
     """Play the recording through the studio on `clock` and write it out with its captions drawn on.
@@ -386,7 +389,7 @@ def render_recording(
             replayed = 0.0
             drawn = 0
             ahead_s: list[float] = []
-            every = max(1, round(float(picture.fps) * 10))
+            every = max(1, round(float(picture.fps) * progress_every_s))
             for frame in range(picture.frames):
                 target = float(frame / picture.fps) + delay_s
                 while target - replayed > 1e-9:

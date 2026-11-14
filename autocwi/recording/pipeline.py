@@ -24,6 +24,7 @@ class RecordingHooks:
     cancelled: Callable[[], bool]
     exported: Callable[[dict[str, Path], str], None]
     scored: Callable[[list[tuple[float, dict]]], None] | None = None
+    analysing: Callable[[float], None] | None = None
 
 
 def media_duration_s(path: Path) -> float:
@@ -86,10 +87,15 @@ def recording_events(
         print("[live] captions exported: "
               + ", ".join(str(p) for p in paths.values()))
 
+    def analysing(done: float) -> None:
+        hooks.announce(f"analysing {round(done * 100)}%")
+        if hooks.analysing is not None:
+            hooks.analysing(done)
+
     yield from analysed_events(
         caption_pass(recognizer),
         duration_s=duration_s,
-        progress=lambda done: hooks.announce(f"analysing {round(done * 100)}%"),
+        progress=analysing,
         ready=hooks.ready,
         cancelled=hooks.cancelled,
         direct=lambda words: direct(words, director),
