@@ -1156,8 +1156,7 @@ button {
    screen. */
 /* The eyebrow above each of these is gone -- it repeated the heading. Without
    it the h2 is the section title, so it carries the weight. */
-.rail-heading h2,
-.settings-panel h2 {
+.rail-heading h2 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
@@ -1559,27 +1558,44 @@ button {
   right: var(--space-4);
   bottom: var(--space-4);
   width: min(var(--panel-width), calc(100vw - 2 * var(--space-4)));
-  overflow: auto;
-  padding: var(--space-7) var(--space-7) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--sheet-bg);
   animation: panel-enter var(--dur-base) var(--ease-out) both;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
 }
 
 .settings-panel > header {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 var(--space-9);
+  padding: var(--space-7) var(--space-7) var(--space-6);
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.settings-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4) var(--space-7) var(--space-10);
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .settings-panel > header > div {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-1);
+}
+
+.settings-panel > header .sheet-reset {
+  margin-right: var(--space-3);
 }
 
 .sheet-reset {
@@ -1621,32 +1637,6 @@ button {
   font-size: var(--text-xs);
   line-height: 1.35;
   letter-spacing: 0;
-}
-
-.settings-panel h2 {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: 600;
-  line-height: 1.19;
-  letter-spacing: -.4px;
-}
-
-.sheet-close {
-  display: grid;
-  place-items: center;
-  width: var(--control-h);
-  height: var(--control-h);
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--group-bg);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.sheet-close:hover {
-  color: var(--text);
 }
 
 .settings-group + .settings-group {
@@ -3341,6 +3331,8 @@ button {
 }
 
 .caption-editor {
+  container: editor / inline-size;
+  animation: panel-enter var(--dur-base) var(--ease-out) both;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -3360,11 +3352,22 @@ button {
   scrollbar-width: thin;
 }
 
-.editor-bar h2 {
+.editor-bar h2,
+.settings-panel h2 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.24;
+}
+
+@container editor (max-width: 340px) {
+  .editor-bar .editor-add {
+    width: var(--control-icon);
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+    gap: 0;
+  }
 }
 
 .editor-bar > div {
@@ -3372,8 +3375,10 @@ button {
   gap: var(--space-1);
 }
 
-.editor-bar .icon-button:hover:not(:disabled) {
+.editor-bar .icon-button:hover:not(:disabled),
+.settings-panel > header .icon-button:hover {
   color: var(--text);
+  background: var(--surface-selected);
 }
 
 .editor-bar .icon-button:disabled {
@@ -3667,6 +3672,7 @@ button {
 /* THE TIMELINE under the stage, for a recording. Chrome: the speaker colour
    reaches it only as the tint and edge of a caption block. */
 .timeline {
+  container: timeline / inline-size;
   --lane-ruler: 22px;
   --lane-audio: 40px;
   --lane-captions: 44px;
@@ -4131,30 +4137,20 @@ i.rainbow-dot,
   cursor: default;
 }
 
-.caption-card[data-current="true"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: var(--progress, 0%);
-  height: 2px;
-  background: var(--card-color, var(--muted));
-  opacity: .7;
-}
 
 .card-head {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0;
   color: var(--muted-2);
   font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
 
 .card-time {
-  width: 70px;
+  min-width: 0;
+  field-sizing: content;
   height: 24px;
-  margin-left: calc(-1 * var(--space-3));
   padding: 0 var(--space-3);
   border: 1px solid transparent;
   border-radius: var(--r-sm);
@@ -4162,6 +4158,10 @@ i.rainbow-dot,
   color: var(--muted);
   font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
+}
+
+.card-time:first-child {
+  margin-left: calc(-1 * var(--space-3));
 }
 
 .card-time:hover {
@@ -4173,35 +4173,6 @@ i.rainbow-dot,
   outline: none;
   background: var(--bg);
   color: var(--text);
-}
-
-.card-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-5);
-  margin-left: auto;
-  white-space: nowrap;
-}
-
-.card-speaker {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--muted);
-}
-
-.card-speaker i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.card-speaker i:not(.rainbow-dot) {
-  background: var(--dot, var(--muted-2));
-}
-
-.card-fast {
-  color: var(--warn);
 }
 
 .card-text {
@@ -4232,6 +4203,9 @@ i.rainbow-dot,
 }
 
 .card-tools {
+  overflow: clip;
+  overflow-clip-margin: 4px;
+  animation: card-tools-open var(--dur-base) var(--ease-out) both;
   display: grid;
   gap: var(--space-4);
   padding-top: var(--space-6);
@@ -4261,6 +4235,12 @@ i.rainbow-dot,
   .card-row {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
+  }
+  .caption-card .card-actions button:not(.card-delete) svg {
+    display: none;
+  }
+  .caption-card .card-actions button {
+    padding: 0 var(--space-2);
   }
 }
 
@@ -4351,11 +4331,20 @@ i.rainbow-dot,
   border-color: var(--control-line);
 }
 
-.card-word[aria-pressed="true"] {
-  border-color: var(--accent);
+.card-word[aria-checked="true"] {
+  border-color: var(--text);
   background: var(--surface-selected);
-  font-weight: 700;
-  font-size: var(--text-md);
+}
+
+.card-word-all {
+  color: var(--muted);
+}
+
+.card-span {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-height: 32px;
 }
 
 .card-actions {
@@ -4371,8 +4360,10 @@ i.rainbow-dot,
   justify-content: center;
   gap: var(--space-2);
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   height: var(--control-h);
-  padding: 0 var(--space-5);
+  padding: 0 var(--space-4);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
   background: var(--surface-soft);
@@ -4698,14 +4689,14 @@ i.rainbow-dot,
   color: var(--accent);
 }
 
-@media (max-width: 940px) {
-  .timeline-bar {
+@container timeline (max-width: 760px) {
+  .timeline .timeline-bar {
     grid-template-columns: auto 1fr auto;
   }
-  .timeline-transport {
+  .timeline .timeline-transport {
     justify-self: center;
   }
-  .timeline-speed {
+  .timeline .timeline-speed {
     display: none;
   }
 }
@@ -4724,4 +4715,40 @@ i.rainbow-dot,
   .timeline-zoom {
     display: none;
   }
+}
+
+.caption-cards {
+  interpolate-size: allow-keywords;
+}
+
+@keyframes card-tools-open {
+  from {
+    height: 0;
+    padding-top: 0;
+    opacity: 0;
+  }
+}
+
+.caption-card,
+.card-word,
+.segmented button,
+.card-actions button,
+.card-time,
+.card-text {
+  transition:
+    background-color var(--dur-quick) ease,
+    border-color var(--dur-quick) ease,
+    color var(--dur-quick) ease,
+    box-shadow var(--dur-quick) ease,
+    transform var(--dur-press) var(--ease-out);
+}
+
+.swatch {
+  transition:
+    box-shadow var(--dur-quick) var(--ease-out),
+    transform var(--dur-quick) var(--ease-out);
+}
+
+.swatch:hover {
+  transform: scale(1.12);
 }

@@ -2024,7 +2024,7 @@ const SETTING_GROUPS: ReadonlyArray<{
     toggles: [
       ["lightStage", "Light stage", "Dark captions on a white stage."],
       ["highContrast", "High contrast", "Stronger lines and brighter secondary text."],
-      ["reducedMotion", "Reduce motion", "Keeps the colour turn and drops the movement."],
+      ["reducedMotion", "Reduce motion", "Keeps the color turn and drops the movement."],
     ],
   },
 ];
@@ -2114,12 +2114,13 @@ function SettingsPanel({
           >
             Reset
           </button>
-          <button className="sheet-close" onClick={close} aria-label="Close settings" title="Close (Esc)">
-            <X size={14} strokeWidth={2.4} />
+          <button className="icon-button" type="button" onClick={close} aria-label="Close settings" title="Close (Esc)">
+            <X size={17} />
           </button>
         </div>
       </header>
 
+      <div className="settings-body">
       {SETTING_GROUPS.map((group) => (
         <section className="settings-group" key={group.title} aria-label={group.title}>
           <h3>{group.title}</h3>
@@ -2170,6 +2171,7 @@ function SettingsPanel({
           </div>
         </section>
       ))}
+      </div>
     </aside>
   );
 }

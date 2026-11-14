@@ -13,8 +13,8 @@ import {
 import {
   CAPTION_PRESETS,
   applyPreset,
+  applyWordPreset,
   insertLine,
-  isEmphasised,
   joinPrevious,
   lineAt,
   linesOf,
@@ -22,11 +22,13 @@ import {
   parseClock,
   presetOf,
   removeLine,
+  removeWord,
   retimeLine,
+  retimeWord,
   setColour,
   setLineText,
   splitLineAt,
-  toggleEmphasis,
+  wordPresetOf,
   type EditLine,
   type EditWord,
 } from "@/lib/caption-edit";
@@ -37,8 +39,7 @@ import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 const NEW_CAPTION = "Caption";
-/** Above this many characters a second a caption reads too fast, the common subtitle guideline. */
-const FAST_CPS = 20;
+const FOLLOW_AFTER_SCROLL_MS = 4000;
 function speakerName(speaker: string | null): string {
   if (!speaker) return "No speaker";
   const n = /^S(\d+)$/.exec(speaker);
@@ -172,13 +173,16 @@ export function CaptionEditor({
   const {doc, error, busy, canUndo, commit, undo, revert} = captions;
   const [picked, setPicked] = useState<number | null>(focus?.index ?? null);
   const [typing, setTyping] = useState<number | null>(focus?.index ?? null);
+  const [target, setTarget] = useState<number | null>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const caretRef = useRef<number | null>(null);
+  const scrolledAtRef = useRef(0);
   const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
   if (focus && focus.n !== focusSeen) {
     setFocusSeen(focus.n);
     setPicked(focus.index);
     setTyping(focus.index);
+    setTarget(null);
   }
 
   const words = doc?.words ?? [];
@@ -191,11 +195,13 @@ export function CaptionEditor({
 
   const listRef = useRef<HTMLOListElement>(null);
   const currentFirst = current?.first ?? null;
+  const following = playing && picked === null;
   useEffect(() => {
-    if (!playing || currentFirst === null) return;
+    if (!following || currentFirst === null) return;
+    if (performance.now() - scrolledAtRef.current < FOLLOW_AFTER_SCROLL_MS) return;
     listRef.current?.querySelector(`[data-first="${currentFirst}"]`)
       ?.scrollIntoView({block: "nearest"});
-  }, [currentFirst, playing]);
+  }, [currentFirst, following]);
   const selectedFirst = selectedLine?.first ?? null;
   useEffect(() => {
     if (selectedFirst === null) return;
@@ -214,7 +220,8 @@ export function CaptionEditor({
   const choose = (line: EditLine) => {
     if (selectedLine?.first !== line.first) {
       setPicked(line.first);
-        caretRef.current = null;
+      setTarget(null);
+      caretRef.current = null;
       if (!playing) seek(line.start);
     }
   };
@@ -229,7 +236,8 @@ export function CaptionEditor({
       if (!ok) return;
       setPicked(added.index);
       setTyping(added.index);
-      });
+      setTarget(null);
+    });
   };
 
   const newSpeaker = nextSpeaker(doc?.speakers ?? []);
@@ -242,6 +250,7 @@ export function CaptionEditor({
           <button
             type="button"
             className="editor-add"
+            aria-label="Add a caption"
             title="Add a caption at the playhead"
             disabled={!doc || busy}
             onClick={addCaption}
@@ -288,27 +297,29 @@ export function CaptionEditor({
       )}
 
       {doc && (
-        <ol className="caption-cards" ref={listRef}>
-          {lines.map((line) => {
+        <ol
+          className="caption-cards"
+          ref={listRef}
+          onWheel={() => { scrolledAtRef.current = performance.now(); }}
+          onTouchMove={() => { scrolledAtRef.current = performance.now(); }}
+        >
+          {lines.map((line, number) => {
             const selected = selectedLine?.first === line.first;
             const lineWords = words.slice(line.first, line.last + 1);
             const first = lineWords[0];
-            const preset = presetOf(words, line.first);
-            const isCurrent = current?.first === line.first;
+            const aim = selected && target !== null && target >= line.first && target <= line.last ? target : null;
+            const scoped = aim === null ? first : words[aim];
+            const preset = aim === null ? presetOf(words, line.first) : wordPresetOf(words[aim]);
+            const at = aim ?? line.first;
+            const whole = aim === null;
             return (
               <li
-                key={`${line.first}:${first.id ?? "new"}`}
+                key={`line-${number}`}
                 className="caption-card"
                 data-first={line.first}
                 data-selected={selected}
-                data-current={isCurrent}
-                style={{
-                  "--card-color": first.rainbow ? "transparent" : speakerColor(first.speaker, colors),
-                  ...(isCurrent ? {
-                    "--progress": `${(Math.min(1, Math.max(0,
-                      (positionS - line.start) / Math.max(0.01, line.end - line.start))) * 100).toFixed(1)}%`,
-                  } : {}),
-                } as CSSVars}
+                data-current={current?.first === line.first}
+                style={{"--card-color": first.rainbow ? "transparent" : speakerColor(first.speaker, colors)} as CSSVars}
                 data-rainbow={first.rainbow ? "true" : undefined}
                 onClick={() => choose(line)}
               >
@@ -326,24 +337,6 @@ export function CaptionEditor({
                     onChange={(value) => change(
                       retimeLine(words, line.first, line.last, line.start, value), line.first)}
                   />
-                  <span className="card-meta">
-                    {lineWords.map((word) => word.text).join(" ").length
-                      / Math.max(0.1, line.end - line.start) > FAST_CPS && (
-                      <span
-                        className="card-fast"
-                        title="Too many words for the time it is on screen. Give it longer, or shorten it."
-                      >
-                        Too fast to read
-                      </span>
-                    )}
-                    <span
-                      className="card-speaker"
-                      style={{"--dot": first.rainbow ? undefined : speakerColor(first.speaker, colors)} as CSSVars}
-                    >
-                      <i className={first.rainbow ? "rainbow-dot" : undefined} />
-                      {first.rainbow ? "Rainbow" : speakerName(first.speaker)}
-                    </span>
-                  </span>
                 </div>
                 <CaptionText
                   text={lineWords.map((word) => word.text).join(" ")}
@@ -359,37 +352,65 @@ export function CaptionEditor({
                 {selected && (
                   <div className="card-tools" onClick={(event) => event.stopPropagation()}>
                     <div className="card-row">
-                      <span>Colour</span>
-                      <div className="swatches" role="radiogroup" aria-label="Colour">
+                      <span>Edit</span>
+                      <div className="card-words" role="radiogroup" aria-label="What to edit">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={whole}
+                          className="card-word card-word-all"
+                          onClick={() => setTarget(null)}
+                        >
+                          Whole line
+                        </button>
+                        {lineWords.map((word, offset) => {
+                          const index = line.first + offset;
+                          return (
+                            <button
+                              key={`word-${offset}`}
+                              type="button"
+                              role="radio"
+                              aria-checked={aim === index}
+                              className="card-word"
+                              onClick={() => setTarget(aim === index ? null : index)}
+                            >
+                              {word.text}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="card-row">
+                      <span>Color</span>
+                      <div className="swatches" role="radiogroup" aria-label="Color">
                         {doc.speakers.map((speaker) => (
                           <button
                             key={speaker}
                             type="button"
                             role="radio"
-                            aria-checked={!first.rainbow && first.speaker === speaker}
+                            aria-checked={!scoped.rainbow && scoped.speaker === speaker}
                             aria-label={speakerName(speaker)}
                             title={speakerName(speaker)}
                             className="swatch"
                             style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
-                            onClick={() => change(setColour(words, line.first, {speaker}, true), line.first, true)}
+                            onClick={() => change(setColour(words, at, {speaker}, whole), at, true)}
                           />
                         ))}
                         <button
                           type="button"
                           role="radio"
-                          aria-checked={Boolean(first.rainbow)}
+                          aria-checked={Boolean(scoped.rainbow)}
                           aria-label="Rainbow"
                           title="Rainbow"
                           className="swatch rainbow-dot"
-                          onClick={() => change(setColour(words, line.first, {rainbow: true}, true), line.first, true)}
+                          onClick={() => change(setColour(words, at, {rainbow: true}, whole), at, true)}
                         />
                         <button
                           type="button"
                           className="swatch swatch-new"
                           aria-label={`New speaker, ${speakerName(newSpeaker)}`}
                           title={`New speaker (${speakerName(newSpeaker)})`}
-                          onClick={() => change(
-                            setColour(words, line.first, {speaker: newSpeaker}, true), line.first, true)}
+                          onClick={() => change(setColour(words, at, {speaker: newSpeaker}, whole), at, true)}
                         >
                           <Plus size={12} />
                         </button>
@@ -405,34 +426,33 @@ export function CaptionEditor({
                             role="radio"
                             aria-checked={preset?.id === choice.id}
                             data-active={preset?.id === choice.id}
-                            onClick={() => change(
-                              applyPreset(words, line.first, choice, durationS), line.first, true)}
+                            onClick={() => change(whole
+                              ? applyPreset(words, line.first, choice, durationS)
+                              : applyWordPreset(words, at, choice, durationS), at, true)}
                           >
                             {choice.label}
                           </button>
                         ))}
                       </div>
                     </div>
-                    <div className="card-row">
-                      <span>Emphasis</span>
-                      <div className="card-words">
-                        {lineWords.map((word, offset) => {
-                          const index = line.first + offset;
-                          return (
-                            <button
-                              key={`${index}:${word.text}`}
-                              type="button"
-                              className="card-word"
-                              aria-pressed={isEmphasised(word)}
-                              title={isEmphasised(word) ? "Back to the size of its line" : "Make this word bigger"}
-                              onClick={() => change(toggleEmphasis(words, index), index, true)}
-                            >
-                              {word.text}
-                            </button>
-                          );
-                        })}
+                    {!whole && (
+                      <div className="card-row">
+                        <span>Time</span>
+                        <div className="card-span">
+                          <TimeField
+                            label="Word start"
+                            value={words[at].start}
+                            onChange={(value) => change(retimeWord(words, at, value, words[at].end), at)}
+                          />
+                          <span className="card-arrow" aria-hidden="true">–</span>
+                          <TimeField
+                            label="Word end"
+                            value={words[at].end}
+                            onChange={(value) => change(retimeWord(words, at, words[at].start, value), at)}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="card-actions">
                       <button
                         type="button"
@@ -453,8 +473,9 @@ export function CaptionEditor({
                           const split = splitLineAt(words, line.first, draft, caretRef.current);
                           if (!split) return;
                           caretRef.current = null;
+                          setTarget(null);
                           change(split.words, line.first);
-                                              }}
+                        }}
                       >
                         <Scissors size={13} />
                         Split
@@ -463,7 +484,10 @@ export function CaptionEditor({
                         type="button"
                         disabled={line.first === 0}
                         title="Make this and the caption above one caption"
-                        onClick={() => change(joinPrevious(words, line.first), line.first)}
+                        onClick={() => {
+                          setTarget(null);
+                          change(joinPrevious(words, line.first), line.first);
+                        }}
                       >
                         <Merge size={13} />
                         Join
@@ -471,11 +495,16 @@ export function CaptionEditor({
                       <button
                         type="button"
                         className="card-delete"
-                        aria-label="Delete this caption"
-                        title="Delete this caption"
+                        aria-label={whole ? "Delete this caption" : `Delete “${words[at].text}”`}
+                        title={whole ? "Delete this caption" : `Delete “${words[at].text}”`}
                         onClick={() => {
-                          setPicked(null);
-                          change(removeLine(words, line.first), Math.max(0, line.first - 1));
+                          if (whole) {
+                            setPicked(null);
+                            change(removeLine(words, line.first), Math.max(0, line.first - 1));
+                          } else {
+                            setTarget(null);
+                            change(removeWord(words, at), line.first);
+                          }
                         }}
                       >
                         <Trash2 size={14} />

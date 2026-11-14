@@ -129,3 +129,19 @@ test("a split lands exactly at the cursor, cutting a word when the cursor is ins
   assert.equal(splitLineAt(WORDS, 0, "Hello there", 0), null);
   assert.deepEqual(splitLineAt(WORDS, 2, "Bye", 1)?.words.slice(2).map((w) => [w.text, w.line]), [["B", 1], ["ye", 2]]);
 });
+
+test("one word takes a style and a time of its own without crossing its neighbours", async () => {
+  const {applyWordPreset, retimeWord, wordPresetOf} = await import("./caption-edit.ts");
+  const slow = applyWordPreset(WORDS, 0, DRAWN);
+  assert.equal(slow[0].size, DRAWN.size);
+  assert.equal(slow[0].end, 1.5);
+  assert.equal(slow[1].size, 0.2);
+  assert.equal(wordPresetOf(slow[0])?.id, "drawn");
+  const shout = applyWordPreset(WORDS, 2, SHOUT, 5.7);
+  assert.equal(shout[2].end, 5.5);
+  const moved = retimeWord(WORDS, 1, 0.5, 9);
+  assert.equal(moved[1].start, 1.001);
+  assert.equal(moved[1].end, 5);
+  const squeezed = retimeWord(WORDS, 1, 1.8, 1.7);
+  assert.ok(squeezed[1].end - squeezed[1].start >= 0.05 - 1e-9);
+});

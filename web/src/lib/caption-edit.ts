@@ -479,3 +479,41 @@ export function splitLineAt(
   if (k <= 0) return null;
   return {words: breakBefore(typed, line.first + k), first: line.first + k};
 }
+
+/** One word given a preset's size, and at least its time on screen where the next word leaves room. */
+export function applyWordPreset(
+  words: readonly EditWord[],
+  index: number,
+  preset: CaptionPreset,
+  endS = Number.POSITIVE_INFINITY,
+): EditWord[] {
+  const word = words[index];
+  if (!word) return [...words];
+  const ceiling = Math.min(endS, index + 1 < words.length ? Math.max(words[index + 1].start, word.end) : endS);
+  const end = Math.min(ceiling, Math.max(word.end, word.start + preset.perWordS));
+  return mapRange(words, index, index, (current) => ({...current, size: preset.size, end: Number(end.toFixed(3))}));
+}
+
+/** The preset a single word matches by its size, if any. */
+export function wordPresetOf(word: EditWord): CaptionPreset | null {
+  return CAPTION_PRESETS.find((preset) => Math.abs(preset.size - word.size) < 0.02) ?? null;
+}
+
+/** One word moved to run from `startS` to `endS`, kept after the word before it and before the word after it. */
+export function retimeWord(
+  words: readonly EditWord[],
+  index: number,
+  startS: number,
+  endS: number,
+): EditWord[] {
+  const word = words[index];
+  if (!word || !Number.isFinite(startS) || !Number.isFinite(endS)) return [...words];
+  const floor = index > 0 ? words[index - 1].start + 0.001 : 0;
+  const ceiling = index + 1 < words.length ? Math.max(words[index + 1].start, word.end) : Number.POSITIVE_INFINITY;
+  let start = Math.max(floor, Math.min(startS, ceiling - MIN_WORD_S));
+  let end = Math.min(ceiling, Math.max(endS, start + MIN_WORD_S));
+  if (end - start < MIN_WORD_S) start = Math.max(floor, end - MIN_WORD_S);
+  start = Number(start.toFixed(3));
+  end = Number(end.toFixed(3));
+  return mapRange(words, index, index, (current) => ({...current, start, end}));
+}
