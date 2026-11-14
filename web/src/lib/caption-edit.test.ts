@@ -20,6 +20,7 @@ import {
   setSize,
   setSpeaker,
   setText,
+  wordSpan,
   type EditWord,
 } from "./caption-edit.ts";
 
@@ -138,4 +139,10 @@ test("the timing keys act on the line under the playhead, or the last one before
   assert.equal(lineForPlayhead(lines, 2.5)?.first, 0);
   assert.equal(lineForPlayhead(lines, 0.2)?.first, 0);
   assert.equal(lineForPlayhead([], 1), null);
+});
+
+test("a word's place in the caption text is found by its order, whatever the spacing", () => {
+  assert.deepEqual(wordSpan("precisely as each word", 0), [0, 9]);
+  assert.deepEqual(wordSpan("precisely  as   each word", 2), [16, 20]);
+  assert.equal(wordSpan("precisely as", 2), null);
 });

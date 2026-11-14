@@ -2210,10 +2210,10 @@ export function LiveStudio() {
   const [view, setView] = useState<ViewMode>("stage");
   const [railOpen, setRailOpen] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editFocus, setEditFocus] = useState<{index: number; n: number} | null>(null);
-  const editWord = useCallback((index: number) => {
+  const [editFocus, setEditFocus] = useState<{index: number; n: number; typing: boolean} | null>(null);
+  const editWord = useCallback((index: number, typing = false) => {
     setEditing(true);
-    setEditFocus((last) => ({index, n: (last?.n ?? 0) + 1}));
+    setEditFocus((last) => ({index, n: (last?.n ?? 0) + 1, typing}));
   }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => {

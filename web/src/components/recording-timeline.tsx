@@ -151,8 +151,8 @@ export function RecordingTimeline({
   colors: SpeakerColorMap;
   /** The caption line under the playhead, to mark its block. */
   currentCue: number | null;
-  /** Open the editor on the word at this index. */
-  onEditWord?: (index: number) => void;
+  /** Open the editor on the word at this index, typing into it when it is new. */
+  onEditWord?: (index: number, typing?: boolean) => void;
 }) {
   const {
     durationS, lines, sounds, levels, positionRef, playing, rate, generation,
@@ -439,7 +439,7 @@ export function RecordingTimeline({
     const added = insertLine(words, atS, NEW_CAPTION, speaker, CAPTION_PRESETS[0], durationS);
     if (!added) return;
     void captions.commit(added.words, added.index, true).then((ok) => {
-      if (ok) onEditWord?.(added.index);
+      if (ok) onEditWord?.(added.index, true);
     });
   };
 

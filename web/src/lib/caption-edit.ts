@@ -519,6 +519,11 @@ export function retimeWord(
 }
 
 /** The words a text selection touches, as offsets into the line, or null for none. */
+export function wordSpan(text: string, offset: number): [number, number] | null {
+  const match = [...text.matchAll(/\S+/g)][offset];
+  return match ? [match.index ?? 0, (match.index ?? 0) + match[0].length] : null;
+}
+
 export function wordsInSelection(text: string, start: number, end: number): [number, number] | null {
   if (end <= start) return null;
   const spans = [...text.matchAll(/\S+/g)].map((m) => [m.index ?? 0, (m.index ?? 0) + m[0].length]);

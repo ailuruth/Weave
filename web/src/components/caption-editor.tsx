@@ -10,7 +10,6 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MutableRefObject,
   type ReactNode,
 } from "react";
 import {
@@ -31,6 +30,7 @@ import {
   setLineText,
   splitLineAt,
   wordPresetOf,
+  wordSpan,
   wordsInSelection,
   type EditLine,
   type EditWord,
@@ -107,30 +107,30 @@ function TimeField({
   );
 }
 
+type TextSelect = "all" | "end" | [number, number];
+
 function CaptionText({
   text,
-  autoFocus,
+  select,
   onCommit,
-  onFocus,
-  caretRef,
+  onDone,
   onSelectRange,
 }: {
   text: string;
-  autoFocus: boolean;
+  select: TextSelect;
   onCommit: (text: string) => void;
-  onFocus: () => void;
-  caretRef: MutableRefObject<number | null>;
+  onDone: () => void;
   onSelectRange: (value: string, start: number, end: number) => void;
 }) {
   const reported = useRef<string | null>(null);
   const remember = (el: HTMLTextAreaElement) => {
-    caretRef.current = el.selectionStart;
     const selection = `${el.selectionStart}:${el.selectionEnd}:${el.value}`;
     if (selection === reported.current) return;
     reported.current = selection;
     onSelectRange(el.value, el.selectionStart, el.selectionEnd);
   };
   const own = useRef<HTMLTextAreaElement | null>(null);
+  const cancelled = useRef(false);
   const rememberRef = useRef(remember);
   useEffect(() => {
     rememberRef.current = remember;
@@ -146,6 +146,14 @@ function CaptionText({
       el.removeEventListener("selectionchange", read);
     };
   }, []);
+  useEffect(() => {
+    const el = own.current;
+    if (!el) return;
+    el.focus();
+    if (select === "all") el.select();
+    else if (select === "end") el.setSelectionRange(el.value.length, el.value.length);
+    else el.setSelectionRange(select[0], select[1]);
+  }, [select]);
   const [draft, setDraft] = useState(text);
   const [seen, setSeen] = useState(text);
   if (seen !== text) {
@@ -160,15 +168,11 @@ function CaptionText({
       onSelect={(event) => remember(event.currentTarget)}
       rows={1}
       spellCheck={false}
-      autoFocus={autoFocus}
       aria-label="Caption text"
-      onFocus={(event) => {
-        onFocus();
-        if (autoFocus) event.currentTarget.select();
-      }}
       onChange={(event) => setDraft(event.target.value.replace(/\n/g, " "))}
       onBlur={() => {
-        if (draft.trim() !== text) onCommit(draft);
+        if (!cancelled.current && draft.trim() !== text) onCommit(draft);
+        onDone();
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
@@ -176,7 +180,7 @@ function CaptionText({
           event.currentTarget.blur();
         } else if (event.key === "Escape") {
           event.stopPropagation();
-          setDraft(text);
+          cancelled.current = true;
           event.currentTarget.blur();
         }
       }}
@@ -303,18 +307,18 @@ export function CaptionEditor({
   previewing: boolean;
   captions: CaptionDocumentState;
   /** A word to open on, from outside the editor; `n` changes on every request. */
-  focus?: {index: number; n: number} | null;
+  focus?: {index: number; n: number; typing?: boolean} | null;
   look: CueLook;
   sizeRange: [number, number];
   setLook: (look: CueLook) => void;
 }) {
   const {doc, error, busy, canUndo, commit, undo, revert} = captions;
   const [picked, setPicked] = useState<number | null>(focus?.index ?? null);
-  const [typing, setTyping] = useState<number | null>(focus?.index ?? null);
+  const [typing, setTyping] = useState<{first: number; select: TextSelect} | null>(
+    focus?.typing ? {first: focus.index, select: "all"} : null);
   const [sel, setSel] = useState<[number, number] | null>(null);
   const [query, setQuery] = useState("");
   const anchorRef = useRef<number | null>(null);
-  const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
   const inspectorRef = useRef<HTMLDivElement>(null);
   useScrollEdges(inspectorRef);
@@ -328,7 +332,7 @@ export function CaptionEditor({
   if (focus && focus.n !== focusSeen) {
     setFocusSeen(focus.n);
     setPicked(focus.index);
-    setTyping(focus.index);
+    setTyping(focus.typing ? {first: focus.index, select: "all"} : null);
     setSel(null);
   }
 
@@ -379,7 +383,6 @@ export function CaptionEditor({
   const deselect = () => {
     setPicked(null);
     setSel(null);
-    caretRef.current = null;
   };
 
   const choose = (line: EditLine, always = false) => {
@@ -390,7 +393,6 @@ export function CaptionEditor({
     if (selectedLine?.first !== line.first) {
       setPicked(line.first);
       setSel(null);
-      caretRef.current = null;
     }
     if (always || !playing) seek(line.start);
   };
@@ -413,7 +415,7 @@ export function CaptionEditor({
     void commit(added.words, added.index).then((ok) => {
       if (!ok) return;
       setPicked(added.index);
-      setTyping(added.index);
+      setTyping({first: added.index, select: "all"});
       setSel(null);
       flash(setFresh, added.index, ENTER_MS);
     });
@@ -426,12 +428,11 @@ export function CaptionEditor({
     else if (picked !== null) deselect();
   };
 
-  const splitAtCaret = (line: EditLine, text: string) => {
-    const field = inspectorRef.current?.querySelector<HTMLTextAreaElement>(".field-text");
-    const split = splitLineAt(words, line.first, field?.value ?? text, caretRef.current);
+  const splitAt = (line: EditLine, text: string, caret: number | null) => {
+    const split = splitLineAt(words, line.first, text, caret);
     if (!split) return;
-    caretRef.current = null;
     setSel(null);
+    setTyping(null);
     change(split.words, line.first);
     flash(setFresh, split.first, ENTER_MS);
   };
@@ -518,10 +519,15 @@ export function CaptionEditor({
             <button
               type="button"
               className="icon-button"
-              aria-label="Split at the cursor"
-              title="Split at the cursor"
+              aria-label={range ? `Split before “${words[range[0]].text}”` : "Split at the cursor"}
+              title={range ? `Split before “${words[range[0]].text}”` : "Split at the cursor"}
               disabled={lineWords.length < 2 && first.text.length < 2}
-              onClick={() => splitAtCaret(line, text)}
+              onClick={(event) => {
+                const field = event.currentTarget.closest(".inspector-body")
+                  ?.querySelector<HTMLTextAreaElement>(".field-text");
+                const picked = range ? wordSpan(text, range[0] - line.first) : null;
+                splitAt(line, field?.value ?? text, field ? field.selectionStart : picked?.[0] ?? null);
+              }}
             >
               <Scissors size={16} />
             </button>
@@ -561,44 +567,10 @@ export function CaptionEditor({
             </button>
           </div>
         </div>
-        <div className="word-strip" role="group" aria-label="Words, as they will move">
-          {lineWords.map((word, offset) => {
-            const index = line.first + offset;
-            const on = range !== null && index >= range[0] && index <= range[1];
-            return (
-              <button
-                key={`word-${offset}`}
-                type="button"
-                className="strip-word"
-                aria-pressed={on}
-                data-rainbow={word.rainbow ? "true" : undefined}
-                data-slow={word.end - word.start > SLOW_WORD_S ? "true" : undefined}
-                title={`${word.text}, ${wordPresetOf(word)?.label ?? "as spoken"}`}
-                style={{
-                  "--at": `${(word.start - line.start + PREVIEW_LEAD_S).toFixed(3)}s`,
-                  "--len": `${Math.max(0.12, word.end - word.start).toFixed(3)}s`,
-                  "--s": word.size.toFixed(3),
-                  "--ink": word.rainbow ? undefined : speakerColor(word.speaker, colors),
-                } as CSSVars}
-                onPointerDown={(event) => {
-                  if (event.button !== 0) return;
-                  event.preventDefault();
-                  pickWord(index, event.shiftKey);
-                }}
-                onClick={(event) => {
-                  if (event.detail === 0) pickWord(index, event.shiftKey);
-                }}
-              >
-                {word.text}
-              </button>
-            );
-          })}
-        </div>
-        <Section label="Text">
+        {typing?.first === line.first ? (
           <CaptionText
             text={text}
-            autoFocus={typing === line.first}
-            caretRef={caretRef}
+            select={typing.select}
             onSelectRange={(value, start, end) => {
               const found = value === text ? wordsInSelection(value, start, end) : null;
               const whole = found !== null && found[0] === 0 && found[1] === line.last - line.first;
@@ -607,15 +579,58 @@ export function CaptionEditor({
                 : null;
               if (next?.[0] !== sel?.[0] || next?.[1] !== sel?.[1]) setSel(next);
             }}
-            onFocus={() => {
-              if (typing !== null) setTyping(null);
-            }}
             onCommit={(value) => {
               setSel(null);
               change(setLineText(words, line.first, value), line.first);
             }}
+            onDone={() => setTyping(null)}
           />
-        </Section>
+        ) : (
+          <div
+            className="word-strip"
+            role="group"
+            aria-label="Words, as they will move"
+            title="Double-click to edit the text"
+            onDoubleClick={(event) => {
+              const word = (event.target as HTMLElement).closest<HTMLElement>(".strip-word");
+              const span = word ? wordSpan(text, Number(word.dataset.offset)) : null;
+              setTyping({first: line.first, select: span ?? "end"});
+            }}
+          >
+            {lineWords.map((word, offset) => {
+              const index = line.first + offset;
+              const on = range !== null && index >= range[0] && index <= range[1];
+              return (
+                <button
+                  key={`word-${offset}`}
+                  type="button"
+                  className="strip-word"
+                  data-offset={offset}
+                  aria-pressed={on}
+                  data-rainbow={word.rainbow ? "true" : undefined}
+                  data-slow={word.end - word.start > SLOW_WORD_S ? "true" : undefined}
+                  title={`${word.text}, ${wordPresetOf(word)?.label ?? "as spoken"}`}
+                  style={{
+                    "--at": `${(word.start - line.start + PREVIEW_LEAD_S).toFixed(3)}s`,
+                    "--len": `${Math.max(0.12, word.end - word.start).toFixed(3)}s`,
+                    "--s": word.size.toFixed(3),
+                    "--ink": word.rainbow ? undefined : speakerColor(word.speaker, colors),
+                  } as CSSVars}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) return;
+                    event.preventDefault();
+                    pickWord(index, event.shiftKey);
+                  }}
+                  onClick={(event) => {
+                    if (event.detail === 0) pickWord(index, event.shiftKey);
+                  }}
+                >
+                  {word.text}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <Section label="Color">
           <div
             className="swatches"
