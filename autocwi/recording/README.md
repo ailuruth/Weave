@@ -54,6 +54,7 @@ Every export writes `NAME.aftereffects.jsx`. Open the Caption with Intention tem
 * The script is plain ASCII, so Korean text survives any system encoding.
 * Caption layers never overlap in time, and a composition shorter than the captions is lengthened.
 * If something fails it says which caption line, and one undo removes what it added.
+* When it finishes it reads every line back from After Effects and lists any that did not come out as written.
 
 ## Where the captions sit
 

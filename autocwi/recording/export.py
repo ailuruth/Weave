@@ -183,7 +183,8 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
 // COLOR_01 control and the box's link to the layer above were read out of the
 // template file itself, and the script is run against a model of After
 // Effects' scripting interface on every change. It has not been run inside
-// After Effects. Check the first line it builds before trusting the rest.
+// After Effects by its author. When you run it, it reads every line back
+// and tells you which, if any, did not come out as written.
 //
 // If the composition is shorter than the captions it is lengthened to fit.
 //
@@ -222,6 +223,7 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
     var built = 0;
     var lengthened = false;
     var failure = null;
+    var made = [];
     try {
         if (comp.duration < needed) {
             comp.duration = needed;
@@ -254,6 +256,7 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
             if (color) { color.property("Color").setValue(line.color); }
 
             text.comment = line.note;
+            made.push({text: text, box: box, line: line, number: n + 1});
             built++;
         }
     } catch (err) {
@@ -265,8 +268,44 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
         alert(failure + "\nUndo once to remove what it added.");
         return;
     }
-    alert("Weave built " + built + " caption lines."
-        + (lengthened ? " The composition was lengthened to " + needed + " s to hold them." : ""));
+    // Read every line back from After Effects, so a run that did not take is
+    // reported and not just assumed.
+    var frame = comp.frameDuration > 0 ? comp.frameDuration : 0.05;
+    var problems = [];
+    function near(a, b) { return Math.abs(a - b) <= frame; }
+    for (var c = 0; c < made.length; c++) {
+        var item = made[c];
+        var where = "Line " + item.number + ": ";
+        try {
+            if (item.box.index !== item.text.index + 1) {
+                problems.push(where + "its box is not directly under its text.");
+            }
+            var back = item.text.property("ADBE Text Document") || item.text.property("Source Text");
+            if (String(back.value.text) !== item.line.text) {
+                problems.push(where + "the text did not take.");
+            }
+            var marks = item.text.property("ADBE Marker") || item.text.property("Marker");
+            if (marks.numKeys !== 2) {
+                problems.push(where + "it has " + marks.numKeys + " markers, not START and END.");
+            } else if (!near(marks.keyTime(1), item.line.animStart)
+                    || !near(marks.keyTime(2), item.line.animEnd)) {
+                problems.push(where + "its markers are not where the words are.");
+            }
+            if (!near(item.text.inPoint, item.line.start) || !near(item.text.outPoint, item.line.end)) {
+                problems.push(where + "its time on screen did not take.");
+            }
+        } catch (checkErr) {
+            problems.push(where + "could not be read back (" + checkErr.toString() + ").");
+        }
+    }
+    var summary = "Weave built " + built + " caption lines"
+        + (problems.length ? "." : " and read each one back.")
+        + (lengthened ? " The composition was lengthened to " + needed + " s to hold them." : "");
+    if (problems.length) {
+        summary += "\n" + problems.length + " did not come out as written:\n"
+            + problems.slice(0, 8).join("\n");
+    }
+    alert(summary);
 })();
 """
 
