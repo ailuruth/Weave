@@ -1,26 +1,28 @@
 # The studio chrome's design system
 
-The chrome follows Linear's system below, chosen 2026-11-14. The captions follow Caption with Intention, and anything inside `.caption-word` is theirs. The values live in `web/src/app/globals.css`; this file is the reference they were read from.
+The chrome follows the structure of Linear's system below, chosen 2026-11-14, in Weave's own Ink colours, chosen 2026-11-15. The captions follow Caption with Intention, and anything inside `.caption-word` is theirs. The values live in `web/src/app/globals.css`; this file is the reference they were read from.
 
 The analysis is from VoltAgent's awesome-design-md collection (MIT), read from Linear's public website. It describes Linear's marketing site, not its app, and it is not Linear's own published system.
 
 ## How Weave applies it
 
-- The canvas, surface ladder, hairlines, ink steps and lavender are Linear's.
-- Lavender as text or a mark is Linear's hover step, `#828fff`. The brand step `#5e6ad2` measures 3.9:1 on a panel, so it only fills the primary button.
-- A hovered primary button darkens to `#545fc6`. Linear lightens it, which drops white type to 2.9:1.
+- The structure is Linear's: one canvas, a surface ladder, hairlines, three ink steps and one accent.
+- The colours are the Ink palette, at the user's choice over Linear's lavender: neutral greys on true black, with white as the accent, so the speakers carry all the colour on screen.
+- Measured on a panel (`#161616`): text 18.1:1, secondary 11.6:1, meta 5.97:1 (4.92:1 on a selected row), control outline 3.65:1. A panel against the ground is 1.16:1.
+- The primary button is a white fill with a black label, and it darkens to `#dedede` on hover.
+- A switch that is on is a white track with a black knob. With a white knob it disappeared.
 - Anything you press or type into keeps a 3:1 outline (`--control-line`). Linear's hairlines measure under 2:1.
 - There are six kinds of button, and every control is one of them. All are 32px tall with 6px corners and 13px labels at weight 500, unless noted.
-  1. Primary: the lavender fill. Export only, so the screen has one.
-  2. Secondary: a 1px outline. Edit captions (inverted while its panel is open) and Add a caption.
+  1. Primary: the white fill. Export only, so the screen has one.
+  2. Secondary: a 1px outline. Edit captions (grey-filled while its panel is open, so Export stays the one white button) and Add a caption.
   3. Text: no outline. Reset.
   4. Icon: a 32px square whose glyph (16px) brightens on hover. It never shows a box, so a glyph can sit on an edge.
   5. Switch: a 32px track with 26px cells of 4px corners and one fill that slides to the choice. Stage and Transcript, Style and Color. Playback speed is a text button that steps through its three speeds, and zoom is three icons.
   6. Play: the 40px white circle that leads the timeline, the one exception.
 - Icons inside a caption card are 28px with 14px glyphs, to share a row with the card's 28px times.
 - The light theme is derived from Linear's inverse tokens. Linear's site ships no light theme.
-- The font is the system face. Linear's own faces are not distributed.
-- The tools are tiles: the stage, the timeline and the rail are rounded 12px tiles, 8px apart, on a near-black ground (`#050506`), and the panels are lifted to `#1b1c1f`. Linear's own dark steps sit so close to its canvas that the studio read as flat and light.
+- The font is the system face. Linear's own faces are not distributed, and the user refused Inter (2026-11-15).
+- The tools are tiles: the stage, the timeline and the rail are rounded 12px tiles, 8px apart, on a true black ground (`#000000`), and the panels are lifted to `#161616`. Linear's own dark steps sit so close to its canvas that the studio read as flat and light.
 - Chrome type runs one step larger (12, 13, 14 and 15px) and controls are 32px tall.
 
 ## Linear, as analysed

@@ -16,26 +16,23 @@
 
 /* TWO DESIGN SYSTEMS, ONE SCREEN. */
 :root {
-  /* THE CHROME FOLLOWS LINEAR'S SYSTEM (2026-11-14, at the user's request):
-     the blue-tinted canvas, the surface ladder, hairlines and one lavender.
-     The lavender as text is Linear's hover step, #828fff: the brand step
-     #5e6ad2 measures 3.9:1 on a panel, so it only fills buttons, and a
-     hovered button darkens rather than lightening, which would drop white
-     type to 2.9:1. */
-  --bg: #050506;
-  --surface: #26272b;
-  --surface-soft: #1f2023;
-  --line: #2b2d32;
-  --line-strong: #3a3c42;
-  --control-line: #6c7078;
-  --surface-selected: #2a2b30;
-  --segment-track: #111214;
-  --segment-active: #33353a;
-  --text: #f7f8f8;
-  --muted: #d0d6e0;
-  --muted-2: #8a8f98;
-  --accent: #828fff;
-  --focus: #5e69d1;
+  /* THE CHROME IS NEUTRAL INK (2026-11-15, at the user's choice): greys on
+     true black, white as the one accent, so the speakers carry all the colour.
+     web/DESIGN.md has the measurements. */
+  --bg: #000000;
+  --surface: #262626;
+  --surface-soft: #1c1c1c;
+  --line: #262626;
+  --line-strong: #3a3a3a;
+  --control-line: #707070;
+  --surface-selected: #272727;
+  --segment-track: #0a0a0a;
+  --segment-active: #303030;
+  --text: #ffffff;
+  --muted: #cfcfcf;
+  --muted-2: #949494;
+  --accent: #ffffff;
+  --focus: #ffffff;
   --good: #27a644;
   --warn: #ffca68;
   --danger: #ff6f7e;
@@ -44,11 +41,11 @@
   --tint: 255 255 255;
   /* THE CHROME IS ONE FRAME, AND THE STAGE IS THE DARK THING INSIDE IT
      (2026-08-13). */
-  --rail-bg: #1b1c1f;
-  --workspace-bg: #050506;
+  --rail-bg: #161616;
+  --workspace-bg: #000000;
   /* Box mode keeps a tile: the CWI captions box is black at 94% and needs
      something to read against. Rules mode overrides this below. */
-  --stage-bg: #272729;
+  --stage-bg: #272727;
   /* CWI 2.4.1: the captions box is black at 90% opacity. */
   --caption-box: rgba(0, 0, 0, .94);
   --caption-box-shadow: 0 0 0 1px rgb(var(--tint) / .025);
@@ -114,13 +111,14 @@
   --dur-slow: 260ms;
   --dur-slow: 220ms;
   --knob: #ffffff;
+  --knob-on: #000000;
   --knob-ring: 0 0 0 1px rgba(0, 0, 0, .12);
-  --action: #5e6ad2;
-  --action-hover: #545fc6;
-  --on-action: #ffffff;
+  --action: #ffffff;
+  --action-hover: #dedede;
+  --on-action: #000000;
   --track-rest: rgb(255 255 255 / .14);
-  --sheet-bg: #161719;
-  --group-bg: #1f2023;
+  --sheet-bg: #161616;
+  --group-bg: #1e1e1e;
   --scrim: rgba(0, 0, 0, .6);
   --cue-tint: 20%;
   --cue-tint-hover: 30%;
@@ -146,8 +144,8 @@
   /* #7a7a7a is the analysis's fine-print/disabled tone and measures 3.94:1
      on parchment. */
   --muted-2: #62666d;
-  --accent: #4f5bc4;
-  --focus: #5e69d1;
+  --accent: #0f1011;
+  --focus: #0f1011;
   --good: #1a7f37;
   --warn: #8a5b00;
   --danger: #b3202f;
@@ -166,6 +164,10 @@
   --track-rest: rgb(0 0 0 / .12);
   --sheet-bg: #f6f7f7;
   --group-bg: #ffffff;
+  --action: #0f1011;
+  --action-hover: #2b2d31;
+  --on-action: #ffffff;
+  --knob-on: #ffffff;
 }
 
 /* Registered so it computes to a real length that `planStageLayout` can read
@@ -751,8 +753,8 @@ button {
    true black they either vanish or turn into the brightest thing on the stage.
    Box mode is untouched; the plate still needs its lighter tile. */
 .studio-shell[data-plate="rules"] {
-  --stage-bg: #0c0c0d;
-  --workspace-bg: #0c0c0d;
+  --stage-bg: #0c0c0c;
+  --workspace-bg: #0c0c0c;
 }
 
 .studio-shell[data-plate="rules"] .caption-surface {
@@ -1869,6 +1871,7 @@ button {
 }
 
 .toggle-row > i[data-on="true"]::after {
+  background: var(--knob-on);
   transform: translateX(16px);
 }
 
@@ -2293,7 +2296,7 @@ button {
   padding: 0 var(--space-8);
   border: 0;
   background: var(--action);
-  color: #fff;
+  color: var(--on-action);
   cursor: pointer;
   transition: background var(--dur-quick) ease;
 }
@@ -3326,9 +3329,8 @@ button {
 }
 
 .edit-toggle[aria-pressed="true"] {
-  border-color: var(--text);
-  background: var(--text);
-  color: var(--bg);
+  border-color: var(--segment-active);
+  background: var(--segment-active);
 }
 
 .studio-shell[data-editor="open"] {
@@ -4498,7 +4500,7 @@ i.rainbow-dot,
 
 .row-text mark {
   border-radius: 2px;
-  background: rgb(130 143 255 / .3);
+  background: rgb(var(--tint) / .24);
   color: var(--text);
 }
 
