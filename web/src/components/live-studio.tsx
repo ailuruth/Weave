@@ -2694,7 +2694,6 @@ export function LiveStudio() {
     >
       <header className="topbar">
         <div className="brand">
-          <WeaveMark className="brand-mark" />
           <h1>Weave</h1>
           {activeMedia && (
             <span className="brand-document" title={activeMedia.name}>

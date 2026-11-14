@@ -3765,9 +3765,9 @@ button.media-import:hover .language-arrow {
 .timeline-line {
   position: absolute;
   top: 0;
-  height: var(--lane-captions);
+  height: 26px;
   min-width: 3px;
-  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
+  padding: 0 var(--space-4) 0 var(--space-5);
   overflow: hidden;
   border: 0;
   border-radius: var(--r-xs);
@@ -3789,11 +3789,179 @@ button.media-import:hover .language-arrow {
 }
 
 .timeline-line span {
-  display: -webkit-box;
+  display: block;
   overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   pointer-events: none;
+}
+
+/* ONE ROW PER SPEAKER (2026-11-14, at the user's request). Captions still play
+   one at a time; the rows only separate who says what. A line dragged up or
+   down changes its speaker. */
+.timeline-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: var(--r-xs);
+  background: rgb(var(--tint) / .035);
+}
+
+.timeline-lanes li[data-lane="captions"] {
+  display: grid;
+  grid-auto-rows: 26px;
+  row-gap: 3px;
+  align-content: start;
+  align-items: center;
+}
+
+.timeline-lanes li[data-lane="captions"] span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.timeline-lanes li[data-lane="captions"] i {
+  width: 8px;
+  height: 8px;
+  margin: 0 3px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+/* ADDING A CAPTION: text, a speaker colour and a motion preset, placed at the
+   playhead. */
+.timeline-add {
+  position: absolute;
+  z-index: 40;
+  right: var(--space-7);
+  bottom: calc(100% + var(--space-4));
+  display: grid;
+  gap: var(--space-6);
+  width: min(420px, calc(100vw - 32px));
+  padding: var(--space-7);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--rail-bg);
+  animation: panel-enter var(--dur-base) var(--ease-out) both;
+}
+
+.timeline-add input {
+  height: 44px;
+  padding: 0 var(--space-6);
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  color: var(--text);
+  font: 600 var(--text-xl)/1 var(--font-ui);
+  letter-spacing: -.3px;
+}
+
+.timeline-add input:focus {
+  border-color: var(--focus);
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--focus);
+}
+
+.timeline-add-row {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.timeline-add-row > span {
+  color: var(--muted-2);
+  font-size: var(--text-xs);
+}
+
+.timeline-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.timeline-presets button {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-soft);
+  color: var(--muted);
+  font: 500 var(--text-xs)/1.2 var(--font-ui);
+  cursor: pointer;
+}
+
+.timeline-presets button[data-active="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--text);
+}
+
+.timeline-presets b {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  color: var(--text);
+  font: 500 15px/1 var(--font-ui);
+}
+
+.timeline-presets b[data-preset="shout"] {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.timeline-presets b[data-preset="whisper"] {
+  color: var(--muted-2);
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.timeline-presets b[data-preset="drawn"] {
+  letter-spacing: .3em;
+  padding-left: .3em;
+}
+
+.timeline-add footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.timeline-add-cancel,
+.timeline-add-submit {
+  height: var(--control-h);
+  padding: 0 var(--space-7);
+  border-radius: var(--r-md);
+  font: 500 var(--text-sm)/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.timeline-add-cancel {
+  border: 1px solid var(--line-strong);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.timeline-add-submit {
+  border: 0;
+  background: var(--action);
+  color: var(--on-action);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-add-submit:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+
+.timeline-add-submit:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.timeline-add-toggle[aria-expanded="true"] {
+  background: var(--surface-selected);
+  color: var(--text);
 }
 
 .timeline-line:active {

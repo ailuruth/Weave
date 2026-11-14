@@ -264,3 +264,68 @@ export function lineForPlayhead(lines: readonly EditLine[], positionS: number): 
   }
   return found;
 }
+
+/** How an added caption moves: its size drives the swell, its time per word the hold. */
+export interface CaptionPreset {
+  id: string;
+  label: string;
+  size: number;
+  perWordS: number;
+}
+
+export const CAPTION_PRESETS: readonly CaptionPreset[] = [
+  {id: "normal", label: "Normal", size: NORMAL_SIZE, perWordS: 0.4},
+  {id: "shout", label: "Shout", size: 0.95, perWordS: 0.5},
+  {id: "whisper", label: "Whisper", size: 0.06, perWordS: 0.45},
+  {id: "drawn", label: "Drawn out", size: 0.6, perWordS: 1.4},
+];
+
+const ADDED_GAP_S = 0.05;
+
+/**
+ * Add a caption line at `atS`, or just after the line playing there. It runs
+ * for its preset's time per word, cut short by the next line or by the end of
+ * the recording at `endS`. Returns the words and the index of the first added one.
+ */
+export function insertLine(
+  words: readonly EditWord[],
+  atS: number,
+  text: string,
+  speaker: string | null,
+  preset: CaptionPreset,
+  endS = Number.POSITIVE_INFINITY,
+): {words: EditWord[]; index: number} | null {
+  const parts = text.split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+  const lines = linesOf(words);
+  let start = Math.max(0, atS);
+  for (const line of lines) {
+    if (line.end <= start) continue;
+    if (line.start >= start + MIN_LINE_S + ADDED_GAP_S) break;
+    start = Math.max(start, line.end + ADDED_GAP_S);
+  }
+  start = Math.min(start, Math.max(0, endS - MIN_LINE_S));
+  const next = lines.find((line) => line.start >= start);
+  const wanted = Math.max(MIN_LINE_S, preset.perWordS * parts.length);
+  const room = (next ? next.start - ADDED_GAP_S : endS) - start;
+  const span = Math.max(MIN_LINE_S, Math.min(wanted, room));
+  const index = next ? next.first : words.length;
+  const line = words.reduce((top, word) => Math.max(top, word.line), -1) + 1;
+  const letters = parts.reduce((sum, part) => sum + part.length, 0);
+  let cursor = start;
+  const added = parts.map((part) => {
+    const length = (span * part.length) / letters;
+    const word: EditWord = {
+      id: null,
+      text: part,
+      start: cursor,
+      end: cursor + Math.max(MIN_WORD_S, length),
+      speaker,
+      size: preset.size,
+      line,
+    };
+    cursor += length;
+    return word;
+  });
+  return {words: [...words.slice(0, index), ...added, ...words.slice(index)], index};
+}
