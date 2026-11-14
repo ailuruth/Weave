@@ -68,6 +68,10 @@ In the studio you can also choose **Import a video**, or drop a video onto the l
 | Home and End | Start and end |
 | [ and ] | Start or end the current line at the playhead |
 | ⌘Z and ⇧⌘Z | Undo and redo |
+| ? | Show these keys |
+| Double-click a line | Open it in the editor |
+| Tab and ⇧Tab | Next and previous word, while editing |
+| 1, 2, 3 | Choose a language on the picker |
 
 Hold ⌘ and scroll over the timeline to zoom. Choose 1×, 0.75× or 0.5× beside the zoom buttons.
 

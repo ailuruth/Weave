@@ -53,6 +53,7 @@ function WordInspector({
   onBreak,
   onJoin,
   onRemove,
+  onMove,
 }: {
   word: EditWord;
   startsLine: boolean;
@@ -68,6 +69,8 @@ function WordInspector({
   onBreak: () => void;
   onJoin: () => void;
   onRemove: () => void;
+  /** Go to the word `delta` places away. */
+  onMove: (delta: number) => void;
 }) {
   const [text, setTextDraft] = useState(word.text);
   const [size, setSizeDraft] = useState(word.size);
@@ -100,13 +103,23 @@ function WordInspector({
           type="text"
           value={text}
           spellCheck={false}
+          autoFocus
+          onFocus={(event) => event.currentTarget.select()}
           onChange={(event) => setTextDraft(event.target.value)}
           onBlur={commitText}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
+            else if (event.key === "Escape") {
+              setTextDraft(word.text);
+              event.currentTarget.blur();
+            } else if (event.key === "Tab") {
+              event.preventDefault();
+              commitText();
+              onMove(event.shiftKey ? -1 : 1);
+            }
           }}
         />
-        <small>A space adds a word. Empty removes it.</small>
+        <small>A space adds a word. Empty removes it. Tab goes to the next word.</small>
       </label>
 
       <div className="editor-field">
@@ -213,6 +226,7 @@ export function CaptionEditor({
   playing,
   seek,
   captions,
+  focus,
 }: {
   colors: SpeakerColorMap;
   close: () => void;
@@ -221,9 +235,16 @@ export function CaptionEditor({
   playing: boolean;
   seek: (positionS: number) => void;
   captions: CaptionDocumentState;
+  /** A word to open on, from outside the editor; `n` changes on every request. */
+  focus?: {index: number; n: number} | null;
 }) {
   const {doc, error, busy, canUndo, commit, undo, revert} = captions;
-  const [picked, setSelected] = useState<number | null>(null);
+  const [picked, setSelected] = useState<number | null>(focus?.index ?? null);
+  const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
+  if (focus && focus.n !== focusSeen) {
+    setFocusSeen(focus.n);
+    setSelected(focus.index);
+  }
   const [wholeLine, setWholeLine] = useState(true);
   const selected = picked !== null && doc && doc.words.length
     ? Math.min(picked, doc.words.length - 1)
@@ -242,6 +263,17 @@ export function CaptionEditor({
 
   const word = doc && selected !== null ? doc.words[selected] : undefined;
   const line = selected !== null ? lineAt(lines, selected) : null;
+  const selectedRef = useRef<HTMLLIElement>(null);
+  const selectedFirst = line?.first ?? null;
+  useEffect(() => {
+    if (selectedFirst !== null) selectedRef.current?.scrollIntoView({block: "nearest"});
+  }, [selectedFirst]);
+  const move = (delta: number) => {
+    if (!doc || selected === null) return;
+    const next = Math.min(doc.words.length - 1, Math.max(0, selected + delta));
+    setSelected(next);
+    seek(doc.words[next].start);
+  };
 
   return (
     <section className="caption-editor" aria-label="Caption editor" data-busy={busy}>
@@ -291,7 +323,9 @@ export function CaptionEditor({
           {lines.map((entry) => (
             <li
               key={entry.first}
-              ref={current?.first === entry.first ? currentRef : undefined}
+              ref={line?.first === entry.first
+                ? selectedRef
+                : current?.first === entry.first ? currentRef : undefined}
               data-selected={line?.first === entry.first}
               data-current={current?.first === entry.first}
             >
@@ -356,6 +390,7 @@ export function CaptionEditor({
           onBreak={() => void commit(breakBefore(doc.words, selected), selected)}
           onJoin={() => void commit(joinPrevious(doc.words, selected), selected)}
           onRemove={() => void commit(removeWord(doc.words, selected), selected)}
+          onMove={move}
         />
       ) : doc?.words.length ? (
         <p className="editor-note">Choose a word to change it.</p>

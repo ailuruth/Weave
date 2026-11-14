@@ -1073,12 +1073,17 @@ button {
   white-space: normal;
 }
 
+/* THE RAIL DOES NOT SCROLL (2026-11-14). The compass pulses by
+   `transform: scale()`, which paints past its box and still counts as
+   scrollable overflow, so a scrolling rail grew a scrollbar on every loud
+   syllable and lost it again in the pause. Only a window too short for the
+   rail's content scrolls it; the caption editor scrolls its own parts. */
 .signal-rail {
   grid-area: signals;
   z-index: 8;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   border-left: 1px solid var(--line);
   background: var(--rail-bg);
   transition: opacity var(--dur-base) ease;
@@ -1482,6 +1487,8 @@ button {
 /* THE SPEAKER'S OWN COLOUR IS THE ONLY MARK IT NEEDS. */
 /* The confidence bar is gone from the layout above; the rule is kept inert so
    a future variant can re-place it deliberately rather than by accident. */
+/* THE SCRIM IS CLEAR: a setting is judged by watching the stage change, so
+   the stage stays lit while the panel is open. Pressing it still closes. */
 .settings-scrim {
   position: fixed;
   z-index: 80;
@@ -1490,8 +1497,18 @@ button {
   height: 100%;
   padding: 0;
   border: 0;
-  background: var(--scrim);
+  background: transparent;
   cursor: default;
+}
+
+.settings-scrim:active {
+  transform: none;
+}
+
+@media (max-height: 560px) and (min-width: 721px) {
+  .signal-rail {
+    overflow-y: auto;
+  }
 }
 
 /* THE PANEL IS CHROME, SO IT DRESSES LIKE THE RAIL (2026-09-06, at the
@@ -1518,6 +1535,53 @@ button {
   align-items: center;
   justify-content: space-between;
   margin: 0 var(--space-2) var(--space-9) var(--space-4);
+}
+
+.settings-panel > header > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.sheet-reset {
+  height: var(--control-h);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--accent);
+  font: 500 var(--text-sm)/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.sheet-reset:hover:not(:disabled) {
+  background: var(--group-bg);
+}
+
+.sheet-reset:disabled {
+  color: var(--muted-2);
+  opacity: .5;
+  cursor: default;
+}
+
+.setting-text {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.range-control > .setting-text,
+.toggle-row > .setting-text {
+  display: grid;
+  align-items: start;
+  gap: var(--space-1);
+}
+
+.setting-text small {
+  color: var(--muted-2);
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .settings-panel h2 {
@@ -1716,7 +1780,7 @@ button {
   gap: var(--space-6);
   width: 100%;
   min-height: var(--row-h);
-  padding: 0;
+  padding: var(--space-5) 0;
   border: 0;
   border-top: 1px solid var(--line);
   background: transparent;
@@ -2067,6 +2131,56 @@ button {
 .language-option:hover {
   border-color: var(--control-line);
   background: var(--surface);
+}
+
+.language-option {
+  position: relative;
+}
+
+.language-key {
+  position: absolute;
+  top: var(--space-5);
+  right: var(--space-5);
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  color: var(--muted-2);
+  font: 500 var(--text-2xs)/1 var(--font-ui);
+}
+
+.language-gate[data-file="true"] .language-option {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+.language-gate[data-file="true"] .language-option:hover {
+  border-color: var(--accent);
+}
+
+.language-drop {
+  position: fixed;
+  inset: var(--space-7);
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-6);
+  border: 2px dashed var(--accent);
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: var(--text);
+  font: 600 var(--text-xl)/1.2 var(--font-ui);
+  letter-spacing: -.4px;
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .language-key {
+    display: none;
+  }
 }
 
 .language-option:active {
@@ -3402,6 +3516,7 @@ button {
   --lane-captions: 44px;
   --lane-sounds: 22px;
   --lane-gap: 4px;
+  position: relative;
   flex: none;
   display: grid;
   border-top: 1px solid var(--line);
@@ -3761,6 +3876,89 @@ button {
 
 .timeline-playhead[data-outside="true"] {
   visibility: hidden;
+}
+
+.timeline-hover {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: rgb(var(--tint) / .35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-quick) ease;
+}
+
+.timeline-hover[data-visible="true"] {
+  opacity: 1;
+}
+
+.timeline-hover span {
+  position: absolute;
+  top: 2px;
+  left: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--r-xs);
+  background: var(--segment-active);
+  color: var(--text);
+  font: 500 var(--text-2xs)/1.2 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timeline-hover[data-side="left"] span {
+  right: var(--space-3);
+  left: auto;
+}
+
+.timeline-keys {
+  position: absolute;
+  z-index: 40;
+  right: var(--space-7);
+  bottom: calc(100% + var(--space-4));
+  width: 300px;
+  padding: var(--space-6) var(--space-7);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: var(--rail-bg);
+  animation: panel-enter var(--dur-base) var(--ease-out) both;
+}
+
+.timeline-keys dl {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.timeline-keys dl > div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: var(--space-5);
+  font-size: var(--text-xs);
+}
+
+.timeline-keys dt {
+  color: var(--text);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-keys dd {
+  margin: 0;
+  color: var(--muted-2);
+}
+
+.timeline-keys-toggle[aria-expanded="true"] {
+  background: var(--surface-selected);
+  color: var(--text);
+}
+
+@media (hover: none) {
+  .timeline-hover,
+  .timeline-keys-toggle {
+    display: none;
+  }
 }
 
 .editor-lines li[data-current="true"] .editor-line-play {

@@ -3,6 +3,7 @@
 import {
   AudioLines,
   Captions,
+  Keyboard,
   Maximize2,
   Pause,
   Play,
@@ -46,6 +47,19 @@ const BAR_PX = 4;
 const SNAP_PX = 8;
 const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
+
+const SHORTCUTS: ReadonlyArray<[string, string]> = [
+  ["Space or K", "Play and pause"],
+  ["← →", "One second back or forward"],
+  ["⇧ ← →", "Five seconds"],
+  ["⌥ ← →", "One frame"],
+  ["↑ ↓", "Previous or next line"],
+  ["Home End", "Start or end"],
+  ["[ ]", "Start or end the current line here"],
+  ["⌘Z ⇧⌘Z", "Undo and redo"],
+  ["Double-click a line", "Edit it"],
+  ["⌘ scroll", "Zoom"],
+];
 
 type DragMode = "move" | "start" | "end";
 
@@ -95,12 +109,15 @@ export function RecordingTimeline({
   captions,
   colors,
   currentCue,
+  onEditWord,
 }: {
   transport: RecordingTransport;
   captions: CaptionDocumentState;
   colors: SpeakerColorMap;
   /** The caption line under the playhead, to mark its block. */
   currentCue: number | null;
+  /** Open the editor on the word at this index. */
+  onEditWord?: (index: number) => void;
 }) {
   const {
     durationS, lines, sounds, levels, positionRef, playing, rate, generation,
@@ -119,6 +136,8 @@ export function RecordingTimeline({
     if (drag?.sent) setDrag(null);
   }
   const [width, setWidth] = useState(0);
+  const [keysOpen, setKeysOpen] = useState(false);
+  const hoverRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
   const timeRef = useRef<HTMLSpanElement>(null);
@@ -168,6 +187,17 @@ export function RecordingTimeline({
   }, [durationS, playing, positionRef, seek]);
 
   useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (event.key === "?") setKeysOpen((open) => !open);
+      else if (event.key === "Escape") setKeysOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     const onWheel = (event: WheelEvent) => {
@@ -209,6 +239,18 @@ export function RecordingTimeline({
   };
   const moveScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (scrubRef.current) scrubRef.current.pending = timeAt(event.clientX);
+    const track = trackRef.current;
+    const hover = hoverRef.current;
+    if (!track || !hover) return;
+    const x = event.clientX - track.getBoundingClientRect().left;
+    hover.style.transform = `translateX(${x.toFixed(1)}px)`;
+    hover.dataset.side = x > track.clientWidth - 64 ? "left" : "right";
+    hover.dataset.visible = "true";
+    const label = hover.firstElementChild;
+    if (label) label.textContent = positionLabel(timeAt(event.clientX));
+  };
+  const hideHover = () => {
+    if (hoverRef.current) hoverRef.current.dataset.visible = "false";
   };
   const endScrub = (event: ReactPointerEvent<HTMLDivElement>) => {
     const scrub = scrubRef.current;
@@ -297,6 +339,18 @@ export function RecordingTimeline({
 
   return (
     <section className="timeline" aria-label="Timeline">
+      {keysOpen && (
+        <div className="timeline-keys" role="dialog" aria-label="Keyboard shortcuts">
+          <dl>
+            {SHORTCUTS.map(([keys, does]) => (
+              <div key={keys}>
+                <dt>{keys}</dt>
+                <dd>{does}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       <div className="timeline-bar">
         <span className="timeline-time">
           <span ref={timeRef}>{positionLabel(0)}</span>
@@ -351,6 +405,16 @@ export function RecordingTimeline({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="icon-button timeline-keys-toggle"
+            aria-label="Keyboard shortcuts"
+            aria-expanded={keysOpen}
+            title="Keyboard shortcuts (?)"
+            onClick={() => setKeysOpen((open) => !open)}
+          >
+            <Keyboard size={16} />
+          </button>
           <div className="timeline-zoom">
             <button
               type="button"
@@ -396,6 +460,7 @@ export function RecordingTimeline({
         onPointerMove={moveScrub}
         onPointerUp={endScrub}
         onPointerCancel={endScrub}
+        onPointerLeave={hideHover}
       >
         <div className="timeline-band" data-lane="audio" aria-hidden="true" />
         <div className="timeline-band" data-lane="captions" aria-hidden="true" />
@@ -440,6 +505,10 @@ export function RecordingTimeline({
               onClick={(event) => {
                 if (event.detail === 0) seek(line.startS);
               }}
+              onDoubleClick={() => {
+                const index = captions.doc?.words.findIndex((word) => word.line === line.cue) ?? -1;
+                if (index >= 0) onEditWord?.(index);
+              }}
             >
               {editable && <i data-edge="start" aria-hidden="true" />}
               <span>{line.text}</span>
@@ -460,6 +529,9 @@ export function RecordingTimeline({
               [{sound.label}]
             </span>
           ))}
+        </div>
+        <div className="timeline-hover" ref={hoverRef} data-visible="false" aria-hidden="true">
+          <span />
         </div>
         <div className="timeline-playhead" ref={playheadRef} aria-hidden="true" />
       </div>

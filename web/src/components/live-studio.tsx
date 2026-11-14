@@ -1987,10 +1987,34 @@ function LanguageGate({
     setImporting(true);
     void onImport(file, language).finally(() => setImporting(false));
   };
+  const chooseRef = useRef(choose);
+  useEffect(() => {
+    chooseRef.current = choose;
+  });
+  const languageIds = session.languages.map((language) => language.id).join(" ");
+  useEffect(() => {
+    if (!selecting) return;
+    const ids = languageIds.split(" ");
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "Escape") {
+        setFile(null);
+        return;
+      }
+      const index = Number(event.key) - 1;
+      if (Number.isInteger(index) && index >= 0 && index < ids.length) {
+        event.preventDefault();
+        chooseRef.current(ids[index]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selecting, languageIds]);
 
   return (
     <section
       className="language-gate"
+      data-file={file ? "true" : "false"}
       role="dialog"
       aria-modal="true"
       aria-label="Caption language setup"
@@ -2060,13 +2084,15 @@ function LanguageGate({
 
         {selecting && (
           <div className="language-options" role="list" aria-label="Caption language">
-            {session.languages.map((language: LiveLanguageOption) => (
+            {session.languages.map((language: LiveLanguageOption, index) => (
               <button
                 className="language-option"
                 key={language.id}
                 onClick={() => choose(language.id)}
                 type="button"
+                aria-keyshortcuts={String(index + 1)}
               >
+                <kbd className="language-key" aria-hidden="true">{index + 1}</kbd>
                 <span className="language-glyph" aria-hidden="true">
                   {LANGUAGE_GLYPHS[language.id] ?? language.label.slice(0, 2)}
                 </span>
@@ -2118,6 +2144,12 @@ function LanguageGate({
         )}
 
         {error && <p className="language-error" role="alert">{error}</p>}
+        {dropping && (
+          <div className="language-drop" aria-hidden="true">
+            <Film size={28} />
+            <span>Drop to import</span>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -2135,49 +2167,73 @@ type SettingKey =
 const SETTING_GROUPS: ReadonlyArray<{
   title: string;
   sliders: boolean;
-  toggles: ReadonlyArray<[SettingKey, string]>;
+  toggles: ReadonlyArray<[SettingKey, string, string]>;
 }> = [
   {
     title: "Captions",
     sliders: true,
     toggles: [
-      ["enhancedMotion", "Enhanced motion"],
-      ["rollingCaptions", "Rolling captions"],
-      ["captionRules", "Caption rules, not a box"],
-      ["hangulWave", "Hangul-shaped motion"],
+      ["enhancedMotion", "Enhanced motion", "Words move the way the reference film moves them."],
+      ["rollingCaptions", "Rolling captions", "Earlier lines rise and fade above the newest."],
+      ["captionRules", "Caption rules, not a box", "Two thin lines frame a caption instead of a black box."],
+      ["hangulWave", "Hangul-shaped motion", "Korean letters move along each syllable's shape."],
     ],
   },
   {
     title: "Display",
     sliders: false,
     toggles: [
-      ["lightStage", "Light stage"],
-      ["highContrast", "High contrast"],
-      ["reducedMotion", "Reduce motion"],
+      ["lightStage", "Light stage", "Dark captions on a white stage."],
+      ["highContrast", "High contrast", "Stronger lines and brighter secondary text."],
+      ["reducedMotion", "Reduce motion", "Keeps the colour turn and drops the movement."],
     ],
   },
 ];
 
+const DEFAULT_SETTINGS: SettingsState = {
+  captionScale: 1,
+  motionIntensity: 1,
+  reducedMotion: false,
+  highContrast: false,
+  /* OFF BY DEFAULT SINCE 2026-08-07, ON THE MEASUREMENT (user: "just dark
+     mode"). */
+  lightStage: false,
+  hangulWave: true,
+  /* THE ENHANCED MOTION SYSTEM (2026-08-11). */
+  enhancedMotion: true,
+  rollingCaptions: true,
+  captionRules: true,
+};
+
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as Array<keyof SettingsState>;
+
 function SettingSlider({
   label,
+  hint,
   value,
   min,
   max,
+  initial,
   low,
   high,
   onChange,
 }: {
   label: string;
+  hint: string;
   value: number;
   min: number;
   max: number;
+  initial: number;
   low: ReactNode;
   high: ReactNode;
   onChange: (value: number) => void;
 }) {
   return (
-    <label className="range-control">
-      <span>{label}</span>
+    <label className="range-control" title="Double-click the slider to reset it">
+      <span className="setting-text">
+        <span>{label}</span>
+        <small>{hint}</small>
+      </span>
       <output>{Math.round(value * 100)}%</output>
       <span className="range-row">
         <span className="range-end" aria-hidden="true">{low}</span>
@@ -2189,6 +2245,7 @@ function SettingSlider({
           value={value}
           style={{"--fill": `${((value - min) / (max - min)) * 100}%`} as CSSVars}
           onChange={(event) => onChange(Number(event.target.value))}
+          onDoubleClick={() => onChange(initial)}
         />
         <span className="range-end" aria-hidden="true">{high}</span>
       </span>
@@ -2206,12 +2263,22 @@ function SettingsPanel({
   close: () => void;
 }) {
   return (
-    <aside className="settings-panel" aria-label="Presentation settings">
+    <aside className="settings-panel" aria-label="Settings">
       <header>
-        <h2>Presentation</h2>
-        <button className="sheet-close" onClick={close} aria-label="Close settings">
-          <X size={14} strokeWidth={2.4} />
-        </button>
+        <h2>Settings</h2>
+        <div>
+          <button
+            type="button"
+            className="sheet-reset"
+            disabled={SETTING_KEYS.every((key) => settings[key] === DEFAULT_SETTINGS[key])}
+            onClick={() => setSettings(DEFAULT_SETTINGS)}
+          >
+            Reset
+          </button>
+          <button className="sheet-close" onClick={close} aria-label="Close settings" title="Close (Esc)">
+            <X size={14} strokeWidth={2.4} />
+          </button>
+        </div>
       </header>
 
       {SETTING_GROUPS.map((group) => (
@@ -2225,7 +2292,9 @@ function SettingsPanel({
                     which is why the scale only reduces. */}
                 <SettingSlider
                   label="Caption scale"
+                  hint="How large captions are on the stage."
                   value={settings.captionScale}
+                  initial={DEFAULT_SETTINGS.captionScale}
                   min={0.6}
                   max={1}
                   low={<span className="range-glyph" data-size="small">A</span>}
@@ -2234,7 +2303,9 @@ function SettingsPanel({
                 />
                 <SettingSlider
                   label="Expression"
+                  hint="How strongly the voice moves the type."
                   value={settings.motionIntensity}
+                  initial={DEFAULT_SETTINGS.motionIntensity}
                   min={0}
                   max={1}
                   low={<Minus size={14} />}
@@ -2243,14 +2314,17 @@ function SettingsPanel({
                 />
               </>
             )}
-            {group.toggles.map(([key, label]) => (
+            {group.toggles.map(([key, label, hint]) => (
               <button
                 key={key}
                 className="toggle-row"
                 aria-pressed={settings[key]}
                 onClick={() => setSettings({...settings, [key]: !settings[key]})}
               >
-                <span>{label}</span>
+                <span className="setting-text">
+                  <span>{label}</span>
+                  <small>{hint}</small>
+                </span>
                 <i data-on={settings[key] ? "true" : "false"} />
               </button>
             ))}
@@ -2262,28 +2336,24 @@ function SettingsPanel({
 }
 
 export function LiveStudio() {
-  const [settings, setSettings] = useState<SettingsState>({
-    captionScale: 1,
-    motionIntensity: 1,
-    reducedMotion: false,
-    highContrast: false,
-    /* OFF BY DEFAULT SINCE 2026-08-07, ON THE MEASUREMENT (user: "just dark
-       mode"). */
-    lightStage: false,
-    /* Hangul-structural character motion. */
-    hangulWave: true,
-    /* THE ENHANCED MOTION SYSTEM (2026-08-11). */
-    enhancedMotion: true,
-    /* ROLLING CAPTIONS: newest at the bottom, history rising above it and
-       receding as it goes. */
-    rollingCaptions: true,
-    /* THE CAPTION PLATE, AS TWO RULES INSTEAD OF A FILLED BOX. */
-    captionRules: true,
-  });
+  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [view, setView] = useState<ViewMode>("stage");
   const [railOpen, setRailOpen] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [editFocus, setEditFocus] = useState<{index: number; n: number} | null>(null);
+  const editWord = useCallback((index: number) => {
+    setEditing(true);
+    setEditFocus((last) => ({index, n: (last?.n ?? 0) + 1}));
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [settingsOpen]);
   const {
     model,
     level,
@@ -2694,8 +2764,8 @@ export function LiveStudio() {
             <button
               className="icon-button settings-button"
               onClick={() => setSettingsOpen(true)}
-              aria-label="Presentation settings"
-              title="Presentation settings"
+              aria-label="Settings"
+              title="Settings"
             >
               <SlidersHorizontal size={16} />
             </button>
@@ -2772,6 +2842,7 @@ export function LiveStudio() {
             captions={captions}
             colors={speakerColors}
             currentCue={cueId}
+            onEditWord={editWord}
           />
         )}
       </section>
@@ -2788,6 +2859,7 @@ export function LiveStudio() {
             playing={transport.playing}
             seek={transportSeek}
             captions={captions}
+            focus={editFocus}
           />
         ) : (<>
         <section className="rail-section compass-section">
