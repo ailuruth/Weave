@@ -97,6 +97,8 @@ export interface RuntimeConfig {
   /** Draw the dial's second-talker beam marks. OFF: the 4-beam read they come
       from is not trustworthy on this board. See config.yaml. */
   compassBeamsEnabled: boolean;
+  /** A mic array is attached and measures bearings; the voice dial shows only then. */
+  directionArray: boolean;
   /** 2.2.1: "full white at 90% opacity" -- against 2.4.1's black box. */
   readAheadColor: string;
   /** The boxless light stage measures white at 1.05:1. See config.yaml. */
@@ -213,6 +215,7 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   speakerColorLockMs: 6000,
   compassBearingTauMs: 400,
   compassBeamsEnabled: false,
+  directionArray: false,
   readAheadColor: "#ffffff",
   readAheadColorLight: "#6e6e73",
   readAheadOpacity: 0.9,

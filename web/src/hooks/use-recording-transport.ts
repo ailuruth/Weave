@@ -15,6 +15,9 @@ import {
 
 /** How many events the stage is handed on a seek: as many as it keeps. */
 const SEEK_KEEP = 150;
+/** A caption preview starts this far before its line and holds this long after it. */
+const PREVIEW_LEAD_S = 0.3;
+const PREVIEW_TAIL_S = 0.7;
 
 export interface StageFeed {
   dispatch: (event: CaptionEvent) => void;
@@ -44,6 +47,10 @@ export interface RecordingTransport {
   pause: () => void;
   toggle: () => void;
   seek: (positionS: number) => void;
+  /** Play only the captions from `startS` to `endS`, the picture held, then come back. */
+  previewLine: (startS: number, endS: number) => void;
+  /** True while `previewLine` runs: the picture and sound stay still. */
+  previewing: boolean;
   /** Fetch the score again after the captions changed, and show the same moment. */
   reload: () => Promise<void>;
 }
@@ -61,6 +68,8 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
   const anchorRef = useRef({positionS: 0, atMs: 0});
   const nextRef = useRef(0);
   const startedRef = useRef(false);
+  const [previewing, setPreviewing] = useState(false);
+  const previewRef = useRef<{timer: number; back: number} | null>(null);
 
   useEffect(() => {
     feedRef.current = feed;
@@ -126,14 +135,23 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
     };
   }, [enabled, show]);
 
+  const cancelPreview = useCallback(() => {
+    if (!previewRef.current) return;
+    window.clearTimeout(previewRef.current.timer);
+    previewRef.current = null;
+    setPreviewing(false);
+  }, []);
+
   const pause = useCallback(() => {
+    cancelPreview();
     if (!playingRef.current) return;
     playingRef.current = false;
     setPlaying(false);
     feedRef.current.driveClock((positionRef.current + delayS()) * 1000, true);
-  }, []);
+  }, [cancelPreview]);
 
   const play = useCallback(() => {
+    cancelPreview();
     const current = scoreRef.current;
     if (!current || playingRef.current) return;
     if (positionRef.current >= current.durationS - 0.05) show(0, true);
@@ -142,7 +160,7 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
     anchorRef.current = {positionS: positionRef.current, atMs: performance.now()};
     feedRef.current.driveClock((positionRef.current + delayS()) * 1000, false);
     feedRef.current.rebaseSchedule();
-  }, [show]);
+  }, [cancelPreview, show]);
 
   const toggle = useCallback(() => {
     if (playingRef.current) pause();
@@ -150,8 +168,36 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
   }, [pause, play]);
 
   const seek = useCallback((positionS: number) => {
+    if (previewRef.current) {
+      cancelPreview();
+      playingRef.current = false;
+      setPlaying(false);
+    }
     show(positionS, playingRef.current);
+  }, [cancelPreview, show]);
+
+  const previewLine = useCallback((startS: number, endS: number) => {
+    if (!scoreRef.current) return;
+    const back = previewRef.current?.back ?? positionRef.current;
+    if (previewRef.current) window.clearTimeout(previewRef.current.timer);
+    const lead = PREVIEW_LEAD_S;
+    setPreviewing(true);
+    show(Math.max(0, startS - lead), true);
+    playingRef.current = true;
+    setPlaying(true);
+    const timer = window.setTimeout(() => {
+      previewRef.current = null;
+      playingRef.current = false;
+      setPlaying(false);
+      show(back, false);
+      setPreviewing(false);
+    }, ((endS - startS + lead + PREVIEW_TAIL_S) / rateRef.current) * 1000);
+    previewRef.current = {timer, back};
   }, [show]);
+
+  useEffect(() => () => {
+    if (previewRef.current) window.clearTimeout(previewRef.current.timer);
+  }, []);
 
   const setRate = useCallback((next: number) => {
     rateRef.current = next;
@@ -216,6 +262,8 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
     pause,
     toggle,
     seek,
+    previewLine,
+    previewing,
     reload,
   };
 }

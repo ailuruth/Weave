@@ -1,6 +1,6 @@
 "use client";
 
-import {Merge, Plus, RotateCcw, Scissors, Trash2, Undo2, X} from "lucide-react";
+import {Merge, Play, Plus, RotateCcw, Scissors, Trash2, Undo2, X} from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -34,9 +34,9 @@ import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
-const PREVIEW_LEAD_S = 0.3;
-const PREVIEW_TAIL_S = 0.5;
 const NEW_CAPTION = "Caption";
+/** Above this many characters a second a caption reads too fast, the common subtitle guideline. */
+const FAST_CPS = 20;
 const WORD_SIZES: ReadonlyArray<[string, number]> = [
   ["Small", 0.08],
   ["Normal", NORMAL_SIZE],
@@ -149,10 +149,8 @@ export function CaptionEditor({
   positionS,
   durationS,
   playing,
-  rate,
   seek,
-  play,
-  pause,
+  preview,
   captions,
   focus,
 }: {
@@ -162,10 +160,9 @@ export function CaptionEditor({
   positionS: number;
   durationS: number;
   playing: boolean;
-  rate: number;
   seek: (positionS: number) => void;
-  play: () => void;
-  pause: () => void;
+  /** Show the captions from `startS` to `endS` moving, the picture held still. */
+  preview: (startS: number, endS: number) => void;
   captions: CaptionDocumentState;
   /** A word to open on, from outside the editor; `n` changes on every request. */
   focus?: {index: number; n: number} | null;
@@ -204,20 +201,6 @@ export function CaptionEditor({
       ?.scrollIntoView({block: "nearest"});
   }, [selectedFirst]);
 
-  const previewTimer = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
-  }, []);
-  const preview = (startS: number, endS: number) => {
-    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
-    seek(Math.max(0, startS - PREVIEW_LEAD_S));
-    play();
-    const span = endS - startS + PREVIEW_LEAD_S + PREVIEW_TAIL_S;
-    previewTimer.current = window.setTimeout(() => {
-      previewTimer.current = null;
-      pause();
-    }, (span / Math.max(0.1, rate)) * 1000);
-  };
   const change = (next: EditWord[], index: number, show = false) => {
     void commit(next, index).then((ok) => {
       if (!ok || !show) return;
@@ -343,7 +326,31 @@ export function CaptionEditor({
                     onChange={(value) => change(
                       retimeLine(words, line.first, line.last, line.start, value), line.first)}
                   />
-                  <span className="card-duration">{(line.end - line.start).toFixed(2)}s</span>
+                  <span className="card-meta">
+                    <span
+                      className="card-speaker"
+                      style={{"--dot": first.rainbow ? undefined : speakerColor(first.speaker, colors)} as CSSVars}
+                    >
+                      <i className={first.rainbow ? "rainbow-dot" : undefined} />
+                      {first.rainbow ? "Rainbow" : first.speaker ?? "Unknown"}
+                    </span>
+                    <span title="Length">{(line.end - line.start).toFixed(1)}s</span>
+                    {(() => {
+                      const cps = lineWords.map((word) => word.text).join(" ").length
+                        / Math.max(0.1, line.end - line.start);
+                      return (
+                        <span
+                          className="card-cps"
+                          data-fast={cps > FAST_CPS ? "true" : "false"}
+                          title={cps > FAST_CPS
+                            ? `${Math.round(cps)} characters a second: too fast to read comfortably`
+                            : `${Math.round(cps)} characters a second`}
+                        >
+                          {Math.round(cps)} cps
+                        </span>
+                      );
+                    })()}
+                  </span>
                 </div>
                 <CaptionText
                   text={lineWords.map((word) => word.text).join(" ")}
@@ -452,8 +459,14 @@ export function CaptionEditor({
                       </div>
                     )}
                     <div className="card-actions">
-                      <button type="button" onClick={() => preview(line.start, line.end)}>
-                        Play line
+                      <button
+                        type="button"
+                        className="card-preview"
+                        title="Show how this caption moves, without playing the video"
+                        onClick={() => preview(line.start, line.end)}
+                      >
+                        <Play size={12} fill="currentColor" strokeWidth={0} />
+                        Preview
                       </button>
                       <button
                         type="button"
@@ -480,13 +493,14 @@ export function CaptionEditor({
                       <button
                         type="button"
                         className="card-delete"
+                        aria-label="Delete this caption"
+                        title="Delete this caption"
                         onClick={() => {
                           setPicked(null);
                           change(removeLine(words, line.first), Math.max(0, line.first - 1));
                         }}
                       >
-                        <Trash2 size={13} />
-                        Delete
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>

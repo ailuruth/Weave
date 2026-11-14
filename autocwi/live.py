@@ -6998,6 +6998,9 @@ def _studio_runtime_config(
         "compassBeamsEnabled": bool(
             display.get("compass_beams_enabled", False)
         ),
+        # True only with the hardware node, whose array measures bearings; the
+        # studio shows its voice dial only then.
+        "directionArray": False,
         "readAheadColor": read_ahead.get("color", "#FFFFFF"),
         # Same read-ahead, legible on the boxless light stage. See config.yaml.
         "readAheadColorLight": read_ahead.get("color_light", "#6E6E73"),
@@ -7271,6 +7274,8 @@ def run_live(args, cfg: dict, device: str) -> None:
     # The hardware node owns capture when it is selected, so it binds before
     # the models load and waits for the Pi rather than opening a local mic.
     node_link = None
+    # The studio draws the voice dial only when an array can measure bearings.
+    runtime_config["directionArray"] = bool(getattr(args, "node", False))
     if getattr(args, "node", False):
         host = getattr(args, "host", "127.0.0.1")
         if host == "127.0.0.1":
@@ -7373,6 +7378,7 @@ def run_live(args, cfg: dict, device: str) -> None:
                 selected_language=lang,
                 language_selection_required=selection_required,
             ))
+            runtime_config["directionArray"] = node_link is not None
         diarizer_override = getattr(args, "diarizer", None)
         if diarizer_override is not None:
             cfg = {

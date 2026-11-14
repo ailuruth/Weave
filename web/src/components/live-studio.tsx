@@ -1814,17 +1814,24 @@ function MediaBackdrop({
   media,
   playheadMs,
   held,
+  frozen,
   rate,
 }: {
   media: ImportedMedia;
   playheadMs: number;
   held: boolean;
+  /** A caption preview: the picture stays exactly where it is, silent. */
+  frozen: boolean;
   rate: number;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const player = ref.current;
     if (!player) return;
+    if (frozen) {
+      if (!player.paused) player.pause();
+      return;
+    }
     const action = mediaSyncAction({
       playheadMs,
       currentTimeS: player.currentTime,
@@ -1856,7 +1863,7 @@ function MediaBackdrop({
       player.muted = true;
       player.play().catch(() => undefined);
     });
-  }, [playheadMs, held, rate]);
+  }, [playheadMs, held, frozen, rate]);
   useEffect(() => {
     const unmute = () => {
       if (ref.current) ref.current.muted = false;
@@ -2807,14 +2814,16 @@ export function LiveStudio() {
             >
               <SlidersHorizontal size={16} />
             </button>
-            <button
-              className="icon-button rail-toggle"
-              onClick={() => setRailOpen((value) => !value)}
-              aria-label={railOpen ? "Hide the voice dial" : "Show the voice dial"}
-              title={railOpen ? "Hide the voice dial" : "Show the voice dial"}
-            >
-              {railOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            </button>
+            {runtime.directionArray && (
+              <button
+                className="icon-button rail-toggle"
+                onClick={() => setRailOpen((value) => !value)}
+                aria-label={railOpen ? "Hide the voice dial" : "Show the voice dial"}
+                title={railOpen ? "Hide the voice dial" : "Show the voice dial"}
+              >
+                {railOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -2843,10 +2852,11 @@ export function LiveStudio() {
               media={activeMedia}
               playheadMs={playheadMs}
               held={held}
+              frozen={transport.previewing}
               rate={transport.ready ? transport.rate : 1}
             />
           )}
-          {activeMedia && (
+          {(activeMedia || !runtime.directionArray) && (
             <StageSound sound={speechActive ? null : model.sound} />
           )}
           <CaptionFeed
@@ -2875,7 +2885,7 @@ export function LiveStudio() {
             </div>
           )}
         </div>
-        {railOpen && (
+        {railOpen && runtime.directionArray && (
           <aside className="voice-dock" aria-label="Voice">
         <section className="rail-section compass-section">
           {/* The arrow glyph went with the heading: an icon alone in an
@@ -2970,11 +2980,9 @@ export function LiveStudio() {
             close={() => setEditing(false)}
             positionS={Math.max(0, playheadMs / 1000)}
             durationS={transport.durationS}
-            playing={transport.playing}
-            rate={transport.rate}
+            playing={transport.playing && !transport.previewing}
             seek={transportSeek}
-            play={transport.play}
-            pause={transport.pause}
+            preview={transport.previewLine}
             captions={captions}
             focus={editFocus}
           />
