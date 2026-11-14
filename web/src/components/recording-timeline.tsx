@@ -496,8 +496,6 @@ export function RecordingTimeline({
           >
             <SkipForward size={16} fill="currentColor" />
           </button>
-        </div>
-        <div className="timeline-view">
           <button
             type="button"
             className="timeline-speed"
@@ -507,6 +505,8 @@ export function RecordingTimeline({
           >
             <span key={rate}>{rate}×</span>
           </button>
+        </div>
+        <div className="timeline-view">
           <button
             type="button"
             className="icon-button timeline-add-toggle"
