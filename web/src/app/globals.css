@@ -1578,7 +1578,7 @@ button {
   flex: none;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-7);
+  padding: var(--space-7) calc(2 * var(--space-7)) var(--space-7) calc(2 * var(--space-7));
   overflow: hidden;
 }
 
@@ -3347,7 +3347,7 @@ button {
   align-items: center;
   justify-content: space-between;
   flex: none;
-  padding: var(--space-7);
+  padding: var(--space-7) calc(var(--space-7) + 13px) var(--space-7) calc(var(--space-7) + 16px);
   overflow: hidden;
 }
 
@@ -4690,7 +4690,7 @@ i.rainbow-dot,
   display: flex;
   gap: var(--space-1);
   margin-left: auto;
-  margin-right: calc((14px - 28px) / 2);
+  margin-right: calc((14px - 28px) / 2 - 14px / 8);
 }
 
 .card-icons .icon-button {
