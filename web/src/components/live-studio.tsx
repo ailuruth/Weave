@@ -2130,7 +2130,7 @@ function SettingsPanel({
             Reset
           </button>
           <button className="icon-button" type="button" onClick={close} aria-label="Close settings" title="Close (Esc)">
-            <X size={17} />
+            <X size={16} />
           </button>
         </div>
       </header>

@@ -10,8 +10,14 @@ The analysis is from VoltAgent's awesome-design-md collection (MIT), read from L
 - Lavender as text or a mark is Linear's hover step, `#828fff`. The brand step `#5e6ad2` measures 3.9:1 on a panel, so it only fills the primary button.
 - A hovered primary button darkens to `#545fc6`. Linear lightens it, which drops white type to 2.9:1.
 - Anything you press or type into keeps a 3:1 outline (`--control-line`). Linear's hairlines measure under 2:1.
-- Buttons have 8px corners and type at weight 500. Segmented controls are Linear's pill tabs.
-- Controls stay 28px tall and type stays on the studio's own scale. Linear's sizes are a marketing page's.
+- There are six kinds of button, and every control is one of them. All are 32px tall with 6px corners and 13px labels at weight 500, unless noted.
+  1. Primary: the lavender fill. Export only, so the screen has one.
+  2. Secondary: a 1px outline. Edit captions (inverted while its panel is open) and Add a caption.
+  3. Text: no outline. Reset.
+  4. Icon: a 32px square whose glyph (16px) brightens on hover. It never shows a box, so a glyph can sit on an edge.
+  5. Switch: a 32px track with 26px cells of 4px corners and one fill that slides to the choice. Stage and Transcript, speed, zoom, Style and Color.
+  6. Play: the 40px white circle that leads the timeline, the one exception.
+- Icons inside a caption card are 28px with 14px glyphs, to share a row with the card's 28px times.
 - The light theme is derived from Linear's inverse tokens. Linear's site ships no light theme.
 - The font is the system face. Linear's own faces are not distributed.
 - The tools are tiles: the stage, the timeline and the rail are rounded 12px tiles, 8px apart, on a near-black ground (`#050506`), and the panels are lifted to `#1b1c1f`. Linear's own dark steps sit so close to its canvas that the studio read as flat and light.

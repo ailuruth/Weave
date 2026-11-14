@@ -289,7 +289,7 @@ export function CaptionEditor({
             disabled={!doc || busy}
             onClick={addCaption}
           >
-            <Plus size={15} />
+            <Plus size={14} />
             Caption
           </button>
           <button
@@ -300,7 +300,7 @@ export function CaptionEditor({
             disabled={!canUndo}
             onClick={() => void undo()}
           >
-            <Undo2 size={15} />
+            <Undo2 size={16} />
           </button>
           <button
             className="icon-button"
@@ -310,7 +310,7 @@ export function CaptionEditor({
             disabled={!doc || doc.generation === 0 || busy}
             onClick={() => void revert()}
           >
-            <RotateCcw size={15} />
+            <RotateCcw size={16} />
           </button>
           <button
             className="icon-button"
@@ -319,7 +319,7 @@ export function CaptionEditor({
             title="Close"
             onClick={close}
           >
-            <X size={17} />
+            <X size={16} />
           </button>
         </div>
       </header>

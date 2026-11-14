@@ -496,7 +496,12 @@ export function RecordingTimeline({
           </button>
         </div>
         <div className="timeline-view">
-          <div className="timeline-speed" role="radiogroup" aria-label="Playback speed">
+          <div
+            className="timeline-speed"
+            role="radiogroup"
+            aria-label="Playback speed"
+            style={{"--seg-i": Math.max(0, SPEEDS.indexOf(rate))} as CSSVars}
+          >
             {SPEEDS.map((speed) => (
               <button
                 key={speed}
@@ -518,7 +523,7 @@ export function RecordingTimeline({
             disabled={!captions.doc || captions.busy}
             onClick={addCaption}
           >
-            <Plus size={17} />
+            <Plus size={16} />
           </button>
           <button
             type="button"
@@ -538,7 +543,7 @@ export function RecordingTimeline({
               title="Zoom out (⌘ scroll)"
               onClick={() => setView(zoomView(view, ZOOM_STEP, position(), durationS))}
             >
-              <ZoomOut size={15} />
+              <ZoomOut size={16} />
             </button>
             <button
               type="button"
@@ -547,7 +552,7 @@ export function RecordingTimeline({
               title="Show the whole recording"
               onClick={() => setView({startS: 0, endS: Math.max(2, durationS)})}
             >
-              <Maximize2 size={14} />
+              <Maximize2 size={16} />
             </button>
             <button
               type="button"
@@ -556,7 +561,7 @@ export function RecordingTimeline({
               title="Zoom in (⌘ scroll)"
               onClick={() => setView(zoomView(view, 1 / ZOOM_STEP, position(), durationS))}
             >
-              <ZoomIn size={15} />
+              <ZoomIn size={16} />
             </button>
           </div>
         </div>

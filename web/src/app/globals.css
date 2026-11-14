@@ -102,7 +102,7 @@
   --space-10: 32px;
   --panel-width: clamp(300px, 30vw, 400px);
   --control-h: 32px;
-  --control-icon: 34px;
+  --control-icon: 32px;
   --row-h: 48px;
   --row-h-compact: 40px;
   --ease-out: cubic-bezier(.2, .72, .24, 1);
@@ -366,16 +366,16 @@ button {
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
   background: var(--segment-track);
 }
 
 .view-switcher button {
   min-width: 88px;
-  height: calc(var(--control-h) - 2 * var(--space-1));
+  height: calc(var(--control-h) - 2 * var(--space-1) - 2px);
   padding: 0 var(--space-6);
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: 4px;
   background: transparent;
   color: var(--muted-2);
   font-size: var(--text-xs);
@@ -499,7 +499,7 @@ button {
 
 .topbar-tools .icon-button:hover,
 .timeline .icon-button:hover {
-  background: var(--surface-selected);
+  background: transparent;
   color: var(--text);
 }
 
@@ -1603,10 +1603,10 @@ button {
   height: var(--control-h);
   padding: 0 var(--space-4);
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--accent);
-  font: 500 var(--text-sm)/1 var(--font-ui);
+  font: 500 var(--text-xs)/1 var(--font-ui);
   cursor: pointer;
 }
 
@@ -2274,7 +2274,7 @@ button {
   align-items: center;
   gap: var(--space-4);
   height: 48px;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   font: 600 var(--text-md)/1 var(--font-ui);
 }
 
@@ -3212,10 +3212,10 @@ button {
   gap: var(--space-2);
   height: var(--control-h);
   padding: 0 var(--space-5) 0 var(--space-6);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--action);
   color: var(--on-action);
-  font-weight: 500;
+  font: 500 var(--text-xs)/1 var(--font-ui);
   cursor: pointer;
   list-style: none;
   transition: background var(--dur-quick) ease;
@@ -3296,12 +3296,11 @@ button {
   gap: var(--space-3);
   height: var(--control-h);
   padding: 0 var(--space-6);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--surface-soft);
+  border: 1px solid var(--control-line);
+  border-radius: var(--r-sm);
+  background: transparent;
   color: var(--text);
-  font: 500 var(--text-sm)/1 var(--font-ui);
-  letter-spacing: var(--track-snug);
+  font: 500 var(--text-xs)/1 var(--font-ui);
   cursor: pointer;
   transition: background var(--dur-quick) ease, color var(--dur-quick) ease;
 }
@@ -3312,8 +3311,7 @@ button {
 }
 
 .edit-toggle:hover {
-  border-color: var(--line-strong);
-  background: var(--surface);
+  background: var(--surface-selected);
 }
 
 .edit-toggle[aria-pressed="true"] {
@@ -3731,7 +3729,6 @@ button {
 
 .timeline-transport .icon-button {
   color: var(--muted);
-  border-radius: 50%;
 }
 
 .timeline-play {
@@ -3774,18 +3771,28 @@ button {
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
   background: var(--bg);
 }
 
+.timeline-speed {
+  --seg-n: 3;
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
 .timeline-speed button {
-  height: calc(var(--control-h) - 2 * var(--space-1));
+  position: relative;
+  z-index: 1;
+  height: calc(var(--control-h) - 2 * var(--space-1) - 2px);
   padding: 0 var(--space-4);
   border: 0;
-  border-radius: var(--r-pill);
+  border-radius: 4px;
   background: transparent;
   color: var(--muted-2);
-  font: 500 var(--text-2xs)/1 var(--font-ui);
+  font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -3795,18 +3802,13 @@ button {
 }
 
 .timeline-speed button[data-active="true"] {
-  background: var(--segment-active);
   color: var(--text);
 }
 
 .timeline-zoom .icon-button {
   width: 30px;
-  height: calc(var(--control-h) - 2 * var(--space-1));
-  border-radius: var(--r-pill);
-}
-
-.timeline .timeline-zoom .icon-button:hover {
-  background: var(--segment-active);
+  height: calc(var(--control-h) - 2 * var(--space-1) - 2px);
+  border-radius: 4px;
 }
 
 .timeline-body {
@@ -4069,10 +4071,10 @@ i.rainbow-dot,
   margin-right: var(--space-3);
   padding: 0 var(--space-5) 0 var(--space-4);
   border: 1px solid var(--control-line);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text);
-  font: 500 var(--text-sm)/1 var(--font-ui);
+  font: 500 var(--text-xs)/1 var(--font-ui);
   cursor: pointer;
   transition: background-color var(--dur-quick) ease;
 }
@@ -4684,7 +4686,7 @@ i.rainbow-dot,
 
 .editor-bar > div > :last-child,
 .settings-panel > header > div > :last-child {
-  margin-right: calc((17px - var(--control-icon)) / 2 - 17px / 4);
+  margin-right: calc((16px - var(--control-icon)) / 2 - 16px / 4);
 }
 
 .card-icons {
@@ -4824,6 +4826,7 @@ i.rainbow-dot,
 }
 
 .view-switcher::before,
+.timeline-speed::before,
 .segmented::before,
 .swatches::before {
   content: "";
@@ -4842,9 +4845,6 @@ i.rainbow-dot,
   pointer-events: none;
 }
 
-.view-switcher::before {
-  border-radius: var(--r-pill);
-}
 
 .view-switcher > button,
 .segmented > button,
