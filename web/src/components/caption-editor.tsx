@@ -41,6 +41,7 @@ type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 const NEW_CAPTION = "Caption";
 const FOLLOW_AFTER_SCROLL_MS = 4000;
 const TOOLS_OPEN_MS = 200;
+const SLOW_WORD_S = 0.9;
 const keepTextFocus = (event: {target: EventTarget; preventDefault: () => void}) => {
   if ((event.target as HTMLElement).closest("button")) event.preventDefault();
 };
@@ -195,6 +196,7 @@ export function CaptionEditor({
   const [picked, setPicked] = useState<number | null>(focus?.index ?? null);
   const [typing, setTyping] = useState<number | null>(focus?.index ?? null);
   const [sel, setSel] = useState<[number, number] | null>(null);
+  const anchorRef = useRef<number | null>(null);
   const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
   const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
@@ -462,26 +464,57 @@ export function CaptionEditor({
                     onClick={(event) => event.stopPropagation()}
                     onMouseDown={keepTextFocus}
                   >
-                    {range && (
+                    <div className="card-strip" role="group" aria-label="Words, as they will move">
+                      {lineWords.map((word, offset) => {
+                        const index = line.first + offset;
+                        const on = range !== null && index >= range[0] && index <= range[1];
+                        return (
+                          <button
+                            key={`word-${offset}`}
+                            type="button"
+                            className="strip-word"
+                            aria-pressed={on}
+                            data-rainbow={word.rainbow ? "true" : undefined}
+                            data-slow={word.end - word.start > SLOW_WORD_S ? "true" : undefined}
+                            title={`${word.text}, ${wordPresetOf(word)?.label ?? "as spoken"}`}
+                            style={{
+                              "--s": word.size.toFixed(3),
+                              "--ink": word.rainbow ? undefined : speakerColor(word.speaker, colors),
+                            } as CSSVars}
+                            onClick={(event) => {
+                              if (event.shiftKey && anchorRef.current !== null
+                                && anchorRef.current >= line.first && anchorRef.current <= line.last) {
+                                const from = Math.min(anchorRef.current, index);
+                                setSel([from, Math.max(anchorRef.current, index)]);
+                                return;
+                              }
+                              anchorRef.current = index;
+                              setSel(range && range[0] === index && range[1] === index ? null : [index, index]);
+                            }}
+                          >
+                            {word.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {range && range[0] === range[1] && (
                       <div className="card-scope">
-                        <span>“{picked.map((word) => word.text).join(" ")}”</span>
-                        {range[0] === range[1] && (
-                          <span className="card-span">
-                            <TimeField
-                              label="Word start"
-                              value={words[range[0]].start}
-                              onChange={(value) => change(
-                                retimeWord(words, range[0], value, words[range[0]].end), range[0])}
-                            />
-                            <span className="card-arrow" aria-hidden="true">–</span>
-                            <TimeField
-                              label="Word end"
-                              value={words[range[0]].end}
-                              onChange={(value) => change(
-                                retimeWord(words, range[0], words[range[0]].start, value), range[0])}
-                            />
-                          </span>
-                        )}
+                        <span>“{words[range[0]].text}”</span>
+                        <span className="card-span">
+                          <TimeField
+                            label="Word start"
+                            value={words[range[0]].start}
+                            onChange={(value) => change(
+                              retimeWord(words, range[0], value, words[range[0]].end), range[0])}
+                          />
+                          <span className="card-arrow" aria-hidden="true">–</span>
+                          <TimeField
+                            label="Word end"
+                            value={words[range[0]].end}
+                            onChange={(value) => change(
+                              retimeWord(words, range[0], words[range[0]].start, value), range[0])}
+                          />
+                        </span>
                       </div>
                     )}
                     <div className="swatches" role="radiogroup" aria-label="Color">
