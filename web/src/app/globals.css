@@ -73,6 +73,26 @@
   /* The gutter a row-final word's mid-pop overhang falls into. Measured up
      to .842em; shrinking it silently clipped ~15% of row-samples. */
   --caption-gutter-em: 2.50;
+
+  /* THE CHROME'S SCALES. Every value the chrome repeats is named here. */
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 17px;
+  --text-xl: 21px;
+  --text-display: clamp(22px, 3.4vw, 34px);
+  --track-tight: -.374px;
+  --track-snug: -.224px;
+  --track-label: .02em;
+  --ease-out: cubic-bezier(.2, .72, .24, 1);
+  --dur-press: 120ms;
+  --dur-quick: 140ms;
+  --dur-base: 180ms;
+  --dur-slow: 220ms;
+  --knob: #ffffff;
+  --knob-ring: 0 0 0 1px rgba(0, 0, 0, .12);
+  --scrim: rgba(0, 0, 0, .42);
   /* `--caption-width-cap` is NOT declared here -- see `.studio-shell`. */
 }
 
@@ -170,7 +190,7 @@ button:active {
 }
 
 button {
-  transition: transform 120ms cubic-bezier(.2, .72, .24, 1);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -263,15 +283,15 @@ button {
 
 .brand h1 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -.224px;
+  letter-spacing: var(--track-snug);
 }
 
 .brand span:last-child {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.2;
 }
 
@@ -292,10 +312,10 @@ button {
   border-radius: var(--r-xs);
   background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease;
+  transition: color var(--dur-quick) ease, background var(--dur-quick) ease;
 }
 
 .view-switcher button[data-active="true"] {
@@ -317,15 +337,15 @@ button {
   height: 29px;
   padding: 0 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
-  letter-spacing: .02em;
+  letter-spacing: var(--track-label);
 }
 
 .session-clock {
   margin-right: 2px;
   color: var(--muted);
-  font: 500 11px/1 var(--font-ui);
+  font: 500 var(--text-2xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -336,9 +356,9 @@ button {
   height: 29px;
   padding: 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
-  letter-spacing: .02em;
+  letter-spacing: var(--track-label);
 }
 
 .connection-pill i {
@@ -371,7 +391,7 @@ button {
   background: transparent;
   color: var(--muted-2);
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: color var(--dur-quick) ease;
 }
 
 .icon-button:focus-visible {
@@ -977,7 +997,7 @@ button {
   height: 29px;
   padding: 0 4px;
   color: var(--muted-2);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -997,7 +1017,7 @@ button {
   overflow: auto;
   border-left: 1px solid var(--line);
   background: var(--rail-bg);
-  transition: opacity 180ms ease;
+  transition: opacity var(--dur-base) ease;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
@@ -1054,10 +1074,10 @@ button {
 .rail-heading h2,
 .settings-panel h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.24;
-  letter-spacing: -.374px;
+  letter-spacing: var(--track-tight);
 }
 
 /* GOOD is the expected state. */
@@ -1077,7 +1097,7 @@ button {
   min-width: 2px;
   border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--active-color) calc(42% + var(--bar-height) * 58%), var(--line-strong));
-  transition: height 90ms linear, background 140ms ease;
+  transition: height 90ms linear, background var(--dur-quick) ease;
 }
 
 /* THE DIAL GETS THE RAIL'S FULL WIDTH, and the readout sits under it. */
@@ -1112,7 +1132,7 @@ button {
   transition:
     transform 340ms cubic-bezier(.28,.55,.28,1),
     box-shadow 340ms cubic-bezier(.28,.55,.28,1),
-    color 180ms ease;
+    color var(--dur-base) ease;
 }
 
 /* FOUR TICKS INSTEAD OF A RADAR SET (2026-08-13). */
@@ -1206,7 +1226,7 @@ button {
   /* Opacity eases too: at a handover one arrow dims while the next brightens,
      and snapping both made the crossing read as a flicker on top of the
      movement. */
-  transition: transform 180ms cubic-bezier(.2,.72,.24,1), opacity 220ms ease;
+  transition: transform var(--dur-base) var(--ease-out), opacity var(--dur-slow) ease;
 }
 
 /* THE ARROW TAKING OVER A ZONE IS PLACED ON THE SEAM, NOT ANIMATED INTO IT.
@@ -1215,7 +1235,7 @@ button {
    -- which is the stutter at the crossing. One update later `data-entering`
    is false again and it eases from the seam to the real bearing. */
 .compass-direction[data-entering="true"] {
-  transition: opacity 220ms ease;
+  transition: opacity var(--dur-slow) ease;
 }
 
 /* THE DIAL DRAWS EXACTLY THREE ARROWS, ONE PER 120 DEG ZONE -- `.compass-
@@ -1233,7 +1253,7 @@ button {
   inset: 0;
   border-radius: 50%;
   /* NOT `transform: rotate()` any more. */
-  transition: background 260ms cubic-bezier(.2,.72,.24,1), opacity 180ms ease;
+  transition: background 260ms var(--ease-out), opacity var(--dur-base) ease;
   pointer-events: none;
 }
 
@@ -1342,7 +1362,7 @@ button {
   inset: 5px;
   border-radius: 50%;
   transform: rotate(var(--beam-angle));
-  transition: transform 180ms cubic-bezier(.2,.72,.24,1);
+  transition: transform var(--dur-base) var(--ease-out);
   pointer-events: none;
 }
 
@@ -1385,13 +1405,13 @@ button {
 
 .level-line strong {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 500;
 }
 
 .level-line span {
   color: var(--muted-2);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1406,7 +1426,7 @@ button {
   height: 100%;
   padding: 0;
   border: 0;
-  background: rgba(0,0,0,.42);
+  background: var(--scrim);
   cursor: default;
 }
 
@@ -1428,7 +1448,7 @@ button {
   padding: 26px 22px 30px;
   border-left: 1px solid var(--line);
   background: var(--rail-bg);
-  animation: panel-enter 180ms cubic-bezier(.2,.72,.24,1) both;
+  animation: panel-enter var(--dur-base) var(--ease-out) both;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
 }
@@ -1447,7 +1467,7 @@ button {
   padding: 17px 0;
   border-top: 1px solid var(--line);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .range-control > span,
@@ -1459,7 +1479,7 @@ button {
 
 .range-control output {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1497,8 +1517,8 @@ button {
   margin-top: -7px;
   border: 0;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .12);
+  background: var(--knob);
+  box-shadow: var(--knob-ring);
 }
 
 .range-control input::-moz-range-track {
@@ -1518,8 +1538,8 @@ button {
   height: 18px;
   border: 0;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .12);
+  background: var(--knob);
+  box-shadow: var(--knob-ring);
 }
 
 .toggle-row {
@@ -1533,7 +1553,7 @@ button {
   border-top: 1px solid var(--line);
   background: transparent;
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 
@@ -1549,7 +1569,7 @@ button {
   height: 24px;
   border-radius: var(--r-pill);
   background: var(--line);
-  transition: background 180ms ease;
+  transition: background var(--dur-base) ease;
 }
 
 .toggle-row > i::after {
@@ -1560,9 +1580,9 @@ button {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, .12);
-  transition: transform 180ms cubic-bezier(.2,.72,.24,1);
+  background: var(--knob);
+  box-shadow: var(--knob-ring);
+  transition: transform var(--dur-base) var(--ease-out);
 }
 
 .toggle-row > i[data-on="true"] {
@@ -1829,10 +1849,10 @@ button {
 .language-gate-copy h1 {
   margin: 0;
   color: var(--text);
-  font-size: clamp(22px, 3.4vw, 34px);
+  font-size: var(--text-display);
   font-weight: 600;
   line-height: 1.14;
-  letter-spacing: -.374px;
+  letter-spacing: var(--track-tight);
   text-wrap: balance;
 }
 
@@ -1840,9 +1860,9 @@ button {
   max-width: 440px;
   margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--text-md);
   line-height: 1.43;
-  letter-spacing: -.224px;
+  letter-spacing: var(--track-snug);
 }
 
 .language-options {
@@ -1861,11 +1881,11 @@ button {
   border-radius: var(--r-pill);
   background: none;
   color: var(--text);
-  font: 600 21px/1.19 var(--font-ui);
+  font: 600 var(--text-xl)/1.19 var(--font-ui);
   letter-spacing: -.2px;
   text-align: center;
   cursor: pointer;
-  transition: transform 140ms ease, opacity 140ms ease;
+  transition: transform var(--dur-quick) ease, opacity var(--dur-quick) ease;
 }
 
 /* Default and pressed only -- the system-wide press is a scale, not a tint. */
@@ -1899,7 +1919,7 @@ button {
 .language-error {
   margin: 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--text-xs);
   text-align: center;
 }
 
@@ -2372,10 +2392,10 @@ button {
   border: 0;
   background: none;
   color: var(--accent);
-  font: 400 17px/1.24 var(--font-ui);
-  letter-spacing: -.374px;
+  font: 400 var(--text-lg)/1.24 var(--font-ui);
+  letter-spacing: var(--track-tight);
   cursor: pointer;
-  transition: opacity 140ms ease;
+  transition: opacity var(--dur-quick) ease;
 }
 
 .media-import-action:active {
@@ -2387,8 +2407,8 @@ button {
   margin: 0;
   overflow: hidden;
   color: var(--text);
-  font: 600 17px/1.24 var(--font-ui);
-  letter-spacing: -.374px;
+  font: 600 var(--text-lg)/1.24 var(--font-ui);
+  letter-spacing: var(--track-tight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2396,8 +2416,8 @@ button {
 .media-import-hint {
   margin: 0;
   color: var(--muted);
-  font: 400 14px/1.43 var(--font-ui);
-  letter-spacing: -.224px;
+  font: 400 var(--text-md)/1.43 var(--font-ui);
+  letter-spacing: var(--track-snug);
 }
 
 .studio-shell[data-cues="true"][data-motion="enhanced"]
@@ -2712,8 +2732,8 @@ button {
 
 .export-menu {
   position: relative;
-  font: 400 12px/1 var(--font-ui);
-  letter-spacing: .02em;
+  font: 400 var(--text-xs)/1 var(--font-ui);
+  letter-spacing: var(--track-label);
 }
 
 .export-menu summary {
@@ -2758,7 +2778,7 @@ button {
   padding: 9px 10px;
   border-radius: 4px;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   line-height: 1.2;
   text-decoration: none;
 }
@@ -2804,8 +2824,8 @@ button {
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
-  font: 400 12px/1 var(--font-ui);
-  letter-spacing: .02em;
+  font: 400 var(--text-xs)/1 var(--font-ui);
+  letter-spacing: var(--track-label);
   cursor: pointer;
 }
 
@@ -2829,7 +2849,7 @@ button {
   height: 100%;
   min-height: 0;
   color: var(--text);
-  font: 400 13px/1.35 var(--font-ui);
+  font: 400 var(--text-sm)/1.35 var(--font-ui);
 }
 
 .editor-bar {
@@ -2842,7 +2862,7 @@ button {
 
 .editor-bar h2 {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.24;
 }
@@ -2867,7 +2887,7 @@ button {
   margin: 0;
   padding: 8px 22px;
   color: var(--muted-2);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .editor-error {
@@ -2912,7 +2932,7 @@ button {
   border: 0;
   background: none;
   color: var(--muted-2);
-  font: 500 11px/1 var(--font-ui);
+  font: 500 var(--text-2xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
@@ -2982,7 +3002,7 @@ button {
   display: grid;
   gap: 7px;
   padding: 11px 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .editor-inspector .range-control {
@@ -3009,7 +3029,7 @@ button {
 
 .editor-field small {
   color: var(--muted-2);
-  font-size: 11px;
+  font-size: var(--text-2xs);
 }
 
 .editor-field input {
@@ -3020,7 +3040,7 @@ button {
   border-radius: var(--r-sm);
   background: var(--bg);
   color: var(--text);
-  font: 400 14px/1 var(--font-ui);
+  font: 400 var(--text-md)/1 var(--font-ui);
 }
 
 .editor-field input:focus-visible,
@@ -3051,7 +3071,7 @@ button {
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
-  font: 400 12px/1 var(--font-ui);
+  font: 400 var(--text-xs)/1 var(--font-ui);
   cursor: pointer;
 }
 
@@ -3143,7 +3163,7 @@ button {
 .timeline-time {
   margin-left: 10px;
   color: var(--text);
-  font: 500 12px/1 var(--font-ui);
+  font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3174,7 +3194,7 @@ button {
   padding: 4px 0 0 4px;
   border-left: 1px solid var(--line);
   color: var(--muted-2);
-  font: 400 11px/1 var(--font-ui);
+  font: 400 var(--text-2xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -3210,7 +3230,7 @@ button {
   border-radius: var(--r-xs);
   background: var(--surface);
   color: var(--muted);
-  font: 400 11px/29px var(--font-ui);
+  font: 400 var(--text-2xs)/29px var(--font-ui);
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3274,7 +3294,7 @@ button {
   border-radius: var(--r-xs);
   background: var(--surface-soft);
   color: var(--muted-2);
-  font: italic 400 11px/18px var(--font-ui);
+  font: italic 400 var(--text-2xs)/18px var(--font-ui);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3288,7 +3308,7 @@ button {
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
-  font: 400 12px/1 var(--font-ui);
+  font: 400 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
