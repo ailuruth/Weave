@@ -727,6 +727,7 @@ const MotionWord = memo(function MotionWord({
       // italic. Live capture has no camera and never sets this; it is here so
       // the SSE contract can carry the distinction rather than inventing it.
       data-off-camera={word.off_camera ? "true" : "false"}
+      data-rainbow={word.rainbow ? "true" : undefined}
       /* Wide scripts take the continuous wipe: a Hangul block is 0.91em
          against Latin's 0.43em, so a per-glyph step is a switch, not a
          sweep. `wordIsWide` can never return true for an all-Latin word. */
@@ -2676,7 +2677,8 @@ export function LiveStudio() {
   return (
     <main
       className="studio-shell"
-      data-rail={railOpen || editorOpen ? "open" : "closed"}
+      data-rail={editorOpen ? "open" : "closed"}
+      data-dock={railOpen ? "open" : "closed"}
       data-editor={editorOpen ? "open" : "closed"}
       data-contrast={settings.highContrast ? "high" : "normal"}
       data-theme={settings.lightStage ? "light" : "dark"}
@@ -2769,8 +2771,8 @@ export function LiveStudio() {
             <button
               className="icon-button rail-toggle"
               onClick={() => setRailOpen((value) => !value)}
-              aria-label={railOpen ? "Close signal rail" : "Open signal rail"}
-              title={railOpen ? "Close signal rail" : "Open signal rail"}
+              aria-label={railOpen ? "Hide the voice dial" : "Show the voice dial"}
+              title={railOpen ? "Hide the voice dial" : "Show the voice dial"}
             >
               {railOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
             </button>
@@ -2779,6 +2781,7 @@ export function LiveStudio() {
       </header>
 
       <section className="workspace">
+        <div className="stage-row">
         <div
           className={`caption-stage ${view === "transcript" ? "is-transcript" : ""}`}
           ref={stageRef}
@@ -2833,32 +2836,8 @@ export function LiveStudio() {
             </div>
           )}
         </div>
-        {transport.ready && (
-          <RecordingTimeline
-            transport={transport}
-            captions={captions}
-            colors={speakerColors}
-            currentCue={cueId}
-            onEditWord={editWord}
-          />
-        )}
-      </section>
-
-      <aside
-        className="signal-rail"
-        aria-label={editorOpen ? "Caption editor" : "Live signal intelligence"}
-      >
-        {editorOpen ? (
-          <CaptionEditor
-            colors={speakerColors}
-            close={() => setEditing(false)}
-            positionS={Math.max(0, playheadMs / 1000)}
-            playing={transport.playing}
-            seek={transportSeek}
-            captions={captions}
-            focus={editFocus}
-          />
-        ) : (<>
+        {railOpen && (
+          <aside className="voice-dock" aria-label="Voice">
         <section className="rail-section compass-section">
           {/* The arrow glyph went with the heading: an icon alone in an
               otherwise empty row is decoration, and the dial already draws a
@@ -2927,7 +2906,39 @@ export function LiveStudio() {
         {/* A fourth "system" section listed Recognition (a hardcoded string),
             Expression (the settings slider's own value) and Direction (the
             compass readout, again). None of it was a signal. */}
-        </>)}
+          </aside>
+        )}
+        </div>
+        {transport.ready && (
+          <RecordingTimeline
+            transport={transport}
+            captions={captions}
+            colors={speakerColors}
+            currentCue={cueId}
+            onEditWord={editWord}
+          />
+        )}
+      </section>
+
+      <aside
+        className="signal-rail"
+        aria-label={editorOpen ? "Caption editor" : "Live signal intelligence"}
+      >
+        {editorOpen ? (
+          <CaptionEditor
+            colors={speakerColors}
+            close={() => setEditing(false)}
+            positionS={Math.max(0, playheadMs / 1000)}
+            durationS={transport.durationS}
+            playing={transport.playing}
+            rate={transport.rate}
+            seek={transportSeek}
+            play={transport.play}
+            pause={transport.pause}
+            captions={captions}
+            focus={editFocus}
+          />
+        ) : null}
       </aside>
 
       {settingsOpen && (

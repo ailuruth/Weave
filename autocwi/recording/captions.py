@@ -51,6 +51,7 @@ def document(words: list[dict]) -> list[dict]:
         "speaker": word.get("speaker") or None,
         "size": round(float(word.get("loudness") or 0.0), 4),
         "line": int(word.get("cue") or 0),
+        "rainbow": bool(word.get("rainbow")),
     } for word in words]
 
 
@@ -121,6 +122,7 @@ def entries(edits: Iterable[dict]) -> list[dict]:
                 "speaker": speaker,
                 "size": size,
                 "line": raw.get("line"),
+                "rainbow": raw.get("rainbow") is True,
             })
             cursor += span
     return checked
@@ -188,6 +190,10 @@ def revise(known: dict[str, dict], edits: Iterable[dict], generation: int) -> li
             )
         if entry["size"] is not None:
             word["loudness"] = round(entry["size"], 4)
+        if entry["rainbow"]:
+            word["rainbow"] = True
+        else:
+            word.pop("rainbow", None)
         if float(word.get("loudness") or 0.0) < LOUDNESS_PIVOT - SIZE_STEP:
             word["soft"] = True
         else:

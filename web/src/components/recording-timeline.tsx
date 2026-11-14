@@ -29,9 +29,8 @@ import {
   insertLine,
   linesOf,
   moveLine,
-  nextSpeaker,
   retimeLine,
-  setSpeaker,
+  setColour,
   type EditWord,
 } from "@/lib/caption-edit";
 import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
@@ -59,6 +58,8 @@ const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
 const ROW_H = 26;
 const ROW_GAP = 3;
+const RAINBOW_ROW = "~rainbow";
+const NEW_CAPTION = "Caption";
 
 const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ["Space or K", "Play and pause"],
@@ -70,7 +71,7 @@ const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ["[ ]", "Start or end the current line here"],
   ["⌘Z ⇧⌘Z", "Undo and redo"],
   ["Click a line", "Edit it"],
-  ["Drag a line up or down", "Give it to another speaker"],
+  ["Drag a line up or down", "Give it to another speaker or the rainbow"],
   ["⌘ scroll", "Zoom"],
 ];
 
@@ -154,7 +155,6 @@ export function RecordingTimeline({
   }
   const [width, setWidth] = useState(0);
   const [keysOpen, setKeysOpen] = useState(false);
-  const [adding, setAdding] = useState<{text: string; speaker: string | null; preset: string; atS: number} | null>(null);
   const hoverRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
@@ -209,10 +209,7 @@ export function RecordingTimeline({
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
       if (event.key === "?") setKeysOpen((open) => !open);
-      else if (event.key === "Escape") {
-        setKeysOpen(false);
-        setAdding(null);
-      }
+      else if (event.key === "Escape") setKeysOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -361,29 +358,24 @@ export function RecordingTimeline({
       return;
     }
     let next = timed?.words ?? [...words];
-    if (row !== drag.row0) next = setSpeaker(next, timed?.first ?? first, rows[row] || null, true);
+    if (row !== drag.row0) {
+      next = setColour(next, timed?.first ?? first,
+        rows[row] === RAINBOW_ROW ? {rainbow: true} : {speaker: rows[row] || null}, true);
+    }
     setDrag({...drag, row, sent: true, span: spanOf(next, drag.cue)});
     void captions.commit(next, timed?.first ?? first, false).then((ok) => {
       if (!ok) setDrag(null);
     });
   };
 
-  const presetOf = (id: string) => CAPTION_PRESETS.find((preset) => preset.id === id)
-    ?? CAPTION_PRESETS[0];
-  const openAdding = () => {
-    const here = lines.find((line) => position() >= line.startS && position() <= line.endS);
-    setKeysOpen(false);
-    setAdding({
-      text: "", speaker: here?.speaker ?? rows.find(Boolean) ?? null, preset: "shout", atS: position(),
-    });
-  };
   const addCaption = () => {
     const words = captions.doc?.words;
-    if (!adding || !words) return;
-    const added = insertLine(
-      words, adding.atS, adding.text, adding.speaker, presetOf(adding.preset), durationS);
+    if (!words) return;
+    const atS = position();
+    const here = lines.find((line) => atS >= line.startS && atS <= line.endS);
+    const speaker = here && !here.rainbow ? here.speaker : rows.find((row) => row && row !== RAINBOW_ROW) ?? null;
+    const added = insertLine(words, atS, NEW_CAPTION, speaker, CAPTION_PRESETS[0], durationS);
     if (!added) return;
-    setAdding(null);
     void captions.commit(added.words, added.index, true).then((ok) => {
       if (ok) onEditWord?.(added.index);
     });
@@ -399,13 +391,16 @@ export function RecordingTimeline({
     const h = Math.max(0.06, height) * 100;
     return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_PX - 1.5}v${h}h-${BAR_PX - 1.5}z`;
   }).join(""), [bars]);
+  const rowKey = (line: {speaker: string | null; rainbow?: boolean}) =>
+    line.rainbow ? RAINBOW_ROW : line.speaker ?? "";
   const order = [...(captions.doc?.speakers ?? [])];
   for (const line of lines) {
-    const key = line.speaker ?? "";
+    const key = rowKey(line);
     if (!order.includes(key)) order.push(key);
   }
   const rows = order.length ? order : [""];
-  const rowOf = (speaker: string | null) => Math.max(0, rows.indexOf(speaker ?? ""));
+  const rowOf = (line: {speaker: string | null; rainbow?: boolean}) =>
+    Math.max(0, rows.indexOf(rowKey(line)));
   const shownLines = lines
     .map((line) => (drag?.span && drag.cue === line.cue ? {...line, ...drag.span} : line))
     .filter((line) => line.endS > view.startS && line.startS < view.endS);
@@ -418,68 +413,6 @@ export function RecordingTimeline({
       aria-label="Timeline"
       style={{"--lane-captions": `${rows.length * ROW_H + (rows.length - 1) * ROW_GAP}px`} as CSSVars}
     >
-      {adding && captions.doc && (
-        <form
-          className="timeline-add"
-          aria-label="Add a caption"
-          onSubmit={(event) => {
-            event.preventDefault();
-            addCaption();
-          }}
-        >
-          <input
-            type="text"
-            value={adding.text}
-            placeholder="WHOOOOA!"
-            aria-label="Caption text"
-            spellCheck={false}
-            autoFocus
-            onChange={(event) => setAdding({...adding, text: event.target.value})}
-          />
-          <div className="timeline-add-row">
-            <span>Colour</span>
-            <div className="speaker-choices">
-              {[...captions.doc.speakers, nextSpeaker(captions.doc.speakers)].map((speaker, index, all) => (
-                <button
-                  key={speaker}
-                  type="button"
-                  data-active={adding.speaker === speaker}
-                  onClick={() => setAdding({...adding, speaker})}
-                >
-                  <i style={{"--dot": speakerColor(speaker, colors)} as CSSVars} />
-                  {index === all.length - 1 ? "New" : speaker}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="timeline-add-row">
-            <span>Motion</span>
-            <div className="timeline-presets" role="radiogroup" aria-label="Motion">
-              {CAPTION_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={adding.preset === preset.id}
-                  data-active={adding.preset === preset.id}
-                  onClick={() => setAdding({...adding, preset: preset.id})}
-                >
-                  <b data-preset={preset.id} aria-hidden="true">Aa</b>
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <footer>
-            <button type="button" className="timeline-add-cancel" onClick={() => setAdding(null)}>
-              Cancel
-            </button>
-            <button type="submit" className="timeline-add-submit" disabled={!adding.text.trim()}>
-              Add at {positionLabel(adding.atS)}
-            </button>
-          </footer>
-        </form>
-      )}
       {keysOpen && (
         <div className="timeline-keys" role="dialog" aria-label="Keyboard shortcuts">
           <dl>
@@ -549,11 +482,10 @@ export function RecordingTimeline({
           <button
             type="button"
             className="icon-button timeline-add-toggle"
-            aria-label="Add a caption"
-            aria-expanded={Boolean(adding)}
+            aria-label="Add a caption at the playhead"
             title="Add a caption at the playhead"
-            disabled={!captions.doc}
-            onClick={() => (adding ? setAdding(null) : openAdding())}
+            disabled={!captions.doc || captions.busy}
+            onClick={addCaption}
           >
             <Plus size={17} />
           </button>
@@ -605,10 +537,12 @@ export function RecordingTimeline({
         <li data-lane="captions">
           {rows.map((speaker) => (
             <span key={speaker || "unknown"}>
-              {speaker
-                ? <i style={{"--dot": speakerColor(speaker, colors)} as CSSVars} />
-                : <Captions size={13} />}
-              {speaker || "Unknown"}
+              {speaker === RAINBOW_ROW
+                ? <i className="rainbow-dot" />
+                : speaker
+                  ? <i style={{"--dot": speakerColor(speaker, colors)} as CSSVars} />
+                  : <Captions size={13} />}
+              {speaker === RAINBOW_ROW ? "Rainbow" : speaker || "Unknown"}
             </span>
           ))}
         </li>
@@ -653,7 +587,7 @@ export function RecordingTimeline({
             />
           ))}
           {shownLines.map((line) => {
-            const row = drag?.cue === line.cue && drag.moved ? drag.row : rowOf(line.speaker);
+            const row = drag?.cue === line.cue && drag.moved ? drag.row : rowOf(line);
             return (
             <button
               key={line.cue}
@@ -667,10 +601,12 @@ export function RecordingTimeline({
                 width: `${Math.max(0.2, at(line.endS) - at(line.startS))}%`,
                 top: `${row * (ROW_H + ROW_GAP)}px`,
                 height: `${ROW_H}px`,
-                "--line-color": speakerColor(rows[row] || line.speaker, colors),
+                "--line-color": speakerColor(
+                  rows[row] && rows[row] !== RAINBOW_ROW ? rows[row] : line.speaker, colors),
               } as CSSVars}
+              data-rainbow={rows[row] === RAINBOW_ROW ? "true" : undefined}
               title={line.text}
-              onPointerDown={(event) => startDrag(event, line.cue, rowOf(line.speaker))}
+              onPointerDown={(event) => startDrag(event, line.cue, rowOf(line))}
               onPointerMove={moveDrag}
               onPointerUp={(event) => endDrag(event, line.startS)}
               onPointerCancel={() => setDrag(null)}

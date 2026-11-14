@@ -53,6 +53,8 @@ export interface CaptionWord {
   sustain_active?: boolean;
   /** CWI 2.1.5: an off-camera voice is set in italic, keeping its colour. */
   off_camera?: boolean;
+  /** Each letter in its own colour, cycling: the reference's WHOOOOOA!!, added by a person. */
+  rainbow?: boolean;
   /* 2.3's contour inside the word: one reading per sub-window of its own
      span, so each character can read its own position. */
   env_loudness?: number[];

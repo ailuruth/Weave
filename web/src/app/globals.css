@@ -171,6 +171,12 @@
   initial-value: 0;
 }
 
+@property --rainbow-hue {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
 @property --caption-height-cap {
   syntax: "<length>";
   inherits: true;
@@ -1884,6 +1890,37 @@ button {
   86% { --voice-phase: .22; }
   /* LAND ON ZERO AND STAY THERE. */
   92% { --voice-phase: 0; }
+}
+
+/* THE RAINBOW (2026-11-14, at the user's request, after the reference's
+   speakerless WHOOOOOA!!, annotated "rainbow slow pop"). Each letter takes its
+   own hue and the hues travel along the word. It is a colour, not a speaker,
+   so it replaces the speaker colour on the letters only; the colour turn still
+   runs into it. The hue is cycled on the feed, and only while a rainbow word
+   is on it. */
+.caption-feed:has(.caption-word[data-rainbow="true"]) {
+  animation: rainbow-hue 2400ms linear infinite;
+}
+
+.caption-word[data-rainbow="true"] .caption-character {
+  color: oklch(var(--rainbow-l, 82%) .19
+    calc(var(--rainbow-hue) + var(--char-index, 0) * 46deg));
+}
+
+:root[data-theme="light"] .caption-word[data-rainbow="true"] {
+  --rainbow-l: 58%;
+}
+
+@keyframes rainbow-hue {
+  to { --rainbow-hue: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caption-feed:has(.caption-word[data-rainbow="true"]) { animation: none; }
+}
+
+.studio-shell[data-reduced-motion="true"] .caption-feed:has(.caption-word[data-rainbow="true"]) {
+  animation: none;
 }
 
 @keyframes word-color-turn {
@@ -3829,57 +3866,13 @@ button.media-import:hover .language-arrow {
   background: var(--dot);
 }
 
-/* ADDING A CAPTION: text, a speaker colour and a motion preset, placed at the
-   playhead. */
-.timeline-add {
-  position: absolute;
-  z-index: 40;
-  right: var(--space-7);
-  bottom: calc(100% + var(--space-4));
-  display: grid;
-  gap: var(--space-6);
-  width: min(420px, calc(100vw - 32px));
-  padding: var(--space-7);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-lg);
-  background: var(--rail-bg);
-  animation: panel-enter var(--dur-base) var(--ease-out) both;
-}
-
-.timeline-add input {
-  height: 44px;
-  padding: 0 var(--space-6);
-  border: 1px solid var(--control-line);
-  border-radius: var(--r-md);
-  background: var(--bg);
-  color: var(--text);
-  font: 600 var(--text-xl)/1 var(--font-ui);
-  letter-spacing: -.3px;
-}
-
-.timeline-add input:focus {
-  border-color: var(--focus);
-  outline: none;
-  box-shadow: inset 0 0 0 1px var(--focus);
-}
-
-.timeline-add-row {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.timeline-add-row > span {
-  color: var(--muted-2);
-  font-size: var(--text-xs);
-}
-
-.timeline-presets {
+.motion-presets {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3);
 }
 
-.timeline-presets button {
+.motion-presets button {
   display: grid;
   justify-items: center;
   gap: var(--space-2);
@@ -3892,13 +3885,13 @@ button.media-import:hover .language-arrow {
   cursor: pointer;
 }
 
-.timeline-presets button[data-active="true"] {
+.motion-presets button[data-active="true"] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
   color: var(--text);
 }
 
-.timeline-presets b {
+.motion-presets b {
   display: grid;
   place-items: center;
   height: 26px;
@@ -3906,62 +3899,161 @@ button.media-import:hover .language-arrow {
   font: 500 15px/1 var(--font-ui);
 }
 
-.timeline-presets b[data-preset="shout"] {
+.motion-presets b[data-preset="shout"] {
   font-size: 22px;
   font-weight: 800;
 }
 
-.timeline-presets b[data-preset="whisper"] {
+.motion-presets b[data-preset="whisper"] {
   color: var(--muted-2);
   font-size: 12px;
   font-weight: 300;
 }
 
-.timeline-presets b[data-preset="drawn"] {
+.motion-presets b[data-preset="drawn"] {
   letter-spacing: .3em;
   padding-left: .3em;
 }
 
-.timeline-add footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-4);
+.motion-presets b[data-preset="normal"] {
+  font-weight: 500;
 }
 
-.timeline-add-cancel,
-.timeline-add-submit {
+.editor-inspector .motion-presets {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* THE RAINBOW'S OWN DOT, wherever a speaker's dot would be. */
+i.rainbow-dot,
+.speaker-choices i.rainbow-dot,
+.timeline-lanes li[data-lane="captions"] i.rainbow-dot {
+  background: conic-gradient(#ff5a5a, #ffb13d, #f5e663, #5fe08a, #4fc3ff, #c58bff, #ff5a5a);
+}
+
+.timeline-line[data-rainbow="true"]::before {
+  background: linear-gradient(#ff5a5a, #f5e663, #5fe08a, #4fc3ff, #c58bff);
+}
+
+/* A LINE'S TIME, START AND END, with a preview that plays just that line. */
+.editor-span > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+}
+
+.span-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.span-field small {
+  min-width: 30px;
+  color: var(--muted-2);
+  font-size: var(--text-xs);
+}
+
+.span-field input {
+  width: 74px;
   height: var(--control-h);
-  padding: 0 var(--space-7);
+  font-variant-numeric: tabular-nums;
+}
+
+.span-field button {
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  padding: 0;
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
+  background: var(--surface-soft);
+  color: var(--text);
+  font: 500 var(--text-md)/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.editor-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--control-h);
+  padding: 0 var(--space-6);
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--action);
+  color: var(--on-action);
   font: 500 var(--text-sm)/1 var(--font-ui);
   cursor: pointer;
 }
 
-.timeline-add-cancel {
-  border: 1px solid var(--line-strong);
-  background: var(--surface-soft);
-  color: var(--text);
-}
-
-.timeline-add-submit {
-  border: 0;
-  background: var(--action);
-  color: var(--on-action);
-  font-variant-numeric: tabular-nums;
-}
-
-.timeline-add-submit:hover:not(:disabled) {
+.editor-preview:hover {
   background: var(--action-hover);
 }
 
-.timeline-add-submit:disabled {
-  opacity: .45;
-  cursor: default;
+/* THE DIAL SITS BESIDE THE CAPTIONS (2026-11-14, at the user's request: the
+   tall rail was mostly empty). The stage and a small dock share one row; the
+   dock holds the dial and the level, bottom-aligned where the captions are.
+   The rail is now only the caption editor. */
+.stage-row {
+  flex: 1 1 auto;
+  display: flex;
+  gap: var(--space-4);
+  min-height: 0;
 }
 
-.timeline-add-toggle[aria-expanded="true"] {
-  background: var(--surface-selected);
-  color: var(--text);
+.stage-row > .caption-stage {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.voice-dock {
+  flex: none;
+  align-self: flex-end;
+  display: grid;
+  gap: var(--space-6);
+  width: clamp(168px, 15vw, 216px);
+  padding: var(--space-7) var(--space-6) var(--space-6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--rail-bg);
+}
+
+.studio-shell[data-editor="open"] .voice-dock {
+  display: none;
+}
+
+.voice-dock .rail-section {
+  padding: 0;
+  border: 0;
+}
+
+.voice-dock .rail-heading {
+  min-height: 0;
+  margin: 0;
+}
+
+.voice-dock .voice-compass {
+  width: clamp(108px, 82%, 168px);
+}
+
+.voice-dock .signal-waveform {
+  height: 28px;
+}
+
+.voice-dock .level-line {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .stage-row {
+    flex-direction: column;
+  }
+  .voice-dock {
+    align-self: stretch;
+    width: auto;
+  }
 }
 
 .timeline-line:active {

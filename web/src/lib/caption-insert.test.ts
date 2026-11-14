@@ -62,3 +62,23 @@ test("a caption added inside back-to-back lines goes after the last of them, in 
   const starts = out.words.map((w) => w.start);
   assert.deepEqual(starts, [...starts].sort((a, b) => a - b));
 });
+
+test("a preset sizes the whole line and times it, as far as the next line allows", async () => {
+  const {applyPreset} = await import("./caption-edit.ts");
+  const out = applyPreset(WORDS, 0, DRAWN);
+  assert.ok(out.slice(0, 2).every((w) => w.size === DRAWN.size));
+  assert.ok(out[1].end <= 5);
+  assert.ok(out[1].end > 2);
+  assert.equal(out[2].size, WORDS[2].size);
+});
+
+test("rainbow and a speaker colour exclude each other, and a line can be removed whole", async () => {
+  const {setColour, removeLine} = await import("./caption-edit.ts");
+  const rainbow = setColour(WORDS, 0, {rainbow: true}, true);
+  assert.deepEqual(rainbow.map((w) => w.rainbow ?? false), [true, true, false]);
+  const back = setColour(rainbow, 1, {speaker: "S2"}, false);
+  assert.equal(back[1].rainbow, false);
+  assert.equal(back[1].speaker, "S2");
+  assert.equal(back[0].rainbow, true);
+  assert.deepEqual(removeLine(WORDS, 1).map((w) => w.text), ["Bye"]);
+});

@@ -21,6 +21,8 @@ export interface TimelineLine {
   endS: number;
   text: string;
   speaker: string | null;
+  /** Drawn in the rainbow rather than a speaker's colour. */
+  rainbow?: boolean;
 }
 
 export interface View {
@@ -112,12 +114,14 @@ export function scoreLines(events: readonly ScoreEntry[]): TimelineLine[] {
         }
       }
       const speaker = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const rainbow = words.some((word) => word.rainbow === true);
       return {
         cue,
         startS: Math.min(...onsets),
         endS: Math.max(...ends),
         text: words.map((word) => String(word.text ?? "").trim()).join(" "),
         speaker,
+        ...(rainbow ? {rainbow} : {}),
       };
     })
     .sort((a, b) => a.startS - b.startS);

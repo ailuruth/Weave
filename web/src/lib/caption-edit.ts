@@ -12,6 +12,8 @@ export interface EditWord {
   /** 0..1, what the stage reads as loudness. */
   size: number;
   line: number;
+  /** Each letter in its own colour, cycling, as the reference's WHOOOOOA!! is drawn. */
+  rainbow?: boolean;
 }
 
 export interface CaptionDocument {
@@ -92,6 +94,19 @@ export function setSpeaker(
 ): EditWord[] {
   const [first, last] = scope(words, index, wholeLine);
   return mapRange(words, first, last, (word) => ({...word, speaker}));
+}
+
+/** A speaker's colour, or the rainbow; choosing one turns the other off. */
+export function setColour(
+  words: readonly EditWord[],
+  index: number,
+  colour: {speaker: string | null} | {rainbow: true},
+  wholeLine: boolean,
+): EditWord[] {
+  const [first, last] = scope(words, index, wholeLine);
+  return mapRange(words, first, last, (word) => ("rainbow" in colour
+    ? {...word, rainbow: true}
+    : {...word, speaker: colour.speaker, rainbow: false}));
 }
 
 export function setSize(
@@ -328,4 +343,34 @@ export function insertLine(
     return word;
   });
   return {words: [...words.slice(0, index), ...added, ...words.slice(index)], index};
+}
+
+/** The line holding `index`, sized and timed as `preset` says, as far as its neighbours and `endS` allow. */
+export function applyPreset(
+  words: readonly EditWord[],
+  index: number,
+  preset: CaptionPreset,
+  endS = Number.POSITIVE_INFINITY,
+): EditWord[] {
+  const line = lineAt(linesOf(words), index);
+  if (!line) return [...words];
+  const sized = mapRange(words, line.first, line.last, (word) => ({...word, size: preset.size}));
+  const count = line.last - line.first + 1;
+  const wanted = Math.max(MIN_LINE_S, preset.perWordS * count);
+  return retimeLine(sized, line.first, line.last, line.start, Math.min(endS, line.start + wanted));
+}
+
+/** Every word of the line holding `index` removed. */
+export function removeLine(words: readonly EditWord[], index: number): EditWord[] {
+  const line = lineAt(linesOf(words), index);
+  if (!line) return [...words];
+  return [...words.slice(0, line.first), ...words.slice(line.last + 1)];
+}
+
+/** The preset a line already matches by its size, if any. */
+export function presetOf(words: readonly EditWord[], index: number): CaptionPreset | null {
+  const line = lineAt(linesOf(words), index);
+  if (!line) return null;
+  const size = words[line.first].size;
+  return CAPTION_PRESETS.find((preset) => Math.abs(preset.size - size) < 0.02) ?? null;
 }
