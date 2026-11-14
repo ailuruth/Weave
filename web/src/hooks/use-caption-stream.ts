@@ -57,6 +57,11 @@ export interface LanguageSession {
   media?: string | null;
 }
 
+export interface CueLook {
+  position: "bottom" | "top";
+  size: number;
+}
+
 /** Pop and lift timing read off the PR film -- see `video_motion` in config.yaml for the per-frame measurement. */
 export interface RuntimeConfig {
   palette: string[];
@@ -123,6 +128,8 @@ export interface RuntimeConfig {
   /** The film's measured motion clock, served for captioned video. */
   /** How a captioned recording moves, as served. */
   videoMotion: ReelMotion;
+  /** Where a recording's caption line sits and how large it is. */
+  cueLook: CueLook;
   /** Set by the studio, never served: `videoMotion`, while a recording is on the stage. */
   reel?: ReelMotion | null;
   /** Enhanced: narrower 2.3 size deadband. */
@@ -236,6 +243,7 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
     scalePoints: [[0, -0.5], [0.08, -0.45], [0.14, 0], [0.26, 0],
                   [0.45, 0.15], [0.75, 0.36], [1, 0.8]],
   },
+  cueLook: {position: "bottom", size: 1},
   voiceScaleDeadbandEnhanced: 0.1,
   voiceScaleResponseEnhanced: 0.5,
   voiceScalePivotEnhanced: 0.1,

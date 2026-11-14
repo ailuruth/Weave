@@ -62,6 +62,7 @@ from autocwi.recording import (
     Play,
     RecordingHooks,
     Stop,
+    cue_look,
     media_has_audio,
     recording_events,
     render_score,
@@ -7031,6 +7032,7 @@ def _studio_runtime_config(
             "word_motion_enhanced_emphasis_ms", 0),
         "crestLagMs": live_sync.get("crest_lag_ms", 40),
         "videoMotion": video_motion(live_sync.get("video_motion")),
+        "cueLook": cue_look(cfg.get("live", {}).get("import_render")),
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),
         "voiceScaleResponseEnhanced": live_sync.get(

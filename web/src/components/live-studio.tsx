@@ -2316,6 +2316,7 @@ export function LiveStudio() {
   }] : []), [cue]);
   const cueMode = cues.length > 0;
   const cueId = cue?.cue ?? null;
+  const cueSize = runtime.cueLook.size;
   useLayoutEffect(() => {
     const stage = stageRef.current;
     const line = stage?.querySelector<HTMLElement>(".caption-feed .caption-surface");
@@ -2326,7 +2327,7 @@ export function LiveStudio() {
     const room = frame * CUE_FRAME_SHARE;
     const width = line.getBoundingClientRect().width;
     if (width > room) stage.style.setProperty("--cue-fit", (room / width).toFixed(4));
-  }, [cueId]);
+  }, [cueId, cueSize]);
   const stageRuntime = useMemo(
     () => (cueMode ? {
       ...runtime,
@@ -2379,6 +2380,7 @@ export function LiveStudio() {
   const inputGood = settledStatus === "good";
   const studioStyle: CSSVars = {
     "--caption-scale": settings.captionScale,
+    "--cue-size": cueSize,
     "--active-color": activeColor,
     // The CSS width cap is derived from this, so the type size and the row width
     // can never disagree about how many words a row holds.
@@ -2422,6 +2424,7 @@ export function LiveStudio() {
       data-plate={settings.captionRules ? "rules" : "box"}
       data-media={mediaMode}
       data-cues={cueMode ? "true" : "false"}
+      data-cue-position={runtime.cueLook.position}
       data-language={session.language ?? "pending"}
       lang={session.language === "ko" ? "ko" : "en"}
       style={studioStyle}

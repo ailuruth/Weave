@@ -47,6 +47,10 @@ The file is used as written and nothing is transcribed. In it `loudness` is the 
 * A word added in the studio was never measured. It takes its neighbour's voice at the line's own size.
 * Every adjustment gives the stage new word ids, so nothing the stage froze for the old word carries over.
 
+## Where the captions sit
+
+`--position top` moves the caption line to the top of the frame, for a video whose own text fills the bottom. `--size 1.2` makes the captions a fifth larger, and a size beyond the range Caption with Intention allows is refused. Both live in `config.yaml` under `live.import_render`, and the studio shows a recording the same way.
+
 ## Rules
 
 * Keep Whisper's VAD filter off. It removes shouted lines.
