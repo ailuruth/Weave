@@ -872,6 +872,7 @@ function useMeterBallistics(
 const STATUS_DWELL_EVENTS = 4;
 
 const GATE_LEAVE_MS = 320;
+const FRAME_INSET_PX = 12;
 
 function useLinger(on: boolean, ms: number): boolean {
   const [mounted, setMounted] = useState(on);
@@ -1906,7 +1907,8 @@ function MediaBackdrop({
       const sh = stage.clientHeight;
       const vw = player.videoWidth || 16;
       const vh = player.videoHeight || 9;
-      const fit = Math.min(sw / vw, sh / vh);
+      const inset = window.__weaveRendering ? 0 : FRAME_INSET_PX;
+      const fit = Math.min((sw - 2 * inset) / vw, (sh - 2 * inset) / vh);
       const w = vw * fit;
       const h = vh * fit;
       stage.style.setProperty("--frame-w", `${w.toFixed(2)}px`);

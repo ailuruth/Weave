@@ -2767,11 +2767,17 @@ button {
 .stage-media {
   position: absolute;
   z-index: 1;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: var(--frame-top, 0px);
+  left: var(--frame-left, 0px);
+  width: var(--frame-w, 100%);
+  height: var(--frame-h, 100%);
   object-fit: contain;
+  border-radius: var(--r-sm);
   background: #000;
+}
+
+.studio-shell[data-media="video"] .caption-stage {
+  background: var(--rail-bg);
 }
 
 .studio-shell[data-media="audio"] .stage-media {
