@@ -424,9 +424,9 @@ export function RecordingTimeline({
   }).join(""), [bars]);
   const rowKey = (line: {speaker: string | null; rainbow?: boolean}) =>
     line.rainbow ? RAINBOW_ROW : line.speaker ?? "";
-  const order = [...(captions.doc?.speakers ?? [])];
-  for (const line of lines) {
-    const key = rowKey(line);
+  const used = new Set(lines.map(rowKey));
+  const order = (captions.doc?.speakers ?? []).filter((speaker) => used.has(speaker));
+  for (const key of used) {
     if (!order.includes(key)) order.push(key);
   }
   const rows = order.length ? order : [""];
