@@ -401,7 +401,8 @@ def render_recording(
                 captioned = state["captioned"]
                 if captioned or blank is None:
                     shot = base64.b64decode(page.call(
-                        "Page.captureScreenshot", format="png", clip=clip)["data"])
+                        "Page.captureScreenshot", format="png", clip=clip,
+                        optimizeForSpeed=True)["data"])
                     if captioned:
                         drawn += 1
                     else:
