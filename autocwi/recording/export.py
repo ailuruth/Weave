@@ -179,9 +179,13 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
 //   - writes the loud and soft words into the layer's comment, for the
 //     KEYWORD animator, which this script does not touch.
 //
-// NOT RUN IN AFTER EFFECTS BY ITS AUTHOR. It was written against the rig as
-// read from the template file and its Quickstart Guide, on a machine without
+// HOW FAR THIS HAS BEEN CHECKED. The layer names, the two markers, the
+// COLOR_01 control and the box's link to the layer above were read out of the
+// template file itself, and the script is run against a model of After
+// Effects' scripting interface on every change. It has not been run inside
 // After Effects. Check the first line it builds before trusting the rest.
+//
+// If the composition is shorter than the captions it is lengthened to fit.
 //
 // The template paces words evenly between the two markers. Weave's own
 // per-word onsets are in the .vtt and .cwi.json beside this file.
@@ -209,38 +213,60 @@ AE_SCRIPT = r"""// Caption with Intention -- build caption layers from an analys
         return;
     }
 
+    var needed = 0;
+    for (var k = 0; k < LINES.length; k++) {
+        if (LINES[k].end > needed) { needed = LINES[k].end; }
+    }
+
     app.beginUndoGroup("Weave: build captions");
     var built = 0;
-    for (var n = 0; n < LINES.length; n++) {
-        var line = LINES[n];
-        var text = textTemplate.duplicate();
-        var box = boxTemplate.duplicate();
-        text.moveToBeginning();
-        box.moveAfter(text);
-        text.name = "LINE W" + (n + 1);
-        box.name = "BOX LINE W" + (n + 1);
+    var lengthened = false;
+    var failure = null;
+    try {
+        if (comp.duration < needed) {
+            comp.duration = needed;
+            lengthened = true;
+        }
+        for (var n = 0; n < LINES.length; n++) {
+            var line = LINES[n];
+            var text = textTemplate.duplicate();
+            var box = boxTemplate.duplicate();
+            text.moveToBeginning();
+            box.moveAfter(text);
+            text.name = "LINE W" + (n + 1);
+            box.name = "BOX LINE W" + (n + 1);
 
-        var doc = text.property("Source Text").value;
-        doc.text = line.text;
-        text.property("Source Text").setValue(doc);
+            var source = text.property("ADBE Text Document") || text.property("Source Text");
+            var doc = source.value;
+            doc.text = line.text;
+            source.setValue(doc);
 
-        text.startTime = 0; box.startTime = 0;
-        text.inPoint = line.start; text.outPoint = line.end;
-        box.inPoint = line.start; box.outPoint = line.end;
+            text.startTime = 0; box.startTime = 0;
+            text.inPoint = line.start; text.outPoint = line.end;
+            box.inPoint = line.start; box.outPoint = line.end;
 
-        var markers = text.property("Marker");
-        while (markers.numKeys > 0) { markers.removeKey(1); }
-        markers.setValueAtTime(line.animStart, new MarkerValue("START"));
-        markers.setValueAtTime(line.animEnd, new MarkerValue("END"));
+            var markers = text.property("ADBE Marker") || text.property("Marker");
+            while (markers.numKeys > 0) { markers.removeKey(1); }
+            markers.setValueAtTime(line.animStart, new MarkerValue("START"));
+            markers.setValueAtTime(line.animEnd, new MarkerValue("END"));
 
-        var color = text.property("ADBE Effect Parade").property("COLOR_01");
-        if (color) { color.property("Color").setValue(line.color); }
+            var color = text.property("ADBE Effect Parade").property("COLOR_01");
+            if (color) { color.property("Color").setValue(line.color); }
 
-        text.comment = line.note;
-        built++;
+            text.comment = line.note;
+            built++;
+        }
+    } catch (err) {
+        failure = "Weave stopped at caption line " + (built + 1) + ": " + err.toString();
+    } finally {
+        app.endUndoGroup();
     }
-    app.endUndoGroup();
-    alert("Weave built " + built + " caption lines.");
+    if (failure) {
+        alert(failure + "\nUndo once to remove what it added.");
+        return;
+    }
+    alert("Weave built " + built + " caption lines."
+        + (lengthened ? " The composition was lengthened to " + needed + " s to hold them." : ""));
 })();
 """
 
@@ -281,9 +307,14 @@ def to_ae_jsx(
             "color": _rgb(colors.get(main, UNKNOWN_COLOR)),
             "note": note,
         })
+    for earlier, later in zip(lines, lines[1:]):
+        earlier["end"] = min(earlier["end"], later["start"])
+    for line in lines:
+        line["animEnd"] = min(line["animEnd"], line["end"])
+    media = media_name.replace("*/", "").encode("ascii", "backslashreplace").decode("ascii")
     return (AE_SCRIPT
-            .replace("__MEDIA__", media_name.replace("*/", ""))
-            .replace("__LINES__", json.dumps(lines, ensure_ascii=False, indent=4)))
+            .replace("__MEDIA__", media)
+            .replace("__LINES__", json.dumps(lines, ensure_ascii=True, indent=4)))
 
 
 def write_exports(

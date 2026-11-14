@@ -47,6 +47,14 @@ The file is used as written and nothing is transcribed. In it `loudness` is the 
 * A word added in the studio was never measured. It takes its neighbour's voice at the line's own size.
 * Every adjustment gives the stage new word ids, so nothing the stage froze for the old word carries over.
 
+## Adjusting in After Effects
+
+Every export writes `NAME.aftereffects.jsx`. Open the Caption with Intention template, open its caption composition and run the script from File, Scripts. It builds one text layer and its box for each caption line, with the text, the screen time, the two animation markers and the speaker's colour set, ready to adjust by hand. Changes made in the studio's editor are in the script.
+
+* The script is plain ASCII, so Korean text survives any system encoding.
+* Caption layers never overlap in time, and a composition shorter than the captions is lengthened.
+* If something fails it says which caption line, and one undo removes what it added.
+
 ## Where the captions sit
 
 `--position top` moves the caption line to the top of the frame, for a video whose own text fills the bottom. `--size 1.2` makes the captions a fifth larger, and a size beyond the range Caption with Intention allows is refused. Both live in `config.yaml` under `live.import_render`, and the studio shows a recording the same way.
@@ -69,6 +77,6 @@ The file is used as written and nothing is transcribed. In it `loudness` is the 
 
 * Playback can start at any caption line. There is no pause and no seeking inside a line.
 * Every threshold is fitted to one film, `docs/reference/PR_Flim.mp4`.
-* The After Effects script has not been run in After Effects.
+* The After Effects script has not been run inside After Effects. Its layer names, markers and colour control were read out of the template file, and it is run against a model of the scripting interface.
 * The video needs Chrome and an ffmpeg with `libx264`.
 * Two renders of the same captions are not pixel identical. A word can land a fraction of a pixel or one frame apart.
