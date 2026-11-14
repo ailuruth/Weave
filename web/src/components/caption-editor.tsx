@@ -13,7 +13,6 @@ import {
 import {
   CAPTION_PRESETS,
   applyPreset,
-  breakBefore,
   insertLine,
   isEmphasised,
   joinPrevious,
@@ -26,7 +25,7 @@ import {
   retimeLine,
   setColour,
   setLineText,
-  splitPoint,
+  splitLineAt,
   toggleEmphasis,
   type EditLine,
   type EditWord,
@@ -446,16 +445,15 @@ export function CaptionEditor({
                       </button>
                       <button
                         type="button"
-                        disabled={lineWords.length < 2}
+                        disabled={lineWords.length < 2 && lineWords[0].text.length < 2}
                         title="Split into two captions where the text cursor is"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => {
                           const draft = textRef.current?.value ?? lineWords.map((word) => word.text).join(" ");
-                          const at = splitPoint(draft, caretRef.current);
-                          if (!at) return;
-                          const typed = setLineText(words, line.first, draft);
+                          const split = splitLineAt(words, line.first, draft, caretRef.current);
+                          if (!split) return;
                           caretRef.current = null;
-                          change(breakBefore(typed, line.first + at), line.first);
+                          change(split.words, line.first);
                                               }}
                       >
                         <Scissors size={13} />
@@ -468,7 +466,7 @@ export function CaptionEditor({
                         onClick={() => change(joinPrevious(words, line.first), line.first)}
                       >
                         <Merge size={13} />
-                        Join above
+                        Join
                       </button>
                       <button
                         type="button"

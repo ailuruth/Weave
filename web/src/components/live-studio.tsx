@@ -1,17 +1,14 @@
 "use client";
 
 import {
-  ArrowRight,
   AudioWaveform,
   ChevronDown,
-  Film,
   Globe2,
   Minus,
   PanelRightClose,
   PanelRightOpen,
   PencilLine,
   SlidersHorizontal,
-  Upload,
   X,
 } from "lucide-react";
 import {
@@ -28,8 +25,6 @@ import {
 import {
   useCaptionStream,
   type ConnectionState,
-  type LanguageSession,
-  type LiveLanguageOption,
   type RuntimeConfig,
 } from "@/hooks/use-caption-stream";
 import {
@@ -45,7 +40,7 @@ import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
 import {CaptionEditor} from "@/components/caption-editor";
 import {RecordingTimeline} from "@/components/recording-timeline";
-import {WeaveMark} from "@/components/weave-mark";
+import {LANGUAGE_NAMES, LanguageGate} from "@/components/language-gate";
 import {useCaptionDocument, type CaptionSpan} from "@/hooks/use-caption-document";
 import {useStageAnimations} from "@/hooks/use-stage-animations";
 import {lineForPlayhead, linesOf, retimeLine} from "@/lib/caption-edit";
@@ -1999,205 +1994,6 @@ function ExportMenu() {
   );
 }
 
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: "English",
-  ko: "Korean",
-  multi: "English + Korean",
-};
-
-function LanguageGate({
-  session,
-  error,
-  onSelect,
-  onImport,
-  stage,
-}: {
-  session: LanguageSession;
-  error: string | null;
-  /** The server's boot stage, which for an import carries its progress. */
-  stage: string;
-  onSelect: (language: string) => void;
-  onImport: (file: File, language: string) => Promise<void>;
-}) {
-  const selected = session.languages.find(
-    (language) => language.id === session.language,
-  );
-  const unavailable = session.state === "unavailable";
-  const [file, setFile] = useState<File | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [dropping, setDropping] = useState(false);
-  const picker = useRef<HTMLInputElement>(null);
-  const selecting = session.state === "selecting" && !importing;
-  const choose = (language: string) => {
-    if (!file) {
-      onSelect(language);
-      return;
-    }
-    setImporting(true);
-    void onImport(file, language).finally(() => setImporting(false));
-  };
-  const chooseRef = useRef(choose);
-  useEffect(() => {
-    chooseRef.current = choose;
-  });
-  const languageIds = session.languages.map((language) => language.id).join(" ");
-  useEffect(() => {
-    if (!selecting) return;
-    const ids = languageIds.split(" ");
-    const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key === "Escape") {
-        setFile(null);
-        return;
-      }
-      const index = Number(event.key) - 1;
-      if (Number.isInteger(index) && index >= 0 && index < ids.length) {
-        event.preventDefault();
-        chooseRef.current(ids[index]);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selecting, languageIds]);
-
-  return (
-    <section
-      className="language-gate"
-      data-file={file ? "true" : "false"}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Caption language setup"
-      data-dropping={dropping ? "true" : "false"}
-      onDragOver={(event) => {
-        if (!selecting || !event.dataTransfer.types.includes("Files")) return;
-        event.preventDefault();
-        setDropping(true);
-      }}
-      onDragLeave={(event) => {
-        if (event.currentTarget === event.target) setDropping(false);
-      }}
-      onDrop={(event) => {
-        setDropping(false);
-        const dropped = event.dataTransfer.files?.[0];
-        if (!selecting || !dropped) return;
-        event.preventDefault();
-        if (/^(video|audio)\//.test(dropped.type)) setFile(dropped);
-      }}
-    >
-      <div className="language-gate-card">
-        {/* EVERY LINE OF COPY IS GONE (2026-09-06, at the user's direction):
-            the brand header, the "What language will be spoken?" heading, the
-            eyebrow, the descriptions and the "On-device processing" footer.
-            While choosing, the screen is the mark and one list: a row per
-            language, named in English, then import. A heading
-            renders only when there is a state to report: preparing, or the
-            engine being unreachable. */}
-        {!selecting && (
-          <div className="language-gate-copy">
-            <div className="language-gate-state">
-              {/* A bare ring BESIDE the heading (2026-09-06, at the user's
-                  direction). The boxed "Loading locally / <label> speech
-                  model" card restated the "Preparing <label>" heading; the
-                  ring alone says the rest. */}
-              {!unavailable && (
-                <span
-                  className="language-loader"
-                  role="status"
-                  aria-label="Loading"
-                />
-              )}
-              <h1>
-                {unavailable
-                  ? "The local caption engine is unavailable"
-                  : importing && file
-                    ? `Importing ${file.name}`
-                    : /^analysing/.test(stage)
-                      ? `Analysing ${stage.replace(/^analysing\s*/, "")}`
-                    : stage === "transcribing"
-                      ? "Transcribing"
-                    : selected
-                      ? `Preparing ${LANGUAGE_NAMES[selected.id] ?? selected.label}`
-                      : "Preparing language setup"}
-              </h1>
-            </div>
-            {unavailable && (
-              <p>
-                Open this studio through “python -m autocwi live” so it can
-                reach the local session controller.
-              </p>
-            )}
-          </div>
-        )}
-
-        {selecting && <WeaveMark size={40} className="language-gate-mark" />}
-
-        {selecting && (
-          <div className="language-list" role="list" aria-label="Caption language">
-            {session.languages.map((language: LiveLanguageOption, index) => (
-              <button
-                className="language-option"
-                key={language.id}
-                onClick={() => choose(language.id)}
-                type="button"
-                aria-keyshortcuts={String(index + 1)}
-              >
-                <span className="language-label">
-                  {LANGUAGE_NAMES[language.id] ?? language.label}
-                </span>
-                <ArrowRight className="language-arrow" size={20} aria-hidden="true" />
-              </button>
-            ))}
-            <input
-              ref={picker}
-              type="file"
-              accept="video/*,audio/*"
-              hidden
-              onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-                event.target.value = "";
-              }}
-            />
-            {file ? (
-              <div className="language-option media-import" data-file="true">
-                <span className="media-import-text">
-                  <span className="media-import-name">{file.name}</span>
-                  <span className="media-import-hint">Choose the language spoken in it</span>
-                </span>
-                <button
-                  className="media-import-remove"
-                  onClick={() => setFile(null)}
-                  type="button"
-                  aria-label="Remove the video"
-                  title="Remove (Esc)"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <button
-                className="language-option media-import"
-                onClick={() => picker.current?.click()}
-                type="button"
-              >
-                <span className="language-label">Import a video</span>
-                <Upload className="language-arrow" size={20} aria-hidden="true" />
-              </button>
-            )}
-          </div>
-        )}
-
-        {error && <p className="language-error" role="alert">{error}</p>}
-        {dropping && (
-          <div className="language-drop" aria-hidden="true">
-            <Film size={28} />
-            <span>Drop to import</span>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
 type SettingKey =
   | "reducedMotion"
   | "highContrast"
@@ -3010,6 +2806,8 @@ export function LiveStudio() {
           onSelect={handleSelect}
           onImport={handleImport}
           stage={String(model.bootStage ?? "")}
+          palette={runtime.palette}
+          paletteLight={runtime.paletteLight}
         />
       )}
     </main>

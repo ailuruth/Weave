@@ -292,7 +292,7 @@ export const CAPTION_PRESETS: readonly CaptionPreset[] = [
   {id: "normal", label: "Normal", size: NORMAL_SIZE, perWordS: 0.4},
   {id: "shout", label: "Shout", size: 0.95, perWordS: 0.5},
   {id: "whisper", label: "Whisper", size: 0.06, perWordS: 0.45},
-  {id: "drawn", label: "Drawn out", size: 0.6, perWordS: 1.4},
+  {id: "drawn", label: "Slow", size: 0.6, perWordS: 1.4},
 ];
 
 const ADDED_GAP_S = 0.05;
@@ -443,4 +443,39 @@ export function splitPoint(text: string, caret: number | null): number {
     if (k < 0) k = spans.length;
   }
   return Math.min(spans.length - 1, Math.max(1, k));
+}
+
+/**
+ * Split the line holding `index` where the cursor stands in its typed text.
+ * Inside a word the word is cut too, its time shared by letters. Without a
+ * cursor the line splits at its middle word boundary.
+ */
+export function splitLineAt(
+  words: readonly EditWord[],
+  index: number,
+  text: string,
+  caret: number | null,
+): {words: EditWord[]; first: number} | null {
+  const typed = setLineText(words, index, text);
+  const line = lineAt(linesOf(typed), Math.min(index, typed.length - 1));
+  if (!line) return null;
+  const spans = [...text.matchAll(/\S+/g)].map((m) => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  if (caret === null) {
+    const k = splitPoint(text, null);
+    return k ? {words: breakBefore(typed, line.first + k), first: line.first + k} : null;
+  }
+  const inside = spans.findIndex(([start, end]) => caret > start && caret < end);
+  if (inside >= 0) {
+    const [start, end] = spans[inside];
+    const at = line.first + inside;
+    const word = typed[at];
+    const cut = word.start + ((word.end - word.start) * (caret - start)) / (end - start);
+    const left = {...word, text: word.text.slice(0, caret - start), end: cut};
+    const right = {...word, id: null, text: word.text.slice(caret - start), start: cut};
+    const next = [...typed.slice(0, at), left, right, ...typed.slice(at + 1)];
+    return {words: breakBefore(next, at + 1), first: at + 1};
+  }
+  const k = spans.findIndex(([start]) => start >= caret);
+  if (k <= 0) return null;
+  return {words: breakBefore(typed, line.first + k), first: line.first + k};
 }

@@ -17,7 +17,6 @@ import {
 const SEEK_KEEP = 150;
 /** A caption preview starts this far before its line and holds this long after it. */
 const PREVIEW_LEAD_S = 0.3;
-const PREVIEW_TAIL_S = 0.7;
 
 export interface StageFeed {
   dispatch: (event: CaptionEvent) => void;
@@ -191,7 +190,7 @@ export function useRecordingTransport(enabled: boolean, feed: StageFeed): Record
       setPlaying(false);
       show(back, false);
       setPreviewing(false);
-    }, ((endS - startS + lead + PREVIEW_TAIL_S) / rateRef.current) * 1000);
+    }, ((endS - startS + lead) / rateRef.current) * 1000);
     previewRef.current = {timer, back};
   }, [show]);
 

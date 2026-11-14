@@ -116,3 +116,16 @@ test("a tapped word stands out from its line, keeps the line's style, and taps b
   assert.equal(presetOf(loud, 0)?.id, presetOf(WORDS, 0)?.id);
   assert.deepEqual(toggleEmphasis(loud, 1).map((w) => w.size), [0.2, 0.2, 0.2]);
 });
+
+test("a split lands exactly at the cursor, cutting a word when the cursor is inside it", async () => {
+  const {splitLineAt} = await import("./caption-edit.ts");
+  const between = splitLineAt(WORDS, 0, "Hello there", 6)!;
+  assert.deepEqual(between.words.map((w) => [w.text, w.line]), [["Hello", 0], ["there", 1], ["Bye", 2]]);
+  const inside = splitLineAt(WORDS, 0, "Hello there", 3)!;
+  assert.deepEqual(inside.words.map((w) => [w.text, w.line]), [["Hel", 0], ["lo", 1], ["there", 1], ["Bye", 2]]);
+  assert.ok(Math.abs(inside.words[0].end - 1.24) < 1e-9);
+  assert.equal(inside.words[1].start, inside.words[0].end);
+  assert.equal(inside.words[1].id, null);
+  assert.equal(splitLineAt(WORDS, 0, "Hello there", 0), null);
+  assert.deepEqual(splitLineAt(WORDS, 2, "Bye", 1)?.words.slice(2).map((w) => [w.text, w.line]), [["B", 1], ["ye", 2]]);
+});
