@@ -24,6 +24,7 @@
   --line: #37373a;
   --line-strong: #48484c;
   --control-line: #747479;
+  --surface-selected: #2c2c2e;
   --text: #ffffff;
   --muted: #cccccc;
   --muted-2: #98989d;
@@ -118,6 +119,7 @@
   --line: #e0e0e0;
   --line-strong: #d2d2d7;
   --control-line: #86868b;
+  --surface-selected: #f2f2f5;
   --text: #1d1d1f;
   --muted: #333333;
   /* #7a7a7a is the analysis's fine-print/disabled tone and measures 3.94:1
@@ -2925,7 +2927,7 @@ button {
 }
 
 .editor-lines li[data-selected="true"] {
-  background: var(--surface);
+  background: var(--surface-selected);
 }
 
 .editor-lines p {
