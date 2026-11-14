@@ -469,8 +469,9 @@ export function CaptionEditor({
     const recolour = (choice: {speaker: string | null} | {rainbow: true}) => change(range
       ? across((current, index) => setColour(current, index, choice, false))
       : setColour(words, line.first, choice, true), range ? range[0] : line.first, true);
-    const title = !range
-      ? `Caption ${lines.indexOf(line) + 1}`
+    const captionName = `Caption ${lines.indexOf(line) + 1}`;
+    const scopeName = !range
+      ? null
       : range[0] === range[1] ? `“${words[range[0]].text}”` : `${range[1] - range[0] + 1} words`;
     const span = range
       ? {start: words[range[0]].start, end: words[range[1]].end}
@@ -494,7 +495,17 @@ export function CaptionEditor({
         onMouseDown={keepTextFocus}
       >
         <div className="inspector-head">
-          <h3>{title}</h3>
+          <h3>
+            {scopeName ? (
+              <>
+                <button type="button" className="inspector-crumb" onClick={() => setSel(null)}>
+                  {captionName}
+                </button>
+                <span className="inspector-crumb-sep" aria-hidden="true">/</span>
+                <span>{scopeName}</span>
+              </>
+            ) : captionName}
+          </h3>
           <div className="inspector-actions">
             <button
               type="button"
@@ -724,7 +735,27 @@ export function CaptionEditor({
       onKeyDown={onKeyDown}
     >
       <header className="editor-bar">
-        <h2>Captions</h2>
+        <input
+          className="field editor-search"
+          type="search"
+          value={query}
+          placeholder="Search captions"
+          aria-label="Search captions"
+          title="Enter for the next match, Shift-Enter for the one before"
+          spellCheck={false}
+          disabled={!doc}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              jump(event.shiftKey ? -1 : 1);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              setQuery("");
+            }
+          }}
+        />
         <div>
           <button
             type="button"
@@ -769,29 +800,6 @@ export function CaptionEditor({
         </div>
       </header>
 
-      <div className="editor-search">
-        <input
-          className="field"
-          type="search"
-          value={query}
-          placeholder="Search captions"
-          aria-label="Search captions"
-          title="Enter for the next match, Shift-Enter for the one before"
-          spellCheck={false}
-          disabled={!doc}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              jump(event.shiftKey ? -1 : 1);
-            } else if (event.key === "Escape") {
-              event.preventDefault();
-              event.stopPropagation();
-              setQuery("");
-            }
-          }}
-        />
-      </div>
 
       {error && <p className="editor-error" role="alert">{error}</p>}
       {!doc && !error && <p className="editor-note">Reading the captions…</p>}

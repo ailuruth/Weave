@@ -3348,6 +3348,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
   flex: none;
   padding: var(--space-7);
   overflow: hidden;
@@ -4137,9 +4138,9 @@ i.rainbow-dot,
   cursor: default;
 }
 
-.editor-search {
-  flex: none;
-  padding: 0 var(--space-7);
+.caption-editor .editor-search {
+  flex: 1 1 auto;
+  margin-right: var(--space-4);
 }
 
 .caption-editor .field {
@@ -4201,7 +4202,7 @@ i.rainbow-dot,
 .inspector {
   flex: 0 1 auto;
   min-height: 0;
-  margin: var(--space-7) var(--space-7) 0;
+  margin: 0 var(--space-7);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -5230,4 +5231,42 @@ i.rainbow-dot,
 
 .transcript-feed .speaker-index {
   display: none;
+}
+
+.inspector-head h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspector-crumb {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-2);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--dur-quick) ease;
+}
+
+.inspector-crumb:hover {
+  color: var(--text);
+}
+
+.inspector-crumb-sep {
+  color: var(--muted-2);
+}
+
+.strip-word {
+  transition:
+    opacity var(--dur-base) ease,
+    background-color var(--dur-quick) ease,
+    font-size var(--dur-slow) var(--ease-standard),
+    font-weight var(--dur-slow) var(--ease-standard),
+    color var(--dur-slow) ease;
+}
+
+.word-strip:has(.strip-word[aria-pressed="true"]) .strip-word:not([aria-pressed="true"]) {
+  opacity: .38;
 }
