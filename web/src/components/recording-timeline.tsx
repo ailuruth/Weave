@@ -25,6 +25,7 @@ import {
   fitView,
   followView,
   levelBars,
+  minorTicks,
   nextLineStart,
   panView,
   positionLabel,
@@ -145,6 +146,7 @@ export function RecordingTimeline({
       if (track && head && span > 0) {
         const x = ((position - shown.startS) / span) * track.clientWidth;
         head.style.transform = `translateX(${x.toFixed(1)}px)`;
+        track.style.setProperty("--played", `${Math.max(0, x).toFixed(1)}px`);
         head.dataset.outside = x < 0 || x > track.clientWidth ? "true" : "false";
       }
       if (timeRef.current) timeRef.current.textContent = positionLabel(position);
@@ -275,6 +277,7 @@ export function RecordingTimeline({
   };
 
   const {step, ticks} = useMemo(() => rulerTicks(view, width), [view, width]);
+  const minor = useMemo(() => minorTicks(view, step), [view, step]);
   const bars = useMemo(
     () => levelBars(levels, view, Math.max(1, Math.floor(width / BAR_PX))),
     [levels, view, width],
@@ -380,15 +383,20 @@ export function RecordingTimeline({
           {ticks.map((tick) => (
             <span key={tick} style={{left: `${at(tick)}%`}}>{tickLabel(tick, step)}</span>
           ))}
+          {minor.map((tick) => <i key={tick} style={{left: `${at(tick)}%`}} />)}
         </div>
-        <svg
-          className="timeline-wave"
-          viewBox={`0 0 ${Math.max(1, bars.length * BAR_PX)} 100`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path d={wave} />
-        </svg>
+        {[false, true].map((played) => (
+          <svg
+            key={String(played)}
+            className="timeline-wave"
+            data-played={played ? "" : undefined}
+            viewBox={`0 0 ${Math.max(1, bars.length * BAR_PX)} 100`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path d={wave} />
+          </svg>
+        ))}
         <div className="timeline-lines">
           {shownLines.map((line) => (
             <button

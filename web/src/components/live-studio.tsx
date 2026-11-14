@@ -2,6 +2,7 @@
 
 import {
   AudioWaveform,
+  Film,
   Globe2,
   Mic2,
   PanelRightClose,
@@ -39,6 +40,7 @@ import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
 import {CaptionEditor} from "@/components/caption-editor";
 import {RecordingTimeline} from "@/components/recording-timeline";
+import {WeaveMark} from "@/components/weave-mark";
 import {useCaptionDocument, type CaptionSpan} from "@/hooks/use-caption-document";
 import {useStageAnimations} from "@/hooks/use-stage-animations";
 import {lineForPlayhead, linesOf, retimeLine} from "@/lib/caption-edit";
@@ -2046,6 +2048,7 @@ function LanguageGate({
                 onClick={() => picker.current?.click()}
                 type="button"
               >
+                <Film size={16} aria-hidden="true" />
                 Import a video
               </button>
             )}
@@ -2057,6 +2060,41 @@ function LanguageGate({
     </section>
   );
 }
+
+type SettingKey =
+  | "reducedMotion"
+  | "highContrast"
+  | "lightStage"
+  | "hangulWave"
+  | "rollingCaptions"
+  | "captionRules"
+  | "enhancedMotion";
+
+const SETTING_GROUPS: ReadonlyArray<{
+  title: string;
+  sliders: boolean;
+  toggles: ReadonlyArray<[SettingKey, string]>;
+}> = [
+  {
+    title: "Captions",
+    sliders: true,
+    toggles: [
+      ["enhancedMotion", "Enhanced motion"],
+      ["rollingCaptions", "Rolling captions"],
+      ["captionRules", "Caption rules, not a box"],
+      ["hangulWave", "Hangul-shaped motion"],
+    ],
+  },
+  {
+    title: "Display",
+    sliders: false,
+    toggles: [
+      ["lightStage", "Light stage"],
+      ["highContrast", "High contrast"],
+      ["reducedMotion", "Reduce motion"],
+    ],
+  },
+];
 
 function SettingsPanel({
   settings,
@@ -2076,133 +2114,63 @@ function SettingsPanel({
         </button>
       </header>
 
-      <label className="range-control">
-        <span>Caption scale</span>
-        <output>{Math.round(settings.captionScale * 100)}%</output>
-        {/* 100% is now the LARGEST size that still fits a full row across the
-            stage, not an arbitrary middle. The width cap is a hard bound -- rows
-            do not wrap, so anything above it is clipped, not wrapped -- which is
-            why the slider only reduces. */}
-        <input
-          type="range"
-          min="0.6"
-          max="1"
-          step="0.05"
-          value={settings.captionScale}
-          /* WebKit has no range-progress pseudo-element, so the travelled
-             side of the track is a gradient stop the input carries itself. */
-          style={{
-            "--fill": `${((settings.captionScale - 0.6) / 0.4) * 100}%`,
-          } as CSSVars}
-          onChange={(event) => setSettings({
-            ...settings,
-            captionScale: Number(event.target.value),
-          })}
-        />
-      </label>
-
-      <label className="range-control">
-        <span>Expression</span>
-        <output>{Math.round(settings.motionIntensity * 100)}%</output>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={settings.motionIntensity}
-          style={{
-            "--fill": `${settings.motionIntensity * 100}%`,
-          } as CSSVars}
-          onChange={(event) => setSettings({
-            ...settings,
-            motionIntensity: Number(event.target.value),
-          })}
-        />
-      </label>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.reducedMotion}
-        onClick={() => setSettings({
-          ...settings,
-          reducedMotion: !settings.reducedMotion,
-        })}
-      >
-        <span>Reduce motion</span>
-        <i data-on={settings.reducedMotion ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.highContrast}
-        onClick={() => setSettings({
-          ...settings,
-          highContrast: !settings.highContrast,
-        })}
-      >
-        <span>High contrast</span>
-        <i data-on={settings.highContrast ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.lightStage}
-        onClick={() => setSettings({
-          ...settings,
-          lightStage: !settings.lightStage,
-        })}
-      >
-        <span>Light stage</span>
-        <i data-on={settings.lightStage ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.hangulWave}
-        onClick={() => setSettings({
-          ...settings,
-          hangulWave: !settings.hangulWave,
-        })}
-      >
-        <span>Hangul-shaped motion</span>
-        <i data-on={settings.hangulWave ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.rollingCaptions}
-        onClick={() => setSettings({
-          ...settings,
-          rollingCaptions: !settings.rollingCaptions,
-        })}
-      >
-        <span>Rolling captions</span>
-        <i data-on={settings.rollingCaptions ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.captionRules}
-        onClick={() => setSettings({
-          ...settings,
-          captionRules: !settings.captionRules,
-        })}
-      >
-        <span>Caption rules, not a box</span>
-        <i data-on={settings.captionRules ? "true" : "false"} />
-      </button>
-
-      <button
-        className="toggle-row"
-        aria-pressed={settings.enhancedMotion}
-        onClick={() => setSettings({
-          ...settings,
-          enhancedMotion: !settings.enhancedMotion,
-        })}
-      >
-        <span>Enhanced motion</span>
-        <i data-on={settings.enhancedMotion ? "true" : "false"} />
-      </button>
+      {SETTING_GROUPS.map((group) => (
+        <section className="settings-group" key={group.title} aria-label={group.title}>
+          <h3>{group.title}</h3>
+          {group.sliders && (
+            <>
+              {/* 100% is the LARGEST size that still fits a full row across
+                  the stage: rows are clipped, not wrapped, past the width cap,
+                  which is why the scale only reduces. */}
+              <label className="range-control">
+                <span>Caption scale</span>
+                <output>{Math.round(settings.captionScale * 100)}%</output>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="1"
+                  step="0.05"
+                  value={settings.captionScale}
+                  style={{
+                    "--fill": `${((settings.captionScale - 0.6) / 0.4) * 100}%`,
+                  } as CSSVars}
+                  onChange={(event) => setSettings({
+                    ...settings,
+                    captionScale: Number(event.target.value),
+                  })}
+                />
+              </label>
+              <label className="range-control">
+                <span>Expression</span>
+                <output>{Math.round(settings.motionIntensity * 100)}%</output>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={settings.motionIntensity}
+                  style={{"--fill": `${settings.motionIntensity * 100}%`} as CSSVars}
+                  onChange={(event) => setSettings({
+                    ...settings,
+                    motionIntensity: Number(event.target.value),
+                  })}
+                />
+              </label>
+            </>
+          )}
+          {group.toggles.map(([key, label]) => (
+            <button
+              key={key}
+              className="toggle-row"
+              aria-pressed={settings[key]}
+              onClick={() => setSettings({...settings, [key]: !settings[key]})}
+            >
+              <span>{label}</span>
+              <i data-on={settings[key] ? "true" : "false"} />
+            </button>
+          ))}
+        </section>
+      ))}
     </aside>
   );
 }
@@ -2572,10 +2540,8 @@ export function LiveStudio() {
     >
       <header className="topbar">
         <div className="brand">
-          <div>
-            <h1>Weave</h1>
-            <span>Caption studio</span>
-          </div>
+          <WeaveMark className="brand-mark" />
+          <h1>Weave</h1>
         </div>
 
         <nav className="view-switcher" aria-label="Studio view">
@@ -2602,19 +2568,6 @@ export function LiveStudio() {
             <Mic2 size={14} />
             {number(level.rms_db, -72).toFixed(1)} dBFS
           </span>
-          {activeMedia && session.state === "listening" && (
-            <button
-              type="button"
-              className="edit-toggle"
-              aria-pressed={editorOpen}
-              onClick={() => setEditing((value) => !value)}
-            >
-              Edit captions
-            </button>
-          )}
-          {activeMedia && session.state === "listening" && (
-            <ExportMenu />
-          )}
           {activeLanguage && (
             <span className="language-pill">
               <Globe2 size={13} />
@@ -2626,6 +2579,20 @@ export function LiveStudio() {
             <i />
             {CONNECTION_LABELS[connection]}
           </span>
+          {activeMedia && session.state === "listening" && (
+            <>
+              <span className="topbar-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className="edit-toggle"
+                aria-pressed={editorOpen}
+                onClick={() => setEditing((value) => !value)}
+              >
+                Edit captions
+              </button>
+              <ExportMenu />
+            </>
+          )}
           <button
             className="icon-button settings-button"
             onClick={() => setSettingsOpen(true)}

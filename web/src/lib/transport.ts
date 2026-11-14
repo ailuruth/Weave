@@ -228,6 +228,22 @@ export function rulerTicks(view: View, widthPx: number, minGapPx = 72): {step: n
   return {step, ticks};
 }
 
+const MINOR_DIVISIONS: Record<number, number> = {
+  0.1: 2, 0.2: 4, 0.5: 5, 1: 5, 2: 4, 5: 5, 10: 5, 15: 3, 30: 3, 60: 4, 120: 4, 300: 5, 600: 5,
+};
+
+/** The small ticks between the labelled ones. */
+export function minorTicks(view: View, step: number): number[] {
+  const divisions = MINOR_DIVISIONS[step] ?? 1;
+  if (divisions < 2) return [];
+  const minor = step / divisions;
+  const ticks: number[] = [];
+  for (let n = Math.ceil(view.startS / minor - 1e-9); n * minor <= view.endS + 1e-9; n += 1) {
+    if (n % divisions !== 0) ticks.push(Number((n * minor).toFixed(3)));
+  }
+  return ticks;
+}
+
 /** A ruler label: minutes and seconds, with tenths only when the step needs them. */
 export function tickLabel(seconds: number, step: number): string {
   const tenths = step < 1;

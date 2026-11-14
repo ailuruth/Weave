@@ -8,6 +8,7 @@ import {
   followView,
   levelBars,
   lineAt,
+  minorTicks,
   nextLineStart,
   panView,
   positionLabel,
@@ -156,4 +157,11 @@ test("sound captions span from their start to their end, or to the end of the re
     {startS: 2.2, endS: 2.9, label: "Beep"},
     {startS: 5.0, endS: 8, label: "music"},
   ]);
+});
+
+test("minor ticks fall between the labelled ones and never on them", () => {
+  assert.deepEqual(minorTicks({startS: 0, endS: 2}, 1), [0.2, 0.4, 0.6, 0.8, 1.2, 1.4, 1.6, 1.8]);
+  assert.deepEqual(minorTicks({startS: 0, endS: 4}, 2), [0.5, 1, 1.5, 2.5, 3, 3.5]);
+  assert.deepEqual(minorTicks({startS: 0, endS: 30}, 15), [5, 10, 20, 25]);
+  assert.deepEqual(minorTicks({startS: 0, endS: 1}, 7), []);
 });

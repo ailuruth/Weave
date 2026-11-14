@@ -1,13 +1,10 @@
-<!-- Weave — the W as four threads, in the CWI 2.1.1 speaker palette by order of
-     first appearance (S1 #E5E517, S2 #17E517, S3 #17E5E5, S4 #E517E5) laid over
-     the black caption box of §2.4.1. Each stroke crosses the one before it, so
-     the overlap is the weave. Read at 16 px before changing any coordinate. -->
+<!-- Weave: the W as four threads in the CWI 2.1.1 speaker palette, in the order speakers are first heard (S1 #E5E517, S2 #17E517, S3 #17E5E5, S4 #E517E5), on the black of the captions box (2.4.1). Each thread is laid over the one before it. Read at 16 px before changing any coordinate. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#000000"/>
-  <g fill="none" stroke-width="9.5" stroke-linecap="round">
-    <path d="M13 18L23.5 46" stroke="#E5E517"/>
-    <path d="M23.5 46L32 29" stroke="#17E517"/>
-    <path d="M32 29L40.5 46" stroke="#17E5E5"/>
-    <path d="M40.5 46L51 18" stroke="#E517E5"/>
+  <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.5 18L23.5 45.5" stroke="#E5E517"/>
+    <path d="M23.5 45.5L32 27.5" stroke="#17E517"/>
+    <path d="M32 27.5L40.5 45.5" stroke="#17E5E5"/>
+    <path d="M40.5 45.5L49.5 18" stroke="#E517E5"/>
   </g>
 </svg>
