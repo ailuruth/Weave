@@ -1,9 +1,18 @@
-"""Weave CLI.
+"""Weave captions a video with Caption with Intention, the caption design system
+for Deaf and hard of hearing viewers. Each speaker gets a colour, each word turns
+to it as it is spoken, and the type grows and shrinks with the voice.
 
-  python -m autocwi live                           # live CWI captions (primary)
-  python -m autocwi run <input> --out out/ [--whisper small] [--speakers 2] [--stub]
-  python -m autocwi transcribe|diarize|prosody|fuse ...
-  python -m autocwi cc <spec.json> [--media <media>]    # CWI closed captions
+  weave caption clip.mp4          # a video in, the same video with captions out
+  weave live                      # live captions from the microphone
+  weave check captions.cwi.json   # check a caption file against the design system
+
+Everything runs on your own machine. English and Korean are supported.
+
+Developer commands, the offline pipeline behind the CaptionSpec contract:
+
+  weave run <input> --out out/ [--whisper small] [--speakers 2] [--stub]
+  weave transcribe|diarize|prosody|fuse ...
+  weave cc <spec.json> [--media <media>]    # CWI closed captions
 
 Offline stages read/write JSON intermediates in --out, so they can be run,
 inspected, and swapped independently; the pipeline's product is the
@@ -49,7 +58,7 @@ def _common(p: argparse.ArgumentParser, needs_input: bool = True) -> None:
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="weave", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub = ap.add_subparsers(dest="cmd", required=True, metavar="command")
 
     run = sub.add_parser("run", help="full offline pipeline: media -> spec.json")
     _common(run)
@@ -92,17 +101,27 @@ def build_parser() -> argparse.ArgumentParser:
     tn.add_argument("--no-open", dest="no_open", action="store_true")
 
     cp = sub.add_parser(
-        "caption", help="a recording in, its captioned video and caption "
-                        "files out (OUT/exports/)")
-    cp.add_argument("file")
-    cp.add_argument("--lang", required=True, choices=["en", "ko", "multi"],
-                    help="the language spoken in the recording")
-    cp.add_argument("--out", default="out")
+        "caption", help="caption a video: the video with its captions drawn "
+                        "on it, and the caption files",
+        description="Caption a video or audio file. Writes the video with its "
+                    "captions drawn on it, and the captions as .srt, .vtt, "
+                    "an After Effects script and .cwi.json, to OUT/exports/. "
+                    "An audio only file comes back as captions on a black frame.",
+        epilog="example: weave caption clip.mp4")
+    cp.add_argument("file", help="the video or audio file to caption")
+    cp.add_argument("--lang", default=None, choices=["en", "ko", "multi"],
+                    help="the language spoken: en, ko, or multi for both. "
+                         "Detected from the audio when left out")
+    cp.add_argument("--out", default="out",
+                    help="where to write the results (default: out/)")
     cp.add_argument("--captions", default=None, metavar="FILE",
                     help="a NAME.cwi.json you have adjusted: its words, "
-                         "speakers, sizes and lines are drawn as written")
+                         "speakers, sizes and lines are drawn as written "
+                         "and nothing is transcribed")
     cp.add_argument("--no-video", dest="no_video", action="store_true",
                     help="write the caption files only")
+    cp.add_argument("--verbose", action="store_true",
+                    help="print the full log of every stage")
     cp.add_argument("--fps", type=int, default=None,
                     help="frames a second the captions are drawn at "
                          "(default 60)")
@@ -202,6 +221,7 @@ def build_parser() -> argparse.ArgumentParser:
                          "(default: 127.0.0.1; use 0.0.0.0 to let the "
                          "hardware node reach this machine over the LAN)")
 
+    sub._choices_actions.sort(key=lambda action: action.dest != "caption")
     return ap
 
 
@@ -360,13 +380,9 @@ def stage_fuse(args, cfg, _device) -> None:
 def main(argv: list[str] | None = None) -> None:
     args = build_parser().parse_args(argv)
     if args.cmd == "caption":
-        if not Path(args.file).is_file():
-            raise SystemExit(f"weave: no such file: {args.file}")
-        args = build_parser().parse_args([
-            "live", "--import", args.file, "--lang", args.lang, "--out", args.out,
-            "--once" if args.no_video else "--render",
-            *(["--captions", args.captions] if args.captions else []),
-            *(["--fps", str(args.fps)] if args.fps else [])])
+        from .recording.caption_command import caption
+
+        raise SystemExit(caption(args, build_parser()))
     if args.cmd == "live" and getattr(args, "captions", None):
         from .recording import CaptionError, read_captions
 

@@ -31,6 +31,7 @@ class RecordingHooks:
     scored: Callable[[list[tuple[float, dict]]], None] | None = None
     desk: Callable[[CaptionDesk], None] | None = None
     restaged: Callable[[], None] | None = None
+    analysing: Callable[[float], None] | None = None
 
 
 def media_duration_s(path: Path) -> float:
@@ -108,10 +109,15 @@ def recording_events(
         print("[live] captions exported: "
               + ", ".join(str(p) for p in paths.values()))
 
+    def analysing(done: float) -> None:
+        hooks.announce(f"analysing {round(done * 100)}%")
+        if hooks.analysing is not None:
+            hooks.analysing(done)
+
     score = analyse(
         caption_pass(recognizer),
         duration_s=duration_s,
-        progress=lambda done: hooks.announce(f"analysing {round(done * 100)}%"),
+        progress=analysing,
         cancelled=hooks.cancelled,
         direct=lambda words: direct(words, director),
     )

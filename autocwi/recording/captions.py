@@ -16,7 +16,7 @@ UNKNOWN = "unknown"
 
 
 class CaptionError(ValueError):
-    """An adjustment that cannot be applied, said in words for the person who made it."""
+    """Captioning that cannot go ahead, in a sentence for the person who asked for it."""
 
 
 def onset_s(word: dict) -> float:

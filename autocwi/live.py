@@ -67,6 +67,7 @@ from autocwi.recording import (
     render_score,
     video_motion,
 )
+from autocwi.recording.report import attach
 
 SR = 16_000
 BLOCK = 1024  # samples per audio block (~64 ms)
@@ -7320,7 +7321,7 @@ def run_live(args, cfg: dict, device: str) -> None:
     base_cfg = cfg
     loaded_lang: str | None = None
     stack: tuple | None = None
-    recording_cache: dict = {}
+    recording_cache: dict = getattr(args, "recording_cache", {})
 
     def announce(stage: str, language: str | None = None) -> None:
         """Publish a boot stage UNLESS a reload has already superseded it.
@@ -7518,6 +7519,7 @@ def run_live(args, cfg: dict, device: str) -> None:
                     language_session.snapshot().get("media") or imported.name)
                 captioned = (
                     out / "exports" / f"{Path(media_name).stem}.captioned.mp4")
+                reporter = getattr(args, "reporter", None)
 
                 def _video_job(score, media=imported, target=captioned):
                     def draw() -> Path:
@@ -7529,15 +7531,19 @@ def run_live(args, cfg: dict, device: str) -> None:
                                 f"http://127.0.0.1:{server.server_address[1]}/"),
                             publish=channel.publish,
                             last_event_id=channel.last_event_id,
-                            progress=lambda done: print(
-                                f"[live] drawing captions {round(done * 100)}%",
-                                flush=True),
+                            progress=(reporter.drawing if reporter else
+                                      lambda done: print(
+                                          f"[live] drawing captions "
+                                          f"{round(done * 100)}%", flush=True)),
+                            progress_every_s=0.5 if reporter else 10.0,
                             fps=int(getattr(args, "fps", None) or (
                                 cfg["live"].get("import_render") or {}
                             ).get("fps", 60)),
                         )
                         print(f"[live] captioned video: {target} "
                               f"{json.dumps(report)}")
+                        if reporter:
+                            reporter.video_written(target)
                         return target
                     return draw
 
@@ -7550,7 +7556,7 @@ def run_live(args, cfg: dict, device: str) -> None:
                     cfg,
                     caption_pass=_caption_pass,
                     out_dir=out / "exports",
-                    hooks=RecordingHooks(
+                    hooks=attach(reporter, RecordingHooks(
                         announce=lambda stage: announce(stage, lang),
                         ready=_listening,
                         cancelled=language_session.restart_pending,
@@ -7561,7 +7567,7 @@ def run_live(args, cfg: dict, device: str) -> None:
                             if server is not None else None),
                         desk=language_session.set_desk if adjustable else None,
                         restaged=broadcaster.reset if adjustable else None,
-                    ),
+                    )),
                     paced=not (getattr(args, "once", False)
                                or getattr(args, "render", False)),
                     cache=recording_cache,
