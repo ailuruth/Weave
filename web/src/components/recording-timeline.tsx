@@ -3,7 +3,7 @@
 import {
   AudioLines,
   Captions,
-  Keyboard,
+  CircleHelp,
   Maximize2,
   Plus,
   Pause,
@@ -525,7 +525,7 @@ export function RecordingTimeline({
             title="Keyboard shortcuts (?)"
             onClick={() => setKeysOpen((open) => !open)}
           >
-            <Keyboard size={16} />
+            <CircleHelp size={16} />
           </button>
           <div className="timeline-zoom">
             <button
