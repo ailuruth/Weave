@@ -1,0 +1,247 @@
+{
+ "version": "1.0",
+ "media": {
+  "path": "weave-voice.mp4",
+  "duration": 10.497333333333334
+ },
+ "speakers": {
+  "S1": {
+   "color": "#E5E517"
+  },
+  "S2": {
+   "color": "#17E517"
+  }
+ },
+ "words": [
+  {
+   "text": "Captions",
+   "start": 0.603,
+   "end": 1.086,
+   "speaker": "S1",
+   "loudness": 0.2319,
+   "pitch": 0.5,
+   "loudness_db": -12.76,
+   "pitch_hz": 217.94,
+   "voiced_frac": 0.596,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "should",
+   "start": 1.086,
+   "end": 1.307,
+   "speaker": "S1",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.39,
+   "pitch_hz": 174.17,
+   "voiced_frac": 0.422,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "show",
+   "start": 1.307,
+   "end": 1.508,
+   "speaker": "S1",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.51,
+   "pitch_hz": 182.9,
+   "voiced_frac": 0.597,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "how",
+   "start": 1.508,
+   "end": 1.729,
+   "speaker": "S1",
+   "loudness": 0.2245,
+   "pitch": 0.5,
+   "loudness_db": -13.23,
+   "pitch_hz": 181.82,
+   "voiced_frac": 0.94,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "it",
+   "start": 1.729,
+   "end": 1.89,
+   "speaker": "S1",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.32,
+   "pitch_hz": 168.82,
+   "voiced_frac": 0.923,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "was",
+   "start": 1.89,
+   "end": 2.091,
+   "speaker": "S1",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.95,
+   "pitch_hz": 168.51,
+   "voiced_frac": 0.558,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "said.",
+   "start": 2.091,
+   "end": 2.432,
+   "speaker": "S1",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -14.24,
+   "pitch_hz": 119.87,
+   "voiced_frac": 0.664,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "Who",
+   "start": 3.206,
+   "end": 3.306,
+   "speaker": "S2",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.56,
+   "pitch_hz": 185.36,
+   "voiced_frac": 0.512,
+   "conf": 0.5,
+   "line_break": true
+  },
+  {
+   "text": "is",
+   "start": 3.306,
+   "end": 3.546,
+   "speaker": "S2",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -13.56,
+   "pitch_hz": 185.36,
+   "voiced_frac": 0.512,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "speaking.",
+   "start": 3.546,
+   "end": 4.032,
+   "speaker": "S2",
+   "loudness": 0.2222,
+   "pitch": 0.5,
+   "loudness_db": -18.0,
+   "pitch_hz": 102.21,
+   "voiced_frac": 0.393,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "Loud!",
+   "start": 4.93,
+   "end": 5.504,
+   "speaker": "S1",
+   "loudness": 0.95,
+   "pitch": 0.5,
+   "loudness_db": -14.04,
+   "pitch_hz": 157.87,
+   "voiced_frac": 0.888,
+   "conf": 0.5,
+   "line_break": true
+  },
+  {
+   "text": "Or",
+   "start": 6.334,
+   "end": 6.535,
+   "speaker": "S2",
+   "loudness": 0.06,
+   "pitch": 0.5,
+   "loudness_db": -15.49,
+   "pitch_hz": 164.83,
+   "voiced_frac": 0.768,
+   "conf": 0.5,
+   "line_break": true
+  },
+  {
+   "text": "soft.",
+   "start": 6.535,
+   "end": 7.104,
+   "speaker": "S2",
+   "loudness": 0.06,
+   "pitch": 0.5,
+   "loudness_db": -18.98,
+   "pitch_hz": 125.43,
+   "voiced_frac": 0.377,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "And",
+   "start": 7.987,
+   "end": 8.108,
+   "speaker": "S1",
+   "loudness": 0.2351,
+   "pitch": 0.5,
+   "loudness_db": -12.84,
+   "pitch_hz": 183.54,
+   "voiced_frac": 0.872,
+   "conf": 0.5,
+   "line_break": true
+  },
+  {
+   "text": "exactly",
+   "start": 8.108,
+   "end": 8.67,
+   "speaker": "S1",
+   "loudness": 0.2351,
+   "pitch": 0.5,
+   "loudness_db": -12.84,
+   "pitch_hz": 183.54,
+   "voiced_frac": 0.872,
+   "conf": 0.5,
+   "line_break": false
+  },
+  {
+   "text": "when.",
+   "start": 8.67,
+   "end": 9.024,
+   "speaker": "S1",
+   "loudness": 0.229,
+   "pitch": 0.5,
+   "loudness_db": -13.14,
+   "pitch_hz": 159.96,
+   "voiced_frac": 1.0,
+   "conf": 0.5,
+   "line_break": false
+  }
+ ],
+ "mapping": {
+  "loudness_to": {
+   "axis": "size",
+   "min": 3.0,
+   "max": 12.0,
+   "invert": false,
+   "unit": "pct_video_height",
+   "baseline": 5.0
+  },
+  "pitch_to": {
+   "axis": "wght",
+   "min": 100.0,
+   "max": 1000.0,
+   "invert": true,
+   "domain_hz": [
+    80.0,
+    250.0
+   ]
+  },
+  "speaker_to": "color"
+ },
+ "events": []
+}
