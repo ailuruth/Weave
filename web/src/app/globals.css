@@ -3813,7 +3813,7 @@ button {
 
 .timeline-body {
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr);
+  grid-template-columns: minmax(108px, max-content) minmax(0, 1fr);
   padding-right: var(--space-7);
 }
 
@@ -3822,7 +3822,7 @@ button {
   grid-template-rows: var(--lane-audio) var(--lane-captions) var(--lane-sounds);
   row-gap: var(--lane-gap);
   margin: 0;
-  padding: calc(var(--lane-ruler) + var(--lane-gap)) 0 0 var(--space-8);
+  padding: calc(var(--lane-ruler) + var(--lane-gap)) var(--space-6) 0 var(--space-8);
   list-style: none;
 }
 
