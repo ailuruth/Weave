@@ -33,6 +33,7 @@ import {
 } from "@/lib/caption-edit";
 import {positionLabel} from "@/lib/transport";
 import {OverlayScroll} from "@/components/overlay-scroll";
+import {PREVIEW_LEAD_S} from "@/hooks/use-recording-transport";
 import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
 import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 
@@ -42,6 +43,9 @@ const NEW_CAPTION = "Caption";
 const FOLLOW_AFTER_SCROLL_MS = 4000;
 const TOOLS_OPEN_MS = 200;
 const SLOW_WORD_S = 0.9;
+const CLOSE_MS = 160;
+const ENTER_MS = 420;
+const LEAVE_MS = 170;
 const keepTextFocus = (event: {target: EventTarget; preventDefault: () => void}) => {
   if ((event.target as HTMLElement).closest("button")) event.preventDefault();
 };
@@ -176,6 +180,7 @@ export function CaptionEditor({
   playing,
   seek,
   preview,
+  previewing,
   captions,
   focus,
 }: {
@@ -188,6 +193,7 @@ export function CaptionEditor({
   seek: (positionS: number) => void;
   /** Show the captions from `startS` to `endS` moving, the picture held still. */
   preview: (startS: number, endS: number) => void;
+  previewing: boolean;
   captions: CaptionDocumentState;
   /** A word to open on, from outside the editor; `n` changes on every request. */
   focus?: {index: number; n: number} | null;
@@ -199,6 +205,13 @@ export function CaptionEditor({
   const anchorRef = useRef<number | null>(null);
   const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
+  const [closing, setClosing] = useState<number | null>(null);
+  const [fresh, setFresh] = useState<number | null>(null);
+  const [leaving, setLeaving] = useState<number | null>(null);
+  const flash = (set: (value: (current: number | null) => number | null) => void, value: number, ms: number) => {
+    set(() => value);
+    window.setTimeout(() => set((current) => (current === value ? null : current)), ms);
+  };
   const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
   if (focus && focus.n !== focusSeen) {
     setFocusSeen(focus.n);
@@ -244,6 +257,7 @@ export function CaptionEditor({
 
   const choose = (line: EditLine) => {
     if (selectedLine?.first !== line.first) {
+      if (selectedLine) flash(setClosing, selectedLine.first, CLOSE_MS);
       setPicked(line.first);
       setSel(null);
       caretRef.current = null;
@@ -262,6 +276,7 @@ export function CaptionEditor({
       setPicked(added.index);
       setTyping(added.index);
       setSel(null);
+      flash(setFresh, added.index, ENTER_MS);
     });
   };
 
@@ -357,6 +372,10 @@ export function CaptionEditor({
                 data-first={line.first}
                 data-selected={selected}
                 data-current={current?.first === line.first}
+                data-closing={!selected && closing === line.first ? "true" : undefined}
+                data-fresh={fresh === line.first ? "true" : undefined}
+                data-leaving={leaving === line.first ? "true" : undefined}
+                data-previewing={selected && previewing ? "true" : undefined}
                 style={{"--card-color": first.rainbow ? "transparent" : speakerColor(first.speaker, colors)} as CSSVars}
                 data-rainbow={first.rainbow ? "true" : undefined}
                 onClick={() => choose(line)}
@@ -401,6 +420,7 @@ export function CaptionEditor({
                           caretRef.current = null;
                           setSel(null);
                           change(split.words, line.first);
+                          flash(setFresh, split.first, ENTER_MS);
                         }}
                       >
                         <Scissors size={14} />
@@ -428,8 +448,12 @@ export function CaptionEditor({
                             setSel(null);
                             change(words.filter((_, index) => index < range[0] || index > range[1]), line.first);
                           } else {
-                            setPicked(null);
-                            change(removeLine(words, line.first), Math.max(0, line.first - 1));
+                            setLeaving(line.first);
+                            window.setTimeout(() => {
+                              setLeaving(null);
+                              setPicked(null);
+                              change(removeLine(words, line.first), Math.max(0, line.first - 1));
+                            }, LEAVE_MS);
                           }
                         }}
                       >
@@ -458,9 +482,10 @@ export function CaptionEditor({
                     change(setLineText(words, line.first, value), line.first);
                   }}
                 />
-                {selected && (
+                {(selected || closing === line.first) && (
                   <div
                     className="card-tools"
+                    aria-hidden={selected ? undefined : true}
                     onClick={(event) => event.stopPropagation()}
                     onMouseDown={keepTextFocus}
                   >
@@ -478,6 +503,8 @@ export function CaptionEditor({
                             data-slow={word.end - word.start > SLOW_WORD_S ? "true" : undefined}
                             title={`${word.text}, ${wordPresetOf(word)?.label ?? "as spoken"}`}
                             style={{
+                              "--at": `${(word.start - line.start + PREVIEW_LEAD_S).toFixed(3)}s`,
+                              "--len": `${Math.max(0.12, word.end - word.start).toFixed(3)}s`,
                               "--s": word.size.toFixed(3),
                               "--ink": word.rainbow ? undefined : speakerColor(word.speaker, colors),
                             } as CSSVars}
@@ -517,7 +544,15 @@ export function CaptionEditor({
                         </span>
                       </div>
                     )}
-                    <div className="swatches" role="radiogroup" aria-label="Color">
+                    <div
+                      className="swatches"
+                      role="radiogroup"
+                      aria-label="Color"
+                      style={(() => {
+                        const at = colour.rainbow ? doc.speakers.length : doc.speakers.indexOf(colour.speaker ?? "");
+                        return {"--seg-n": doc.speakers.length + 2, "--seg-i": Math.max(0, at), "--seg-on": at < 0 ? 0 : 1} as CSSVars;
+                      })()}
+                    >
                       {doc.speakers.map((speaker) => (
                         <button
                           key={speaker}
@@ -550,7 +585,15 @@ export function CaptionEditor({
                         <Plus size={12} />
                       </button>
                     </div>
-                    <div className="segmented" role="radiogroup" aria-label="Style">
+                    <div
+                      className="segmented"
+                      role="radiogroup"
+                      aria-label="Style"
+                      style={(() => {
+                        const at = CAPTION_PRESETS.findIndex((choice) => choice.id === preset?.id);
+                        return {"--seg-n": CAPTION_PRESETS.length, "--seg-i": Math.max(0, at), "--seg-on": at < 0 ? 0 : 1} as CSSVars;
+                      })()}
+                    >
                       {CAPTION_PRESETS.map((choice) => (
                         <button
                           key={choice.id}

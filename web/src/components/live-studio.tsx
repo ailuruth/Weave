@@ -858,6 +858,19 @@ function useMeterBallistics(
    value that is a warning, and a warning must not be delayed. */
 const STATUS_DWELL_EVENTS = 4;
 
+const GATE_LEAVE_MS = 320;
+
+function useLinger(on: boolean, ms: number): boolean {
+  const [mounted, setMounted] = useState(on);
+  if (on && !mounted) setMounted(true);
+  useEffect(() => {
+    if (on) return;
+    const timer = window.setTimeout(() => setMounted(false), ms);
+    return () => window.clearTimeout(timer);
+  }, [on, ms]);
+  return mounted;
+}
+
 function useSettledStatus(status: string): string {
   const [shown, setShown] = useState(status);
   const pending = useRef<{value: string; count: number}>({value: status, count: 0});
@@ -2519,6 +2532,8 @@ export function LiveStudio() {
     root.style.colorScheme = settings.lightStage ? "light" : "dark";
   }, [settings.lightStage]);
 
+  const gateOpen = session.state !== "listening";
+  const gateMounted = useLinger(gateOpen, GATE_LEAVE_MS);
   return (
     <main
       className="studio-shell"
@@ -2536,6 +2551,7 @@ export function LiveStudio() {
       data-cues={cueMode ? "true" : "false"}
       data-cue-position={runtime.cueLook.position}
       data-language={session.language ?? "pending"}
+      data-gate={gateOpen ? "open" : "closed"}
       lang={session.language === "ko" ? "ko" : "en"}
       style={studioStyle}
     >
@@ -2549,7 +2565,11 @@ export function LiveStudio() {
           )}
         </div>
 
-        <nav className="view-switcher" aria-label="Studio view">
+        <nav
+          className="view-switcher"
+          aria-label="Studio view"
+          style={{"--seg-i": view === "stage" ? 0 : 1} as CSSProperties & Record<"--seg-i", number>}
+        >
           <button
             data-active={view === "stage"}
             onClick={() => setView("stage")}
@@ -2782,6 +2802,7 @@ export function LiveStudio() {
             playing={transport.playing && !transport.previewing}
             seek={transportSeek}
             preview={transport.previewLine}
+            previewing={transport.previewing}
             captions={captions}
             focus={editFocus}
           />
@@ -2802,8 +2823,9 @@ export function LiveStudio() {
           />
         </>
       )}
-      {session.state !== "listening" && (
+      {gateMounted && (
         <LanguageGate
+          leaving={!gateOpen}
           session={session}
           error={languageError}
           onSelect={handleSelect}

@@ -106,9 +106,12 @@
   --row-h: 48px;
   --row-h-compact: 40px;
   --ease-out: cubic-bezier(.2, .72, .24, 1);
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --ease-in: cubic-bezier(.3, 0, 1, 1);
   --dur-press: 120ms;
   --dur-quick: 140ms;
   --dur-base: 180ms;
+  --dur-slow: 260ms;
   --dur-slow: 220ms;
   --knob: #ffffff;
   --knob-ring: 0 0 0 1px rgba(0, 0, 0, .12);
@@ -354,7 +357,11 @@ button {
 }
 
 .view-switcher {
-  display: flex;
+  --seg-n: 2;
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1);
@@ -382,7 +389,6 @@ button {
 }
 
 .view-switcher button[data-active="true"] {
-  background: var(--segment-active);
   color: var(--text);
 }
 
@@ -4790,4 +4796,223 @@ i.rainbow-dot,
 .strip-word[aria-pressed="true"] {
   background-color: var(--surface-selected);
   box-shadow: inset 0 -2px 0 var(--text);
+}
+
+.view-switcher::before,
+.segmented::before,
+.swatches::before {
+  content: "";
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: var(--space-1);
+  width: calc((100% - 2 * var(--space-1) - (var(--seg-n) - 1) * var(--space-1)) / var(--seg-n));
+  border-radius: 4px;
+  background: var(--segment-active);
+  opacity: var(--seg-on, 1);
+  transform: translateX(calc(var(--seg-i, 0) * (100% + var(--space-1))));
+  transition:
+    transform var(--dur-slow) var(--ease-standard),
+    opacity var(--dur-quick) ease;
+  pointer-events: none;
+}
+
+.view-switcher::before {
+  border-radius: var(--r-pill);
+}
+
+.view-switcher > button,
+.segmented > button,
+.swatches > button {
+  position: relative;
+  z-index: 1;
+}
+
+.segmented,
+.swatches {
+  position: relative;
+}
+
+.segmented button[data-active="true"],
+.swatch[aria-checked="true"] {
+  background: transparent;
+}
+
+.caption-card[data-fresh="true"] {
+  animation: card-enter var(--dur-slow) var(--ease-standard) backwards;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(.985);
+  }
+}
+
+.caption-card[data-closing="true"] .card-tools {
+  pointer-events: none;
+  animation: card-tools-close var(--dur-base) var(--ease-in) forwards;
+}
+
+@keyframes card-tools-close {
+  to {
+    height: 0;
+    padding-top: 0;
+    border-top-width: 0;
+    opacity: 0;
+  }
+}
+
+.caption-card[data-leaving="true"] {
+  pointer-events: none;
+  animation: card-leave var(--dur-base) var(--ease-in) forwards;
+}
+
+@keyframes card-leave {
+  to {
+    height: 0;
+    margin-bottom: calc(-1 * var(--space-4));
+    padding-block: 0;
+    border-width: 0;
+    opacity: 0;
+    transform: scale(.97);
+  }
+}
+
+.strip-word {
+  position: relative;
+  transition:
+    background-color var(--dur-quick) ease,
+    font-size var(--dur-slow) var(--ease-standard),
+    font-weight var(--dur-slow) var(--ease-standard),
+    color var(--dur-slow) ease;
+}
+
+.strip-word::after {
+  content: "";
+  position: absolute;
+  left: var(--space-1);
+  right: var(--space-1);
+  bottom: 1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--text);
+  transform: scaleX(0);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
+.strip-word[aria-pressed="true"] {
+  box-shadow: none;
+}
+
+.strip-word[aria-pressed="true"]::after {
+  transform: scaleX(1);
+}
+
+.caption-card[data-previewing="true"] .strip-word {
+  animation: strip-turn var(--len) var(--ease-out) var(--at) both;
+}
+
+.caption-card[data-previewing="true"] .strip-word[data-rainbow="true"] {
+  animation-name: strip-turn-fade;
+}
+
+@keyframes strip-turn {
+  from {
+    color: var(--muted-2);
+  }
+}
+
+@keyframes strip-turn-fade {
+  from {
+    opacity: .35;
+  }
+}
+
+.export-menu[open] > div {
+  transform-origin: top right;
+  animation: menu-enter var(--dur-base) var(--ease-standard) both;
+}
+
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(.97);
+  }
+}
+
+.gate-language {
+  transition:
+    font-weight 450ms var(--ease-out),
+    font-stretch 450ms var(--ease-out),
+    color var(--dur-quick) linear,
+    opacity var(--dur-slow) ease;
+}
+
+.gate-language[aria-pressed="true"] {
+  color: var(--spk);
+  font-weight: 820;
+  font-stretch: 128%;
+}
+
+.gate-language[aria-pressed="true"]::after {
+  transform: scaleX(1);
+}
+
+.language-gate[data-chosen="true"] .gate-language[aria-pressed="false"],
+.language-gate[data-chosen="true"] .gate-import,
+.language-gate[data-chosen="true"] .gate-label-end {
+  opacity: .28;
+  transition: opacity var(--dur-slow) ease;
+}
+
+.gate-status {
+  animation: rise-in var(--dur-slow) var(--ease-standard) backwards;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.language-gate[data-leaving="true"] {
+  pointer-events: none;
+  animation: gate-leave 320ms var(--ease-in) forwards;
+}
+
+.language-gate[data-leaving="true"] .gate-word h1 {
+  animation: gate-word-leave 320ms var(--ease-in) forwards;
+}
+
+@keyframes gate-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gate-word-leave {
+  to {
+    transform: translateY(-16px);
+  }
+}
+
+.studio-shell[data-gate="closed"] > .topbar,
+.studio-shell[data-gate="closed"] > .workspace,
+.studio-shell[data-gate="closed"] > .signal-rail {
+  animation: rise-in 360ms var(--ease-standard) backwards;
+}
+
+.studio-shell[data-gate="closed"] > .workspace {
+  animation-delay: 60ms;
+}
+
+.studio-shell[data-gate="closed"] > .signal-rail {
+  animation-delay: 120ms;
+}
+
+.studio-shell[data-reduced-motion="true"] :is(.caption-card, .card-tools, .strip-word, .gate-status, .language-gate, .gate-word h1, .export-menu > div),
+.studio-shell[data-reduced-motion="true"] > :is(.topbar, .workspace, .signal-rail) {
+  animation: none !important;
 }

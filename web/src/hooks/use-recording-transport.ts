@@ -16,7 +16,7 @@ import {
 /** How many events the stage is handed on a seek: as many as it keeps. */
 const SEEK_KEEP = 150;
 /** A caption preview starts this far before its line and holds this long after it. */
-const PREVIEW_LEAD_S = 0.3;
+export const PREVIEW_LEAD_S = 0.3;
 
 export interface StageFeed {
   dispatch: (event: CaptionEvent) => void;

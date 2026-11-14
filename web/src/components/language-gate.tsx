@@ -118,6 +118,7 @@ export function LanguageGate({
   stage,
   palette,
   paletteLight,
+  leaving = false,
 }: {
   session: LanguageSession;
   error: string | null;
@@ -127,6 +128,7 @@ export function LanguageGate({
   onImport: (file: File, language: string) => Promise<void>;
   palette: readonly string[];
   paletteLight: readonly string[];
+  leaving?: boolean;
 }) {
   const unavailable = session.state === "unavailable";
   const [file, setFile] = useState<File | null>(null);
@@ -198,6 +200,8 @@ export function LanguageGate({
     <section
       className="language-gate"
       data-file={file ? "true" : "false"}
+      data-leaving={leaving ? "true" : undefined}
+      data-chosen={pressed ? "true" : undefined}
       data-selecting={selecting ? "true" : "false"}
       role="dialog"
       aria-modal="true"
@@ -240,6 +244,7 @@ export function LanguageGate({
                   type="button"
                   className="gate-language"
                   aria-keyshortcuts={String(index + 1)}
+                  aria-pressed={pressed === language.id}
                   style={colour ? {"--spk-dark": colour.dark, "--spk-light": colour.light} as CSSVars : undefined}
                   onPointerEnter={() => setHovered(language.id)}
                   onPointerLeave={() => setHovered(null)}
