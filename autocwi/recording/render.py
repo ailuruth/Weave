@@ -37,6 +37,7 @@ CHROME_FLAGS = (
     "--disable-threaded-scrolling",
     "--run-all-compositor-stages-before-draw",
     "--disable-checker-imaging",
+    "--disable-frame-rate-limit",
 )
 WINDOW = (1600, 1000)
 CANVAS = (1280, 720)
@@ -81,7 +82,11 @@ PAGE_SETUP = r"""
     for (const animation of document.getAnimations()) {
       animation.currentTime = now - animation.__renderOrigin;
     }
-    return true;
+    return {
+      captioned: Boolean(document.querySelector(
+        ".caption-stage .caption-word, .caption-stage .stage-sound")),
+      mediaS: window.__renderMediaS,
+    };
   };
   window.__renderHold = () => {
     adopt();
@@ -117,12 +122,6 @@ FRAME_RECT = r"""
   return Object.values(rect).every(Number.isFinite) ? rect : null;
 })()
 """
-
-HAS_CAPTION = (
-    "Boolean(document.querySelector("
-    "'.caption-stage .caption-word, .caption-stage .stage-sound'))"
-)
-
 
 class StepClock:
     """The replay's clock, moved by the renderer instead of by time."""
@@ -401,11 +400,12 @@ def render_recording(
                     until_next = clock.settle()
                     if last_event_id() != sent:
                         _await_delivery(page, last_event_id())
-                page.value("window.__renderSeek()")
-                captioned = bool(page.value(HAS_CAPTION))
+                state = page.value("window.__renderSeek()")
+                captioned = state["captioned"]
                 if captioned or blank is None:
                     shot = base64.b64decode(page.call(
-                        "Page.captureScreenshot", format="png", clip=clip)["data"])
+                        "Page.captureScreenshot", format="png", clip=clip,
+                        optimizeForSpeed=True)["data"])
                     if captioned:
                         drawn += 1
                     else:
@@ -416,7 +416,7 @@ def render_recording(
                     encoder.stdin.write(shot)
                 except BrokenPipeError:
                     break
-                wants = page.value("window.__renderMediaS")
+                wants = state.get("mediaS")
                 if isinstance(wants, (int, float)) and wants > 0:
                     ahead_s.append(float(frame / picture.fps) - float(wants))
                 if progress is not None and frame % every == 0:
