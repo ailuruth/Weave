@@ -1647,6 +1647,7 @@ button {
   font-size: var(--text-xs);
   line-height: 1.35;
   letter-spacing: 0;
+  text-wrap: pretty;
 }
 
 .settings-group + .settings-group {
@@ -4193,6 +4194,15 @@ i.rainbow-dot,
   color: var(--muted-2);
 }
 
+.caption-editor .field {
+  caret-color: var(--accent);
+}
+
+.caption-editor .field::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--text);
+}
+
 .caption-editor .field:hover:not(:focus):not(:disabled) {
   border-color: var(--muted-2);
 }
@@ -4448,7 +4458,7 @@ i.rainbow-dot,
 }
 
 .caption-row:hover {
-  background: var(--surface-soft);
+  background: rgb(var(--tint) / .05);
   color: var(--text);
 }
 
