@@ -328,14 +328,20 @@ export function CaptionEditor({
                 : current?.first === entry.first ? currentRef : undefined}
               data-selected={line?.first === entry.first}
               data-current={current?.first === entry.first}
+              style={current?.first === entry.first ? {
+                "--progress": `${(Math.min(1, Math.max(0,
+                  (positionS - entry.start) / Math.max(0.01, entry.end - entry.start))) * 100).toFixed(1)}%`,
+              } as CSSVars : undefined}
             >
               <button
                 type="button"
                 className="editor-line-play"
-                aria-label={`Go to the line at ${clockLabel(entry.start)}`}
+                aria-label={`Go to the line from ${clockLabel(entry.start)} to ${clockLabel(entry.end)}`}
+                title="Go to this line"
                 onClick={() => seek(entry.start)}
               >
-                {clockLabel(entry.start)}
+                <span>{clockLabel(entry.start)}</span>
+                <span>{clockLabel(entry.end)}</span>
               </button>
               <p>
                 {doc.words.slice(entry.first, entry.last + 1).map((item, offset) => {

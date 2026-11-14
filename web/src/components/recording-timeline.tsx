@@ -57,7 +57,7 @@ const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ["Home End", "Start or end"],
   ["[ ]", "Start or end the current line here"],
   ["⌘Z ⇧⌘Z", "Undo and redo"],
-  ["Double-click a line", "Edit it"],
+  ["Click a line", "Edit it"],
   ["⌘ scroll", "Zoom"],
 ];
 
@@ -300,6 +300,10 @@ export function RecordingTimeline({
     const next = placed(drag, event.clientX);
     setDrag({...drag, moved, span: next ? spanOf(next.words, drag.cue) : null});
   };
+  const editLine = (cue: number) => {
+    const index = captions.doc?.words.findIndex((word) => word.line === cue) ?? -1;
+    if (index >= 0) onEditWord?.(index);
+  };
   const endDrag = (event: ReactPointerEvent<HTMLButtonElement>, startS: number) => {
     if (!drag || drag.sent) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
@@ -308,6 +312,7 @@ export function RecordingTimeline({
     if (!drag.moved) {
       setDrag(null);
       seek(startS);
+      editLine(drag.cue);
       return;
     }
     const next = placed(drag, event.clientX);
@@ -503,11 +508,9 @@ export function RecordingTimeline({
               onPointerUp={(event) => endDrag(event, line.startS)}
               onPointerCancel={() => setDrag(null)}
               onClick={(event) => {
-                if (event.detail === 0) seek(line.startS);
-              }}
-              onDoubleClick={() => {
-                const index = captions.doc?.words.findIndex((word) => word.line === line.cue) ?? -1;
-                if (index >= 0) onEditWord?.(index);
+                if (event.detail !== 0) return;
+                seek(line.startS);
+                editLine(line.cue);
               }}
             >
               {editable && <i data-edge="start" aria-hidden="true" />}
