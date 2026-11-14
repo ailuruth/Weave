@@ -41,5 +41,5 @@ NEXT_PUBLIC_AUTOCWI_ORIGIN=http://127.0.0.1:7337 npm --prefix web run dev
 * Text changes only while a word is still ahead of the playhead.
 * Rows never move once laid out. A late word is appended.
 * Grey means the speaker is unknown.
-* Captions follow Caption with Intention. Everything else follows the Apple design tokens.
+* Captions follow Caption with Intention. Everything else follows Linear's system, as `DESIGN.md` applies it.
 * The app must build to static files. Add no Node server.
