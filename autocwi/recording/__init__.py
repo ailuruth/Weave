@@ -1,7 +1,7 @@
 """Captioning a recording, as opposed to a room. Reasons and measurements: README.md in this package."""
 
 from .captions import CAPTIONS_MAX_BYTES, RESTAGE, CaptionError, read_captions
-from .desk import CaptionDesk, Play, Stop
+from .desk import CaptionDesk
 from .direct import (
     LOUDNESS_PIVOT,
     assign_cues,
@@ -23,8 +23,8 @@ from .transcribe import transcribe_recording
 
 __all__ = [
     "CAPTIONS_MAX_BYTES", "CaptionDesk", "CaptionError", "RESTAGE",
-    "LOUDNESS_PIVOT", "MEDIA_MAX_BYTES", "MEDIA_SUFFIXES", "Play", "RecordingHooks",
-    "ScriptWord", "ScriptedRecognizer", "StepClock", "Stop", "align_words",
+    "LOUDNESS_PIVOT", "MEDIA_MAX_BYTES", "MEDIA_SUFFIXES", "RecordingHooks",
+    "ScriptWord", "ScriptedRecognizer", "StepClock", "align_words",
     "analyse",
     "assign_cues", "build_media_score", "cue_look", "direct", "direct_recording", "lead_in",
     "line_length",

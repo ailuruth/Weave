@@ -4,42 +4,19 @@ from __future__ import annotations
 
 import threading
 from collections import deque
-from collections.abc import Callable, Iterable, Iterator
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable
 
-from .captions import (
-    RESTAGE,
-    document,
-    opened,
-    rescore,
-    revise,
-    score_words,
-    speaker_order,
-    window,
-)
-from .score import replay_score
+from .captions import document, opened, rescore, revise, score_words, speaker_order
 
 Score = list[tuple[float, dict]]
 REMEMBERED_ADJUSTMENTS = 64
 
 
-@dataclass(frozen=True)
-class Play:
-    """Play the captions from `start_s`; to the end of the recording, or only as far as `end_s`."""
-    start_s: float = 0.0
-    end_s: float | None = None
-
-
-@dataclass(frozen=True)
-class Stop:
-    """Clear the stage and hold the picture."""
-
-
 class CaptionDesk:
-    """The score the stage plays, what a person has changed in it, and what to play next.
+    """The score the studio plays, and what a person has changed in it.
 
-    The studio's requests arrive on server threads; `events` runs on the
-    thread that publishes to the stage.
+    The studio plays the score itself, so it can pause and seek; the desk
+    only keeps it, applies adjustments and hands the result to `changed`.
     """
 
     def __init__(
@@ -47,7 +24,7 @@ class CaptionDesk:
         score: Score,
         speakers: Iterable[str],
         *,
-        tail_s: float,
+        duration_s: float,
         changed: Callable[[Score, list[dict], list[str]], None],
     ) -> None:
         words = score_words(score)
@@ -57,26 +34,36 @@ class CaptionDesk:
         self._known = {str(word.get("word_id")): word for word in words}
         self._recent: deque[list[str]] = deque()
         self._generation = 0
-        self._order: Play | Stop | None = Play()
-        self._tail_s = float(tail_s)
+        self._duration_s = float(duration_s)
         self._changed = changed
-        self._lock = threading.Condition()
+        self._lock = threading.RLock()
 
     def document(self) -> dict:
         with self._lock:
             return {
                 "generation": self._generation,
                 "speakers": list(self._speakers),
+                "durationS": self._duration_s,
                 "words": document(score_words(self._score)),
             }
 
-    def adjust(self, edits: Iterable[dict], then: Play | Stop | None = None) -> dict:
+    def score(self) -> dict:
+        """Everything the studio plays: each event with the time it is released."""
+        with self._lock:
+            return {
+                "generation": self._generation,
+                "speakers": list(self._speakers),
+                "durationS": self._duration_s,
+                "events": [[round(release, 4), ev] for release, ev in self._score],
+            }
+
+    def adjust(self, edits: Iterable[dict]) -> dict:
         """Apply a person's adjustments; raises `CaptionError` and changes nothing if they cannot be."""
         with self._lock:
             generation = self._generation + 1
             words = revise(self._known, edits, generation)
             speakers = speaker_order(words, self._speakers)
-            self._set(rescore(self._score, words, speakers), speakers, generation, then)
+            self._set(rescore(self._score, words, speakers), speakers, generation)
             self._known.update((word["word_id"], word) for word in words)
             self._recent.append([word["word_id"] for word in words])
             while len(self._recent) > REMEMBERED_ADJUSTMENTS:
@@ -84,51 +71,12 @@ class CaptionDesk:
                     self._known.pop(word_id, None)
             return self.document()
 
-    def revert(self, then: Play | Stop | None = None) -> dict:
+    def revert(self) -> dict:
         """Back to the captions as Weave first made them."""
         with self._lock:
-            self._set(self._first, self._first_speakers, self._generation + 1, then)
+            self._set(self._first, self._first_speakers, self._generation + 1)
             return self.document()
 
-    def play(self, order: Play | Stop) -> None:
-        with self._lock:
-            self._order = order
-            self._lock.notify_all()
-
-    def _set(self, score: Score, speakers: list[str], generation: int,
-             then: Play | Stop | None) -> None:
+    def _set(self, score: Score, speakers: list[str], generation: int) -> None:
         self._changed(score, score_words(score), speakers)
         self._score, self._speakers, self._generation = score, list(speakers), generation
-        if then is not None:
-            self._order = then
-        self._lock.notify_all()
-
-    def _waiting(self) -> bool:
-        with self._lock:
-            return self._order is not None
-
-    def events(
-        self,
-        *,
-        cancelled: Callable[[], bool],
-        _clock=None,
-        _sleep=None,
-    ) -> Iterator[dict]:
-        """Play what is asked for, as it is asked, until the session is cancelled."""
-        while True:
-            with self._lock:
-                while self._order is None:
-                    if cancelled():
-                        return
-                    self._lock.wait(0.2)
-                order, self._order = self._order, None
-                score, speakers = self._score, list(self._speakers)
-            if isinstance(order, Stop):
-                yield {"type": RESTAGE, "speakers": speakers}
-                continue
-            part = window(score, order.start_s, order.end_s, self._tail_s)
-            yield from replay_score(
-                part, cancelled=lambda: cancelled() or self._waiting(),
-                _clock=_clock, _sleep=_sleep)
-            if cancelled():
-                return

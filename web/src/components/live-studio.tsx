@@ -38,6 +38,14 @@ import {
 import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
 import {CaptionEditor} from "@/components/caption-editor";
+import {RecordingTimeline} from "@/components/recording-timeline";
+import {useHeldAnimations} from "@/hooks/use-held-animations";
+import {useRecordingTransport} from "@/hooks/use-recording-transport";
+import {
+  lineAt as timelineLineAt,
+  nextLineStart,
+  previousLineStart,
+} from "@/lib/transport";
 import {
   activeCue,
   buildCues,
@@ -1191,6 +1199,10 @@ function CaptionFeed({
      feed. */
   const rowWidths = useRef<number[]>([]);
   const rowGrowAnimations = useRef(new Map<number, Animation>());
+  const playheadRef = useRef(playheadMs);
+  useLayoutEffect(() => {
+    playheadRef.current = playheadMs;
+  }, [playheadMs]);
 
   useLayoutEffect(() => {
     if (transcript || reducedMotion || paragraphs.length === 0) {
@@ -1203,6 +1215,15 @@ function CaptionFeed({
       return;
     }
 
+    /* A recording's line entered at a known moment, so one put up after a
+       seek starts its entrance part way through, or finished. */
+    const enteredMs = (id: string) => {
+      const reel = runtime.reel;
+      const onset = paragraphs.find((paragraph) => paragraph.id === id)?.words[0]?.word;
+      if (!reel || !onset) return 0;
+      const shown = playheadRef.current - (Number(onset.t ?? onset.start ?? 0) * 1000 - reel.cueLeadMs);
+      return Math.min(STACK_ENTER_DURATION_MS, Math.max(0, shown));
+    };
     const currentPositions = paragraphs.flatMap((paragraph) => {
       const node = rowNodes.current.get(paragraph.id);
       if (!node) return [];
@@ -1238,6 +1259,7 @@ function CaptionFeed({
             easing: STACK_EASING,
           },
         );
+        animation.currentTime = enteredMs(motion.id);
         stackAnimations.current.set(motion.id, animation);
         animation.addEventListener("finish", () => {
           if (stackAnimations.current.get(motion.id) === animation) {
@@ -1275,6 +1297,7 @@ function CaptionFeed({
           easing: STACK_EASING,
         },
       );
+      if (motion.kind !== "shift") animation.currentTime = enteredMs(motion.id);
       stackAnimations.current.set(motion.id, animation);
       animation.addEventListener("finish", () => {
         if (stackAnimations.current.get(motion.id) === animation) {
@@ -1284,7 +1307,7 @@ function CaptionFeed({
     }
     for (const {id} of currentPositions) seenRows.current.add(id);
     previousPositions.current = currentPositions;
-  }, [paragraphs, reducedMotion, transcript]);
+  }, [paragraphs, reducedMotion, transcript, runtime.reel]);
 
   /* THE BOX OPENS SIDEWAYS OVER A NEWLY APPENDED WORD. */
   useLayoutEffect(() => {
@@ -1715,9 +1738,11 @@ interface ImportedMedia {
 function MediaBackdrop({
   media,
   playheadMs,
+  held,
 }: {
   media: ImportedMedia;
   playheadMs: number;
+  held: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -1729,9 +1754,15 @@ function MediaBackdrop({
       paused: player.paused,
       ended: player.ended,
       durationS: player.duration,
+      held,
     });
     if (action.kind === "hold") {
       if (!player.paused) player.pause();
+      return;
+    }
+    if (action.kind === "still") {
+      if (!player.paused) player.pause();
+      if (Math.abs(player.currentTime - action.atS) > 0.008) player.currentTime = action.atS;
       return;
     }
     if (action.kind === "none") return;
@@ -1747,7 +1778,7 @@ function MediaBackdrop({
       player.muted = true;
       player.play().catch(() => undefined);
     });
-  }, [playheadMs]);
+  }, [playheadMs, held]);
   useEffect(() => {
     const unmute = () => {
       if (ref.current) ref.current.muted = false;
@@ -2212,7 +2243,26 @@ export function LiveStudio() {
     stagings,
     startedAt,
     lastEventAt,
+    dispatch,
+    restage,
+    driveClock,
+    rebaseSchedule,
+    showLevel,
   } = useCaptionStream({reducedMotion: settings.reducedMotion});
+  const [rendering] = useState(
+    () => typeof window !== "undefined" && Boolean(window.__weaveRendering));
+  const feed = useMemo(() => ({
+    dispatch,
+    restage,
+    driveClock,
+    rebaseSchedule,
+    showLevel,
+    readAheadDelayMs: runtime.readAheadDelayMs,
+  }), [dispatch, restage, driveClock, rebaseSchedule, showLevel, runtime.readAheadDelayMs]);
+  const transport = useRecordingTransport(
+    !rendering && session.state === "listening" && Boolean(session.media),
+    feed,
+  );
   const elapsed = useElapsed(startedAt);
   const [media, setMedia] = useState<ImportedMedia | null>(null);
   useEffect(() => () => {
@@ -2245,11 +2295,47 @@ export function LiveStudio() {
     ? (activeMedia.video ? "video" : "audio")
     : "none";
   const editorOpen = editing && Boolean(activeMedia) && session.state === "listening";
+  const held = transport.ready && !transport.playing;
   const activeLanguage = session.languages.find(
     (language) => language.id === session.language,
   );
 
   const stageRef = useRef<HTMLDivElement>(null);
+  useHeldAnimations(stageRef, held);
+  const {
+    toggle: transportToggle,
+    seek: transportSeek,
+    reload: transportReload,
+    positionRef: transportPosition,
+    lines: transportLines,
+    durationS: transportDuration,
+    ready: transportReady,
+  } = transport;
+  useEffect(() => {
+    if (!transportReady) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const position = transportPosition.current ?? 0;
+      const step = event.altKey ? 1 / 30 : event.shiftKey ? 5 : 1;
+      let handled = true;
+      if (event.key === " " || event.key === "k") transportToggle();
+      else if (event.key === "ArrowLeft") transportSeek(position - step);
+      else if (event.key === "ArrowRight") transportSeek(position + step);
+      else if (event.key === "ArrowUp") transportSeek(previousLineStart(transportLines, position));
+      else if (event.key === "ArrowDown") {
+        const next = nextLineStart(transportLines, position);
+        if (next !== null) transportSeek(next);
+      } else if (event.key === "Home") transportSeek(0);
+      else if (event.key === "End") transportSeek(transportDuration);
+      else handled = false;
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [transportReady, transportToggle, transportSeek, transportPosition, transportLines,
+      transportDuration]);
   // Which words start a row. Persisted so a later edit to earlier text cannot
   // re-chunk rows the viewer has already read -- see selectStableCaptionStack.
   // Held as lazily-initialised state rather than a ref: the object identity is
@@ -2324,6 +2410,15 @@ export function LiveStudio() {
   }] : []), [cue]);
   const cueMode = cues.length > 0;
   const cueId = cue?.cue ?? null;
+  const cueLeadS = runtime.videoMotion.cueLeadMs / 1000;
+  const cueHoldS = runtime.videoMotion.cueHoldMs / 1000;
+  const afterEdit = useCallback(({startS, endS}: {startS: number; endS: number}) => {
+    void transportReload().then(() => {
+      const position = transportPosition.current ?? 0;
+      const span = [{cue: 0, startS, endS, text: "", speaker: null}];
+      if (!timelineLineAt(span, position, cueLeadS, cueHoldS)) transportSeek(startS);
+    });
+  }, [transportReload, transportPosition, transportSeek, cueLeadS, cueHoldS]);
   const cueSize = runtime.cueLook.size;
   const widenMax = runtime.videoMotion.widenMax;
   useLayoutEffect(() => {
@@ -2536,7 +2631,7 @@ export function LiveStudio() {
               same vibration -- moved to where it is legible. `autocwi cc`,
               which renders to the design system's own layout, is untouched. */}
           {activeMedia && (
-            <MediaBackdrop media={activeMedia} playheadMs={playheadMs} />
+            <MediaBackdrop media={activeMedia} playheadMs={playheadMs} held={held} />
           )}
           {activeMedia && (
             <StageSound sound={speechActive ? null : model.sound} />
@@ -2567,6 +2662,13 @@ export function LiveStudio() {
             </div>
           )}
         </div>
+        {transport.ready && (
+          <RecordingTimeline
+            transport={transport}
+            colors={speakerColors}
+            currentCue={cueId}
+          />
+        )}
       </section>
 
       <aside
@@ -2574,7 +2676,14 @@ export function LiveStudio() {
         aria-label={editorOpen ? "Caption editor" : "Live signal intelligence"}
       >
         {editorOpen ? (
-          <CaptionEditor colors={speakerColors} close={() => setEditing(false)} />
+          <CaptionEditor
+            colors={speakerColors}
+            close={() => setEditing(false)}
+            positionS={Math.max(0, playheadMs / 1000)}
+            playing={transport.playing}
+            seek={transportSeek}
+            changed={afterEdit}
+          />
         ) : (<>
         <section className="rail-section compass-section">
           {/* The arrow glyph went with the heading: an icon alone in an

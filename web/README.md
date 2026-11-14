@@ -26,11 +26,16 @@ NEXT_PUBLIC_AUTOCWI_ORIGIN=http://127.0.0.1:7337 npm --prefix web run dev
 | `lib/caption-clock.ts` | The playhead |
 | `lib/caption-store.ts` | The reducer that merges word events |
 | `lib/reel-motion.ts` | How a word of a recording moves |
+| `hooks/use-recording-transport.ts` | Plays an imported recording: play, pause, seek |
+| `lib/transport.ts` | The score, the lines and the timeline's arithmetic |
+| `components/recording-timeline.tsx` | The timeline under the stage |
+| `components/caption-editor.tsx` | The caption editor in the rail |
 | `app/globals.css` | Styles and animations |
 
 ## Rules
 
 * A word animates at the moment it was spoken, not when it arrives.
+* A paused recording stands still: the clock is held and every animation on the stage is paused.
 * A word's motion is computed once and survives a rebuild of the word.
 * Text changes only while a word is still ahead of the playhead.
 * Rows never move once laid out. A late word is appended.

@@ -58,7 +58,16 @@ Weave can also caption a microphone while people speak, in a studio that opens i
 ./weave live --sample         # the bundled film, no microphone
 ```
 
-In the studio you can also choose **Import a video** to watch a recording being captioned, **Edit captions** to correct a word, a speaker, a size or a line, and **Export** to save the results.
+In the studio you can also choose **Import a video**. A timeline under the picture shows the caption lines and the sound, and you can pause, scrub and jump to any line. **Edit captions** corrects a word, a speaker, a size or a line, and **Export** saves the results.
+
+| Key | Does |
+|---|---|
+| Space or K | Play and pause |
+| ← and → | Back and forward one second (Shift: five, Option: one frame) |
+| ↑ and ↓ | Previous and next caption line |
+| Home and End | Start and end |
+
+Hold ⌘ and scroll over the timeline to zoom.
 
 ## Documentation
 

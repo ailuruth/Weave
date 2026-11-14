@@ -26,7 +26,7 @@ The language is detected from the opening of the file when `--lang` is left out.
 
 Weave's captions are a first draft. A person can change the text, the speaker, the size, the line breaks and the time of any word.
 
-In the studio, import a recording and choose **Edit captions**. Pick a word and change it. The stage replays that line with the change, and **Export** writes the adjusted captions.
+In the studio, import a recording and choose **Edit captions**. Pick a word and the picture goes to it. Change it and the stage shows the change at once, paused or playing. **Export** writes the adjusted captions.
 
 From the command line, edit `NAME.cwi.json` and hand it back:
 
@@ -40,7 +40,7 @@ The file is used as written and nothing is transcribed. In it `loudness` is the 
 |---|---|
 | The command, its checks and what it prints | `caption_command.py`, `report.py`, `language.py` |
 | What may be adjusted, and how it is applied | `captions.py` |
-| The score the studio plays while it is adjusted | `desk.py` |
+| The score the studio fetches and plays, and the changes to it | `desk.py` |
 
 * A speaker keeps a colour for the whole session. Reassigning the first line does not move the others.
 * A word typed with a space becomes two words that share the old word's time. Move them with **Starts at**.
@@ -76,7 +76,7 @@ Every export writes `NAME.aftereffects.jsx`. Open the Caption with Intention tem
 
 ## Limits
 
-* Playback can start at any caption line. There is no pause and no seeking inside a line.
+* In the studio the browser plays the recording from the score at `/session/score`, so it can pause and seek. The server replays nothing. The headless page that draws the video still gets the score replayed by the server.
 * Every threshold is fitted to one film, `docs/reference/PR_Flim.mp4`.
 * The After Effects script has not been run inside After Effects. Its layer names, markers and colour control were read out of the template file, and it is run against a model of the scripting interface.
 * The video needs Chrome and an ffmpeg with `libx264`.

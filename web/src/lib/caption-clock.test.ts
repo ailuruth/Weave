@@ -9,7 +9,7 @@ import {
   presentationNowMs,
   readAheadMs,
   playheadDue,
-  readAheadFloorMs,
+  turnForWord,
   turnMomentFor,
 } from "./caption-clock.ts";
 
@@ -146,25 +146,26 @@ test("an acoustic-timed word does not advance the floor chain", () => {
   assert.equal(turnMomentFor(9_000, 1_000, 420, 2_000, 60).clamped, false);
 });
 
-test("a recording's word turns when it is spoken, not after the live floor", () => {
-  // The line is drawn 250 ms before its first word. Under the live 420 ms
-  // floor that word turned 170 ms late.
+test("a recording's word turns at its own onset, even one already past", () => {
   const now = 10_000;
-  const firstWordOnset = now + 250;
-  assert.equal(readAheadFloorMs({cue: 3}, 420), 0);
-  const recorded = turnMomentFor(
-    firstWordOnset, now, readAheadFloorMs({cue: 3}, 420), Number.NEGATIVE_INFINITY, 60);
-  assert.deepEqual(recorded, {turnAtMs: firstWordOnset, clamped: false});
-  const live = turnMomentFor(
-    firstWordOnset, now, readAheadFloorMs({}, 420), Number.NEGATIVE_INFINITY, 60);
-  assert.equal(live.turnAtMs, now + 420);
+  assert.deepEqual(
+    turnForWord({cue: 3}, now + 250, now, 420, Number.NEGATIVE_INFINITY, 60),
+    {turnAtMs: now + 250, clamped: false});
+  assert.deepEqual(
+    turnForWord({cue: 0}, now - 900, now, 420, now - 50, 60),
+    {turnAtMs: now - 900, clamped: false});
+  assert.equal(
+    turnForWord({}, now + 250, now, 420, Number.NEGATIVE_INFINITY, 60).turnAtMs,
+    now + 420);
 });
 
-test("a recording's word that is already past still ripples in", () => {
-  const first = turnMomentFor(9_000, 10_000, readAheadFloorMs({cue: 0}, 420), Number.NEGATIVE_INFINITY, 60);
-  assert.deepEqual(first, {turnAtMs: 10_000, clamped: true});
-  const second = turnMomentFor(9_200, 10_000, readAheadFloorMs({cue: 0}, 420), first.turnAtMs, 60);
-  assert.equal(second.turnAtMs, 10_060);
+test("a held clock stands still and a running one moves", () => {
+  const clock = {offsetMs: 4_000, updatedAtMs: 1_000, started: true, epoch: 0};
+  assert.equal(presentationNowMs(clock, 1_500, 1_000), 4_500);
+  const held = {...clock, held: true};
+  assert.equal(presentationNowMs(held, 1_500, 1_000), 4_000);
+  assert.equal(presentationNowMs(held, 9_000, 1_000), 4_000);
+  assert.equal(acousticNowMs(held, 9_000), 5_000);
 });
 
 test("the playhead is published on its tick, and at once when a caption line changes", () => {
@@ -174,6 +175,9 @@ test("the playhead is published on its tick, and at once when a caption line cha
   assert.equal(playheadDue(1_020, 1_000, 66, 5_000, 4_980, 4_990), true);
   // Already published past that edge: no second publish for it.
   assert.equal(playheadDue(1_040, 1_020, 66, 5_020, 5_000, 4_990), false);
+  // A seek publishes at once.
+  assert.equal(playheadDue(1_020, 1_000, 66, 9_000, 4_980, never), true);
+  assert.equal(playheadDue(1_020, 1_000, 66, 1_000, 4_980, never), true);
   // No clock yet.
   assert.equal(playheadDue(1_020, 1_000, 66, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, 0), false);
 });

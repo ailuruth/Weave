@@ -48,6 +48,7 @@ DELIVERY_TIMEOUT_S = 10.0
 
 PAGE_SETUP = r"""
 (() => {
+  window.__weaveRendering = true;
   const Native = window.EventSource;
   window.__renderLastId = "";
   window.EventSource = class extends Native {

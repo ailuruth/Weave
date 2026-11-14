@@ -18,8 +18,6 @@ from .score import analyse, replay_score
 from .timing import ScriptWord
 from .transcribe import transcribe_recording
 
-PREVIEW_TAIL_S = 1.0
-
 
 @dataclass
 class RecordingHooks:
@@ -58,7 +56,8 @@ def recording_events(
 
     `captions` is a `.cwi.json` a person has adjusted: its text, times,
     speakers, sizes and lines are used as written and nothing is transcribed.
-    With `hooks.desk` the recording stays open for adjustment after it plays.
+    With `hooks.desk` nothing is replayed: the studio fetches the score from
+    the desk and plays it itself, so it can pause and seek.
     """
 
     live_cfg = cfg["live"]
@@ -138,12 +137,8 @@ def recording_events(
             hooks.scored(list(score))
 
     changed(score, words, speakers)
+    if hooks.desk is not None:
+        hooks.desk(CaptionDesk(score, speakers, duration_s=duration_s, changed=changed))
     hooks.ready()
     if hooks.desk is None:
         yield from replay_score(score, paced=paced, cancelled=hooks.cancelled)
-        return
-    delay_s = float((cfg.get("display") or {}).get("read_ahead_delay_s", 0.0))
-    desk = CaptionDesk(
-        score, speakers, tail_s=delay_s + PREVIEW_TAIL_S, changed=changed)
-    hooks.desk(desk)
-    yield from desk.events(cancelled=hooks.cancelled)

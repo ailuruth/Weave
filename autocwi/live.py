@@ -59,9 +59,7 @@ from autocwi.recording import (
     RESTAGE,
     CaptionDesk,
     CaptionError,
-    Play,
     RecordingHooks,
-    Stop,
     cue_look,
     media_has_audio,
     recording_events,
@@ -6481,12 +6479,14 @@ def make_handler(
                 self._send_json(
                     language_session.snapshot() if rendering
                     else language_session.begin_page_load())
-            elif path == "/session/captions" and language_session is not None:
+            elif (path in ("/session/captions", "/session/score")
+                  and language_session is not None):
                 desk = language_session.desk()
                 if desk is None:
                     self.send_error(404)
                     return
-                self._send_json(desk.document())
+                self._send_json(desk.document() if path == "/session/captions"
+                                else desk.score())
             elif path == "/session/captions.mp4" and language_session is not None:
                 try:
                     target = language_session.video()
@@ -6609,21 +6609,10 @@ def make_handler(
             try:
                 payload = json.loads(self.rfile.read(length).decode("utf-8"))
                 action = str(payload.get("action", ""))
-                then = None
-                if action == "stop":
-                    then = Stop()
-                elif payload.get("from") is not None:
-                    until = payload.get("until")
-                    then = Play(
-                        max(0.0, float(payload["from"])),
-                        None if until is None else float(until))
                 if action == "adjust":
-                    document = desk.adjust(payload.get("words") or [], then)
+                    document = desk.adjust(payload.get("words") or [])
                 elif action == "revert":
-                    document = desk.revert(then)
-                elif action in ("play", "stop"):
-                    desk.play(then or Play())
-                    document = desk.document()
+                    document = desk.revert()
                 else:
                     raise CaptionError(f"unknown action {action!r}")
             except CaptionError as exc:

@@ -99,3 +99,14 @@ test("unknown duration does not block playback", () => {
     {kind: "play", atS: 0.5},
   );
 });
+
+test("a paused recording stands on the frame under the playhead", () => {
+  assert.deepEqual(
+    mediaSyncAction({...playing, playheadMs: 6_540, currentTimeS: 9, held: true}),
+    {kind: "still", atS: 6.54},
+  );
+  assert.deepEqual(
+    mediaSyncAction({...playing, playheadMs: 90_000, currentTimeS: 9, held: true}),
+    {kind: "still", atS: 60},
+  );
+});

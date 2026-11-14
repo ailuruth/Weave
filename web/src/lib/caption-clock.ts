@@ -18,6 +18,8 @@ export interface PlayheadClock {
   started: boolean;
   /** Bumped whenever the clock resyncs onto a NEW capture timeline. */
   epoch: number;
+  /** A paused recording: time stands at `updatedAtMs + offsetMs`. */
+  held?: boolean;
 }
 
 export const IDLE_CLOCK: Readonly<PlayheadClock> = Object.freeze({
@@ -95,7 +97,7 @@ export function acousticNowMs(
   monotonicMs: number,
 ): number {
   if (!clock.started) return Number.NEGATIVE_INFINITY;
-  return monotonicMs + clock.offsetMs;
+  return (clock.held ? clock.updatedAtMs : monotonicMs) + clock.offsetMs;
 }
 
 /** The caption playhead: acoustic time minus the read-ahead delay. */
@@ -105,7 +107,8 @@ export function presentationNowMs(
   delayMs: number,
 ): number {
   if (!clock.started) return Number.NEGATIVE_INFINITY;
-  return monotonicMs + clock.offsetMs - Math.max(0, delayMs);
+  return (clock.held ? clock.updatedAtMs : monotonicMs) + clock.offsetMs
+    - Math.max(0, delayMs);
 }
 
 /** When, on `performance.now()`'s timeline, the playhead reaches
@@ -167,23 +170,11 @@ export function playheadDue(
   playheadMs: number,
   publishedPlayheadMs: number,
   edgeMs: number,
+  jumpMs = 250,
 ): boolean {
   if (nowMs - lastPublishMs >= tickMs) return true;
+  if (Math.abs(playheadMs - publishedPlayheadMs) > jumpMs) return true;
   return playheadMs >= edgeMs && publishedPlayheadMs < edgeMs;
-}
-
-/** How long a word must have been on screen before it may turn.
-
-    Live words arrive in bursts, so each is held to `minReadAheadMs`. A
-    recording is known whole: its caption line is drawn a set time before its
-    first word, and that lead is all the read-ahead it is meant to have.
-    Holding the first words of a line to the live floor turned them 170 ms or
-    more after they were spoken. */
-export function readAheadFloorMs(
-  word: {cue?: number | null},
-  minReadAheadMs: number,
-): number {
-  return typeof word.cue === "number" ? 0 : Math.max(0, minReadAheadMs);
 }
 
 export interface TurnMoment {
@@ -207,4 +198,20 @@ export function turnMomentFor(
   const gap = Math.max(0, catchupGapMs);
   const turnAtMs = Math.max(floorMs, lastFloorTurnMs + gap);
   return {turnAtMs, clamped: true};
+}
+
+/** When a word turns. A recording's word is known before it is spoken, so it
+    turns exactly at its own onset, even one already past: it then shows
+    settled, or part way through its turn, which is what a seek needs. A live
+    word goes through `turnMomentFor`. */
+export function turnForWord(
+  word: {cue?: number | null},
+  acousticTurnMs: number,
+  nowMs: number,
+  minReadAheadMs: number,
+  lastFloorTurnMs: number,
+  catchupGapMs: number,
+): TurnMoment {
+  if (typeof word.cue === "number") return {turnAtMs: acousticTurnMs, clamped: false};
+  return turnMomentFor(acousticTurnMs, nowMs, minReadAheadMs, lastFloorTurnMs, catchupGapMs);
 }

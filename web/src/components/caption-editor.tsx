@@ -1,10 +1,11 @@
 "use client";
 
-import {Play, RotateCcw, Square, Undo2, X} from "lucide-react";
+import {RotateCcw, Undo2, X} from "lucide-react";
 import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from "react";
@@ -227,9 +228,19 @@ function WordInspector({
 export function CaptionEditor({
   colors,
   close,
+  positionS,
+  playing,
+  seek,
+  changed,
 }: {
   colors: SpeakerColorMap;
   close: () => void;
+  /** Where the picture is, from the published playhead. */
+  positionS: number;
+  playing: boolean;
+  seek: (positionS: number) => void;
+  /** The captions changed; this span of the recording is what changed. */
+  changed: (span: {startS: number; endS: number}) => void;
 }) {
   const [doc, setDoc] = useState<CaptionDocument | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -253,6 +264,15 @@ export function CaptionEditor({
   }, []);
 
   const lines = useMemo<EditLine[]>(() => linesOf(doc?.words ?? []), [doc]);
+  const current = lines.find((entry) => positionS >= entry.start && positionS <= entry.end)
+    ?? null;
+  const currentRef = useRef<HTMLLIElement>(null);
+  const currentFirst = current?.first ?? null;
+  useEffect(() => {
+    if (playing && currentFirst !== null) {
+      currentRef.current?.scrollIntoView({block: "nearest"});
+    }
+  }, [currentFirst, playing]);
 
   const run = useCallback(async (
     body: object,
@@ -280,34 +300,38 @@ export function CaptionEditor({
     }
   }, [doc]);
 
+  const announce = useCallback((words: EditWord[], focus: number) => {
+    const window = playWindow(words, focus);
+    if (window) changed({startS: window.from, endS: window.until});
+  }, [changed]);
+
   const commit = useCallback(async (words: EditWord[], focus: number) => {
     if (!doc) return;
     const before = doc.words;
-    const window = playWindow(words, focus);
-    const next = await run(
-      {action: "adjust", words, from: window?.from, until: window?.until},
-      words,
-    );
-    if (next) setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
-  }, [doc, run]);
+    const next = await run({action: "adjust", words}, words);
+    if (!next) return;
+    setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
+    announce(next.words, focus);
+  }, [announce, doc, run]);
 
   const undo = useCallback(async () => {
     const previous = history.at(-1);
     if (!previous || !doc) return;
-    const window = playWindow(previous, firstChange(doc.words, previous));
-    const next = await run(
-      {action: "adjust", words: previous, from: window?.from, until: window?.until},
-      previous,
-    );
-    if (next) setHistory((past) => past.slice(0, -1));
-  }, [doc, history, run]);
+    const focus = firstChange(doc.words, previous);
+    const next = await run({action: "adjust", words: previous}, previous);
+    if (!next) return;
+    setHistory((past) => past.slice(0, -1));
+    announce(next.words, focus);
+  }, [announce, doc, history, run]);
 
   const revert = useCallback(async () => {
     if (!doc) return;
     const before = doc.words;
-    const next = await run({action: "revert", from: 0});
-    if (next) setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
-  }, [doc, run]);
+    const next = await run({action: "revert"});
+    if (!next) return;
+    setHistory((past) => [...past.slice(1 - HISTORY_LIMIT), before]);
+    announce(next.words, 0);
+  }, [announce, doc, run]);
 
   const word = doc && selected !== null ? doc.words[selected] : undefined;
   const line = selected !== null ? lineAt(lines, selected) : null;
@@ -317,24 +341,6 @@ export function CaptionEditor({
       <header className="editor-bar">
         <h2>Captions</h2>
         <div>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Play from the start"
-            title="Play from the start"
-            onClick={() => void run({action: "play", from: 0})}
-          >
-            <Play size={15} />
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            aria-label="Stop"
-            title="Stop"
-            onClick={() => void run({action: "stop"})}
-          >
-            <Square size={13} />
-          </button>
           <button
             className="icon-button"
             type="button"
@@ -376,16 +382,18 @@ export function CaptionEditor({
       {doc && (
         <ol className="editor-lines">
           {lines.map((entry) => (
-            <li key={entry.first} data-selected={line?.first === entry.first}>
+            <li
+              key={entry.first}
+              ref={current?.first === entry.first ? currentRef : undefined}
+              data-selected={line?.first === entry.first}
+              data-current={current?.first === entry.first}
+            >
               <button
                 type="button"
                 className="editor-line-play"
-                aria-label={`Play the line at ${clockLabel(entry.start)}`}
-                onClick={() => void run({
-                  action: "play", from: entry.start, until: entry.end,
-                })}
+                aria-label={`Go to the line at ${clockLabel(entry.start)}`}
+                onClick={() => seek(entry.start)}
               >
-                <Play size={10} />
                 {clockLabel(entry.start)}
               </button>
               <p>
@@ -406,7 +414,10 @@ export function CaptionEditor({
                         className="editor-word"
                         data-selected={selected === index}
                         data-size={sizeLabel(item.size).toLowerCase()}
-                        onClick={() => setSelected(index)}
+                        onClick={() => {
+                          setSelected(index);
+                          seek(item.start);
+                        }}
                       >
                         {item.text}
                       </button>

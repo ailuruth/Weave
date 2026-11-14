@@ -11,7 +11,6 @@ RESTAGE = "restage"
 CAPTIONS_MAX_BYTES = 16 * 2**20
 MIN_WORD_S = 0.05
 STEP_S = 0.001
-EDGE_S = 0.01
 SIZE_STEP = 1e-4
 UNKNOWN = "unknown"
 
@@ -235,39 +234,6 @@ def pair(entries: list[dict], words: list[dict]) -> list[dict]:
         for k in range(block.size):
             ids[block.a + k] = str(words[block.b + k].get("word_id"))
     return [{**entry, "id": word_id} for entry, word_id in zip(entries, ids)]
-
-
-def window(
-    score: list[tuple[float, dict]],
-    start_s: float,
-    end_s: float | None = None,
-    tail_s: float = 0.0,
-) -> list[tuple[float, dict]]:
-    """The part of `score` that plays the captions from `start_s` to `end_s`, timed from zero.
-
-    A part with an end closes by clearing the stage `tail_s` after `end_s`,
-    which gives the stage's delayed playhead time to reach the last word. The
-    recording may run out of sound before then, so the close is timed here and
-    not left to the last level reading.
-    """
-    part: list[tuple[float, dict]] = []
-    clear = {"type": RESTAGE, "speakers": []}
-    for release, ev in score:
-        kind = ev.get("type", "word")
-        if kind == RESTAGE:
-            clear = ev
-            part.append((0.0, ev))
-        elif kind == "word":
-            if release < start_s - EDGE_S:
-                continue
-            if end_s is not None and release >= end_s - EDGE_S:
-                continue
-            part.append((max(0.0, release - start_s), ev))
-        elif release >= start_s and (end_s is None or release <= end_s + tail_s):
-            part.append((release - start_s, ev))
-    if end_s is not None:
-        part.append((max(0.0, end_s + tail_s - start_s), dict(clear)))
-    return part
 
 
 def read_captions(path) -> tuple[list[dict], list[str]]:

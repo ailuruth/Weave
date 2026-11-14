@@ -3103,3 +3103,181 @@ button {
     max-height: none;
   }
 }
+
+/* THE TIMELINE under the stage, for a recording. Chrome: the speaker colour
+   reaches it only as the strip along the top of a caption block. */
+.timeline {
+  flex: none;
+  display: grid;
+  border-top: 1px solid var(--line);
+  background: var(--rail-bg);
+  padding-bottom: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.timeline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 44px;
+  padding: 0 10px;
+}
+
+.timeline-transport,
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.timeline-bar .icon-button:hover {
+  color: var(--text);
+}
+
+.timeline-play {
+  color: var(--text);
+}
+
+.timeline-time {
+  margin-left: 10px;
+  color: var(--text);
+  font: 500 12px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-time span:last-child {
+  color: var(--muted-2);
+}
+
+.timeline-track {
+  position: relative;
+  height: 96px;
+  margin: 0 16px;
+  overflow: hidden;
+  cursor: default;
+  touch-action: none;
+}
+
+.timeline-ruler {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline-ruler span {
+  position: absolute;
+  top: 0;
+  height: 20px;
+  padding: 4px 0 0 4px;
+  border-left: 1px solid var(--line);
+  color: var(--muted-2);
+  font: 400 11px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timeline-wave {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  width: 100%;
+  height: 28px;
+}
+
+.timeline-wave path {
+  fill: var(--line-strong);
+}
+
+.timeline-lines {
+  position: absolute;
+  top: 58px;
+  left: 0;
+  right: 0;
+  height: 34px;
+}
+
+.timeline-line {
+  position: absolute;
+  top: 0;
+  height: 34px;
+  min-width: 3px;
+  padding: 3px 6px 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  color: var(--muted);
+  font: 400 11px/29px var(--font-ui);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.timeline-line::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--line-color);
+}
+
+.timeline-line span {
+  pointer-events: none;
+}
+
+.timeline-line:hover {
+  color: var(--text);
+}
+
+.timeline-line[data-current="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.timeline-line:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.timeline-playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.timeline-playhead[data-outside="true"] {
+  visibility: hidden;
+}
+
+.editor-lines li[data-current="true"] .editor-line-play {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .timeline-track {
+    margin: 0 12px;
+  }
+  .timeline-time {
+    margin-left: 4px;
+  }
+}

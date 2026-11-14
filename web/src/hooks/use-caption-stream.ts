@@ -22,11 +22,10 @@ import {
   advanceClock,
   IDLE_CLOCK,
   monotonicTimeForAcousticMs,
-  presentationNowMs,
   playheadDue,
-  readAheadFloorMs,
+  presentationNowMs,
   readAheadMs,
-  turnMomentFor,
+  turnForWord,
   type PlayheadClock,
 } from "@/lib/caption-clock";
 
@@ -36,6 +35,8 @@ export type ConnectionState = "connecting" | "live" | "reconnecting" | "demo";
 export interface WordSchedule {
   turnAtMs: number;
   durationMs: number;
+  /** A recording's word: its turn on the acoustic clock, to place it again after a pause. */
+  acousticMs?: number;
 }
 export type SessionState =
   | "checking"
@@ -524,6 +525,42 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     setSpeakerOrder([]);
   }, []);
 
+  /* A RECORDING THE STUDIO PLAYS ITSELF. The score's events go through
+     `dispatch`, but the clock is driven here rather than by level events, so
+     playback can stand still and jump. */
+  const restage = useCallback((speakers: string[]) => {
+    resetStage();
+    setSpeakerOrder(speakers);
+    setStagings((count) => count + 1);
+  }, [resetStage]);
+
+  const driveClock = useCallback((acousticMs: number, held: boolean) => {
+    const now = performance.now();
+    clockRef.current = {
+      offsetMs: acousticMs - now,
+      updatedAtMs: now,
+      started: true,
+      epoch: clockRef.current.epoch,
+      held,
+    };
+  }, []);
+
+  /** After a pause, put every recording word's turn back on the clock as it now runs. */
+  const rebaseSchedule = useCallback(() => {
+    const clock = clockRef.current;
+    const delayMs = runtimeRef.current.readAheadDelayMs;
+    for (const schedule of scheduledRef.current.values()) {
+      if (schedule.acousticMs === undefined) continue;
+      schedule.turnAtMs = monotonicTimeForAcousticMs(clock, schedule.acousticMs, delayMs);
+    }
+  }, []);
+
+  const showLevel = useCallback((event: CaptionEvent) => {
+    const incoming = event as unknown as LevelEvent;
+    setLevel(incoming);
+    setWaveform((values) => [...values.slice(-31), Number(incoming.rms_db)]);
+  }, []);
+
   const dispatch = useCallback((event: CaptionEvent, eventId?: number) => {
     const id = eventId ?? ++eventIdRef.current;
     if (event.type === "level") {
@@ -773,11 +810,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
       try {
         const event = JSON.parse(message.data) as CaptionEvent;
         if (event.type === "restage") {
-          resetStage();
-          setSpeakerOrder(Array.isArray(event.speakers)
-            ? event.speakers.map(String)
-            : []);
-          setStagings((count) => count + 1);
+          restage(Array.isArray(event.speakers) ? event.speakers.map(String) : []);
           return;
         }
         if (event.type === "boot") {
@@ -805,7 +838,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
       }
     };
     return () => source.close();
-  }, [backendOrigin, dispatch, resetStage, runtimeKnown, sessionKnown]);
+  }, [backendOrigin, dispatch, resetStage, restage, runtimeKnown, sessionKnown]);
 
   /* SCHEDULING, IN FULL. A word is placed on the playhead once, by the word
      itself, in its own layout effect (see `MotionWord`). */
@@ -839,16 +872,21 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
       lastFloorEpochRef.current = clock.epoch;
       lastFloorTurnRef.current = Number.NEGATIVE_INFINITY;
     }
-    const moment = turnMomentFor(
+    const moment = turnForWord(
+      word,
       acousticTurnMs,
       performance.now(),
-      readAheadFloorMs(word, runtimeRef.current.minReadAheadMs),
+      runtimeRef.current.minReadAheadMs,
       lastFloorTurnRef.current,
       runtimeRef.current.wordRevealCatchupGapMs,
     );
     const turnAtMs = moment.turnAtMs;
     if (moment.clamped) lastFloorTurnRef.current = turnAtMs;
-    scheduledRef.current.set(id, {turnAtMs, durationMs});
+    scheduledRef.current.set(id, {
+      turnAtMs,
+      durationMs,
+      ...(typeof word.cue === "number" ? {acousticMs} : {}),
+    });
     /* A word delivered past its own onset needs no special case: the
        negative delay leaves the animation finished, so it paints settled. */
     if (turnAtMs < performance.now()) lateWordsRef.current += 1;
@@ -1021,5 +1059,9 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     startedAt,
     lastEventAt,
     dispatch,
+    restage,
+    driveClock,
+    rebaseSchedule,
+    showLevel,
   };
 }

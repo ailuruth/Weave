@@ -11,6 +11,8 @@ export interface MediaSyncInput {
   durationS: number;
   /** How far the player may sit from the playhead before it is moved. */
   toleranceS?: number;
+  /** Playback is paused: show the frame at the playhead and stay there. */
+  held?: boolean;
 }
 
 export type MediaSyncAction =
@@ -22,6 +24,8 @@ export type MediaSyncAction =
   | {kind: "seek"; atS: number}
   /** Close enough not to seek: run at this rate to close the rest. */
   | {kind: "trim"; rate: number}
+  /** Paused: stand on this frame. */
+  | {kind: "still"; atS: number}
   /** Finished: leave the player alone. */
   | {kind: "none"};
 
@@ -41,9 +45,13 @@ export function mediaSyncAction({
   ended,
   durationS,
   toleranceS = MEDIA_SYNC_TOLERANCE_S,
+  held = false,
 }: MediaSyncInput): MediaSyncAction {
   if (!Number.isFinite(playheadMs) || playheadMs < 0) return {kind: "hold"};
   const target = playheadMs / 1000;
+  if (held) {
+    return {kind: "still", atS: Number.isFinite(durationS) ? Math.min(target, durationS) : target};
+  }
   if (Number.isFinite(durationS) && target >= durationS) return {kind: "none"};
   if (ended && target >= durationS - toleranceS) return {kind: "none"};
   if (paused || ended) return {kind: "play", atS: target};
