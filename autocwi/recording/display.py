@@ -64,13 +64,19 @@ CUE_LOOK_DEFAULTS: dict[str, object] = {
 }
 
 
+def cue_size_range(settings: dict | None) -> list[float]:
+    """The smallest and largest caption size `live.import_render` allows."""
+    low, high = {**CUE_LOOK_DEFAULTS, **(settings or {})}["size_range"]
+    return [float(low), float(high)]
+
+
 def cue_look(settings: dict | None) -> dict[str, object]:
     """`live.import_render`'s position and size, checked, keyed the way the studio reads it."""
     given = {**CUE_LOOK_DEFAULTS, **(settings or {})}
     position = given["position"]
     if position not in CUE_POSITIONS:
         raise ValueError(f"the caption position is top or bottom, not {position}")
-    low, high = (float(limit) for limit in given["size_range"])
+    low, high = cue_size_range(given)
     try:
         size = float(given["size"])
     except (TypeError, ValueError):

@@ -2216,6 +2216,7 @@ export function LiveStudio() {
     waveform,
     connection,
     runtime,
+    setCueLook,
     session,
     languageError,
     selectLanguage,
@@ -2806,6 +2807,9 @@ export function LiveStudio() {
             previewing={transport.previewing}
             captions={captions}
             focus={editFocus}
+            look={runtime.cueLook}
+            sizeRange={runtime.cueSizeRange}
+            setLook={setCueLook}
           />
         ) : null}
       </aside>

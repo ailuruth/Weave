@@ -26,7 +26,7 @@ The language is detected from the opening of the file when `--lang` is left out.
 
 Weave's captions are a first draft. A person can change the text, the speaker, the size, the line breaks and the time of any word.
 
-In the studio, import a recording and choose **Edit captions**. Pick a word and the picture goes to it. Change it and the stage shows the change at once, paused or playing. **Export** writes the adjusted captions.
+In the studio, import a recording and choose **Edit captions**. The panel lists one caption per row, with a search above it, and shows the chosen caption's words, text, color, style and timing between the two. Pick a row and the picture goes to it. Change it and the stage shows the change at once, paused or playing. **Export** writes the adjusted captions.
 
 From the command line, edit `NAME.cwi.json` and hand it back:
 
@@ -58,7 +58,7 @@ Every export writes `NAME.aftereffects.jsx`. Open the Caption with Intention tem
 
 ## Where the captions sit
 
-`--position top` moves the caption line to the top of the frame, for a video whose own text fills the bottom. `--size 1.2` makes the captions a fifth larger, and a size beyond the range Caption with Intention allows is refused. Both live in `config.yaml` under `live.import_render`, and the studio shows a recording the same way.
+`--position top` moves the caption line to the top of the frame, for a video whose own text fills the bottom. `--size 1.2` makes the captions a fifth larger, and a size beyond the range Caption with Intention allows is refused. Both live in `config.yaml` under `live.import_render`, and the studio shows a recording the same way. With no caption chosen, the editor sets both for the session through `POST /session/look`, which the stage, the captioned video and the next render all read.
 
 ## Rules
 

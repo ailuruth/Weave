@@ -135,6 +135,8 @@ export interface RuntimeConfig {
   videoMotion: ReelMotion;
   /** Where a recording's caption line sits and how large it is. */
   cueLook: CueLook;
+  /** The smallest and largest `cueLook.size`. */
+  cueSizeRange: [number, number];
   /** Set by the studio, never served: `videoMotion`, while a recording is on the stage. */
   reel?: ReelMotion | null;
   /** Enhanced: narrower 2.3 size deadband. */
@@ -250,6 +252,7 @@ export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
                   [0.45, 0.15], [0.75, 0.36], [1, 0.8]],
   },
   cueLook: {position: "bottom", size: 1},
+  cueSizeRange: [0.75, 1.4],
   voiceScaleDeadbandEnhanced: 0.1,
   voiceScaleResponseEnhanced: 0.5,
   voiceScalePivotEnhanced: 0.1,
@@ -310,6 +313,7 @@ const EMPTY_LEVEL: LevelEvent = {
 
 /** How often the playhead is published to React. */
 const PLAYHEAD_TICK_MS = 66;
+const LOOK_SEND_MS = 200;
 
 interface StreamOptions {
   reducedMotion: boolean;
@@ -694,6 +698,31 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     };
   }, [backendOrigin, sessionLanguage]);
 
+  const lookTimerRef = useRef(0);
+  const lookAskedRef = useRef(0);
+  const setCueLook = useCallback((look: CueLook) => {
+    setRuntime((current) => ({...current, cueLook: look}));
+    const asked = ++lookAskedRef.current;
+    window.clearTimeout(lookTimerRef.current);
+    lookTimerRef.current = window.setTimeout(() => {
+      fetch(`${backendOrigin}/session/look`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(look),
+      })
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error()))
+        .catch(() => fetch(`${backendOrigin}/runtime-config.json`)
+          .then((response) => response.json())
+          .then((value: Partial<RuntimeConfig>) => value.cueLook)
+          .catch(() => undefined))
+        .then((served: CueLook | undefined) => {
+          if (served && asked === lookAskedRef.current) {
+            setRuntime((current) => ({...current, cueLook: served}));
+          }
+        });
+    }, LOOK_SEND_MS);
+  }, [backendOrigin]);
+
   useEffect(() => {
     let cancelled = false;
     const isDemo = new URLSearchParams(window.location.search).has("demo");
@@ -1065,6 +1094,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     waveform,
     connection,
     runtime,
+    setCueLook,
     session,
     languageError,
     selectLanguage,

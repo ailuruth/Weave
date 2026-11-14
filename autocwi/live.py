@@ -61,6 +61,7 @@ from autocwi.recording import (
     CaptionError,
     RecordingHooks,
     cue_look,
+    cue_size_range,
     media_has_audio,
     recording_events,
     render_score,
@@ -6085,6 +6086,11 @@ class LiveLanguageSession:
         with self._lock:
             return self._desk
 
+    def forget_video(self) -> None:
+        """Draw the captioned recording again on its next request."""
+        with self._lock:
+            self._video = None
+
     def set_video_job(self, job: Callable[[], Path] | None) -> None:
         """How to draw this session's recording with its captions on it."""
         with self._lock:
@@ -6624,6 +6630,52 @@ def make_handler(
                 return
             self._send_json(document)
 
+        def _set_look(self) -> None:
+            if self._foreign_origin():
+                self._send_json({"error": "cross-origin change refused"},
+                                status=403)
+                return
+            if runtime_config is None or language_session.desk() is None:
+                self._send_json(
+                    {"error": "there is no recording to adjust"}, status=404)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > 1024:
+                self._send_json({"error": "invalid request body"}, status=400)
+                return
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise TypeError("not an object")
+            except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+                self._send_json({"error": "invalid JSON body"}, status=400)
+                return
+            size = payload.get("size")
+            if "size" in payload and (
+                    isinstance(size, bool) or not isinstance(size, (int, float))):
+                self._send_json(
+                    {"error": f"the caption size is a number, not {size!r}"},
+                    status=400)
+                return
+            asked = {key: payload[key] for key in ("position", "size")
+                     if key in payload}
+            try:
+                look = cue_look({
+                    **(runtime_config.get("cueLook") or {}),
+                    **asked,
+                    "size_range": runtime_config.get(
+                        "cueSizeRange") or cue_size_range(None),
+                })
+            except ValueError as exc:
+                self._send_json({"error": str(exc)}, status=400)
+                return
+            runtime_config["cueLook"] = look
+            language_session.forget_video()
+            self._send_json(look)
+
         def _foreign_origin(self) -> bool:
             origin = self.headers.get("Origin")
             return bool(origin) and urlsplit(origin).hostname not in (
@@ -6697,6 +6749,9 @@ def make_handler(
             if path == "/session/captions" and language_session is not None:
                 self._adjust_captions()
                 return
+            if path == "/session/look" and language_session is not None:
+                self._set_look()
+                return
             if path != "/session/language" or language_session is None:
                 self.send_error(404)
                 return
@@ -6726,7 +6781,7 @@ def make_handler(
         def do_OPTIONS(self):
             path = urlsplit(self.path).path
             if (path not in ("/session/language", "/session/media",
-                             "/session/captions")
+                             "/session/captions", "/session/look")
                     or language_session is None):
                 self.send_error(404)
                 return
@@ -7044,6 +7099,7 @@ def _studio_runtime_config(
         "crestLagMs": live_sync.get("crest_lag_ms", 40),
         "videoMotion": video_motion(live_sync.get("video_motion")),
         "cueLook": cue_look(cfg.get("live", {}).get("import_render")),
+        "cueSizeRange": cue_size_range(cfg.get("live", {}).get("import_render")),
         "voiceScaleDeadbandEnhanced": live_sync.get(
             "voice_scale_deadband_enhanced", 0.10),
         "voiceScaleResponseEnhanced": live_sync.get(
