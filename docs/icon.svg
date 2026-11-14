@@ -1,10 +1,8 @@
-<!-- Weave: the W as four threads in the CWI 2.1.1 speaker palette, in the order speakers are first heard (S1 #E5E517, S2 #17E517, S3 #17E5E5, S4 #E517E5), on the black of the captions box (2.4.1). Each thread is laid over the one before it. Read at 16 px before changing any coordinate. -->
+<!-- Weave: the Sora ExtraBold W (SIL Open Font License 1.1) in the CWI 2.1.1 speaker palette, one stroke per speaker in the order speakers are first heard (S1 #E5E517, S2 #17E517, S3 #17E5E5, S4 #E517E5), cut at the angle bisector of each joint, on the black of the captions box (2.4.1). -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#000000"/>
-  <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14.5 18L23.5 45.5" stroke="#E5E517"/>
-    <path d="M23.5 45.5L32 27.5" stroke="#17E517"/>
-    <path d="M32 27.5L40.5 45.5" stroke="#17E5E5"/>
-    <path d="M40.5 45.5L49.5 18" stroke="#E517E5"/>
-  </g>
+  <path d="M16 48.78L8 15.22L16.83 15.22L22.71 42.38L22.7 42.93L21.43 41.98L22.71 41.98L22.67 48.78Z" fill="#E5E517"/>
+  <path d="M22.42 41.03L22.85 43.03L22.41 42.7L22.41 41.98L25.15 41.98L23.54 43.03L28.09 16.41L32.71 16.41L32.71 28.34L28.74 48.78L22.37 48.78ZM32.71 33.26L29.2 16.41L32.71 16.41Z" fill="#17E517"/>
+  <path d="M32.41 16.41L35.03 16.41L32.41 29.88ZM35.95 48.78L32.41 31.83L32.41 16.41L36.51 16.41L41.84 43.03L40.23 41.98L42.67 41.98L42.68 42.9L42.53 43.03L42.67 42.28L42.76 48.78Z" fill="#17E5E5"/>
+  <path d="M42.37 41.98L43.72 41.98L42.53 43.03L47.72 15.22L56 15.22L48.97 48.78L42.46 48.78Z" fill="#E517E5"/>
 </svg>
