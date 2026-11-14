@@ -3381,8 +3381,7 @@ button {
 
 .editor-bar > div {
   display: flex;
-  gap: var(--space-1);
-  margin-right: -11px;
+  margin-right: -9px;
 }
 
 .editor-bar .icon-button:hover:not(:disabled),
