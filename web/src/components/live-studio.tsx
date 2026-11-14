@@ -41,6 +41,7 @@ import {mediaSyncAction} from "@/lib/media-sync";
 import {CaptionEditor} from "@/components/caption-editor";
 import {RecordingTimeline} from "@/components/recording-timeline";
 import {LANGUAGE_NAMES, LanguageGate} from "@/components/language-gate";
+import {OverlayScroll} from "@/components/overlay-scroll";
 import {useCaptionDocument, type CaptionSpan} from "@/hooks/use-caption-document";
 import {useStageAnimations} from "@/hooks/use-stage-animations";
 import {lineForPlayhead, linesOf, retimeLine} from "@/lib/caption-edit";
@@ -2120,7 +2121,7 @@ function SettingsPanel({
         </div>
       </header>
 
-      <div className="settings-body">
+      <OverlayScroll className="settings-body" frameClassName="settings-body-frame">
       {SETTING_GROUPS.map((group) => (
         <section className="settings-group" key={group.title} aria-label={group.title}>
           <h3>{group.title}</h3>
@@ -2171,7 +2172,7 @@ function SettingsPanel({
           </div>
         </section>
       ))}
-      </div>
+      </OverlayScroll>
     </aside>
   );
 }

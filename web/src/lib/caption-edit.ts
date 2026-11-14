@@ -517,3 +517,11 @@ export function retimeWord(
   end = Number(end.toFixed(3));
   return mapRange(words, index, index, (current) => ({...current, start, end}));
 }
+
+/** The words a text selection touches, as offsets into the line, or null for none. */
+export function wordsInSelection(text: string, start: number, end: number): [number, number] | null {
+  if (end <= start) return null;
+  const spans = [...text.matchAll(/\S+/g)].map((m) => [m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  const touched = spans.flatMap(([from, to], offset) => (from < end && to > start ? [offset] : []));
+  return touched.length ? [touched[0], touched[touched.length - 1]] : null;
+}

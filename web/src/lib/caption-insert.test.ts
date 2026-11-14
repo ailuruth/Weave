@@ -145,3 +145,13 @@ test("one word takes a style and a time of its own without crossing its neighbou
   const squeezed = retimeWord(WORDS, 1, 1.8, 1.7);
   assert.ok(squeezed[1].end - squeezed[1].start >= 0.05 - 1e-9);
 });
+
+test("a text selection picks the words it touches", async () => {
+  const {wordsInSelection} = await import("./caption-edit.ts");
+  const text = "What's your sole purpose";
+  assert.deepEqual(wordsInSelection(text, 12, 16), [2, 2]);
+  assert.deepEqual(wordsInSelection(text, 13, 14), [2, 2]);
+  assert.deepEqual(wordsInSelection(text, 5, 13), [0, 2]);
+  assert.equal(wordsInSelection(text, 6, 7), null);
+  assert.equal(wordsInSelection(text, 9, 9), null);
+});

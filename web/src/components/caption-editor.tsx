@@ -8,7 +8,6 @@ import {
   useState,
   type CSSProperties,
   type MutableRefObject,
-  type Ref,
 } from "react";
 import {
   CAPTION_PRESETS,
@@ -22,17 +21,18 @@ import {
   parseClock,
   presetOf,
   removeLine,
-  removeWord,
   retimeLine,
   retimeWord,
   setColour,
   setLineText,
   splitLineAt,
   wordPresetOf,
+  wordsInSelection,
   type EditLine,
   type EditWord,
 } from "@/lib/caption-edit";
 import {positionLabel} from "@/lib/transport";
+import {OverlayScroll} from "@/components/overlay-scroll";
 import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
 import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 
@@ -40,6 +40,10 @@ type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 const NEW_CAPTION = "Caption";
 const FOLLOW_AFTER_SCROLL_MS = 4000;
+const TOOLS_OPEN_MS = 200;
+const keepTextFocus = (event: {target: EventTarget; preventDefault: () => void}) => {
+  if ((event.target as HTMLElement).closest("button")) event.preventDefault();
+};
 function speakerName(speaker: string | null): string {
   if (!speaker) return "No speaker";
   const n = /^S(\d+)$/.exec(speaker);
@@ -96,19 +100,36 @@ function CaptionText({
   autoFocus,
   onCommit,
   onFocus,
-  textRef,
   caretRef,
+  onSelectRange,
 }: {
   text: string;
   autoFocus: boolean;
   onCommit: (text: string) => void;
   onFocus: () => void;
-  textRef?: Ref<HTMLTextAreaElement>;
   caretRef?: MutableRefObject<number | null>;
+  onSelectRange?: (value: string, start: number, end: number) => void;
 }) {
   const remember = (el: HTMLTextAreaElement) => {
     if (caretRef) caretRef.current = el.selectionStart;
+    onSelectRange?.(el.value, el.selectionStart, el.selectionEnd);
   };
+  const own = useRef<HTMLTextAreaElement | null>(null);
+  const rememberRef = useRef(remember);
+  useEffect(() => {
+    rememberRef.current = remember;
+  });
+  useEffect(() => {
+    const el = own.current;
+    if (!el) return;
+    const read = () => rememberRef.current(el);
+    el.addEventListener("select", read);
+    el.addEventListener("selectionchange", read);
+    return () => {
+      el.removeEventListener("select", read);
+      el.removeEventListener("selectionchange", read);
+    };
+  }, []);
   const [draft, setDraft] = useState(text);
   const [seen, setSeen] = useState(text);
   if (seen !== text) {
@@ -118,7 +139,7 @@ function CaptionText({
   return (
     <textarea
       className="card-text"
-      ref={textRef}
+      ref={own}
       value={draft}
       onSelect={(event) => remember(event.currentTarget)}
       rows={1}
@@ -173,8 +194,7 @@ export function CaptionEditor({
   const {doc, error, busy, canUndo, commit, undo, revert} = captions;
   const [picked, setPicked] = useState<number | null>(focus?.index ?? null);
   const [typing, setTyping] = useState<number | null>(focus?.index ?? null);
-  const [target, setTarget] = useState<number | null>(null);
-  const textRef = useRef<HTMLTextAreaElement>(null);
+  const [sel, setSel] = useState<[number, number] | null>(null);
   const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
   const [focusSeen, setFocusSeen] = useState(focus?.n ?? null);
@@ -182,7 +202,7 @@ export function CaptionEditor({
     setFocusSeen(focus.n);
     setPicked(focus.index);
     setTyping(focus.index);
-    setTarget(null);
+    setSel(null);
   }
 
   const words = doc?.words ?? [];
@@ -193,7 +213,7 @@ export function CaptionEditor({
   const current = lines.find((entry) => positionS >= entry.start && positionS <= entry.end)
     ?? null;
 
-  const listRef = useRef<HTMLOListElement>(null);
+  const listRef = useRef<HTMLElement>(null);
   const currentFirst = current?.first ?? null;
   const following = playing && picked === null;
   useEffect(() => {
@@ -205,8 +225,11 @@ export function CaptionEditor({
   const selectedFirst = selectedLine?.first ?? null;
   useEffect(() => {
     if (selectedFirst === null) return;
-    listRef.current?.querySelector(`[data-first="${selectedFirst}"]`)
-      ?.scrollIntoView({block: "nearest"});
+    const timer = window.setTimeout(() => {
+      listRef.current?.querySelector(`[data-first="${selectedFirst}"]`)
+        ?.scrollIntoView({block: "nearest", behavior: "smooth"});
+    }, TOOLS_OPEN_MS);
+    return () => window.clearTimeout(timer);
   }, [selectedFirst]);
 
   const change = (next: EditWord[], index: number, show = false) => {
@@ -220,7 +243,7 @@ export function CaptionEditor({
   const choose = (line: EditLine) => {
     if (selectedLine?.first !== line.first) {
       setPicked(line.first);
-      setTarget(null);
+      setSel(null);
       caretRef.current = null;
       if (!playing) seek(line.start);
     }
@@ -236,7 +259,7 @@ export function CaptionEditor({
       if (!ok) return;
       setPicked(added.index);
       setTyping(added.index);
-      setTarget(null);
+      setSel(null);
     });
   };
 
@@ -297,7 +320,9 @@ export function CaptionEditor({
       )}
 
       {doc && (
-        <ol
+        <OverlayScroll
+          as="ol"
+          frameClassName="caption-cards-frame"
           className="caption-cards"
           ref={listRef}
           onWheel={() => { scrolledAtRef.current = performance.now(); }}
@@ -307,11 +332,22 @@ export function CaptionEditor({
             const selected = selectedLine?.first === line.first;
             const lineWords = words.slice(line.first, line.last + 1);
             const first = lineWords[0];
-            const aim = selected && target !== null && target >= line.first && target <= line.last ? target : null;
-            const scoped = aim === null ? first : words[aim];
-            const preset = aim === null ? presetOf(words, line.first) : wordPresetOf(words[aim]);
-            const at = aim ?? line.first;
-            const whole = aim === null;
+            const text = lineWords.map((word) => word.text).join(" ");
+            const range = selected && sel && sel[0] >= line.first && sel[1] <= line.last ? sel : null;
+            const picked = range ? words.slice(range[0], range[1] + 1) : lineWords;
+            const across = (edit: (current: EditWord[], index: number) => EditWord[]) => {
+              let next = [...words];
+              for (let index = range![0]; index <= range![1]; index += 1) next = edit(next, index);
+              return next;
+            };
+            const presetIds = new Set(picked.map((word) => wordPresetOf(word)?.id ?? ""));
+            const preset = range
+              ? (presetIds.size === 1 ? wordPresetOf(picked[0]) : null)
+              : presetOf(words, line.first);
+            const colour = picked[0];
+            const recolour = (choice: {speaker: string | null} | {rainbow: true}) => change(range
+              ? across((current, index) => setColour(current, index, choice, false))
+              : setColour(words, line.first, choice, true), range ? range[0] : line.first, true);
             return (
               <li
                 key={`line-${number}`}
@@ -337,185 +373,172 @@ export function CaptionEditor({
                     onChange={(value) => change(
                       retimeLine(words, line.first, line.last, line.start, value), line.first)}
                   />
-                </div>
-                <CaptionText
-                  text={lineWords.map((word) => word.text).join(" ")}
-                  autoFocus={typing === line.first}
-                  textRef={selected ? textRef : undefined}
-                  caretRef={selected ? caretRef : undefined}
-                  onFocus={() => {
-                    choose(line);
-                    if (typing !== null) setTyping(null);
-                  }}
-                  onCommit={(text) => change(setLineText(words, line.first, text), line.first)}
-                />
-                {selected && (
-                  <div className="card-tools" onClick={(event) => event.stopPropagation()}>
-                    <div className="card-row">
-                      <span>Edit</span>
-                      <div className="card-words" role="radiogroup" aria-label="What to edit">
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={whole}
-                          className="card-word card-word-all"
-                          onClick={() => setTarget(null)}
-                        >
-                          Whole line
-                        </button>
-                        {lineWords.map((word, offset) => {
-                          const index = line.first + offset;
-                          return (
-                            <button
-                              key={`word-${offset}`}
-                              type="button"
-                              role="radio"
-                              aria-checked={aim === index}
-                              className="card-word"
-                              onClick={() => setTarget(aim === index ? null : index)}
-                            >
-                              {word.text}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="card-row">
-                      <span>Color</span>
-                      <div className="swatches" role="radiogroup" aria-label="Color">
-                        {doc.speakers.map((speaker) => (
-                          <button
-                            key={speaker}
-                            type="button"
-                            role="radio"
-                            aria-checked={!scoped.rainbow && scoped.speaker === speaker}
-                            aria-label={speakerName(speaker)}
-                            title={speakerName(speaker)}
-                            className="swatch"
-                            style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
-                            onClick={() => change(setColour(words, at, {speaker}, whole), at, true)}
-                          />
-                        ))}
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={Boolean(scoped.rainbow)}
-                          aria-label="Rainbow"
-                          title="Rainbow"
-                          className="swatch rainbow-dot"
-                          onClick={() => change(setColour(words, at, {rainbow: true}, whole), at, true)}
-                        />
-                        <button
-                          type="button"
-                          className="swatch swatch-new"
-                          aria-label={`New speaker, ${speakerName(newSpeaker)}`}
-                          title={`New speaker (${speakerName(newSpeaker)})`}
-                          onClick={() => change(setColour(words, at, {speaker: newSpeaker}, whole), at, true)}
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="card-row">
-                      <span>Style</span>
-                      <div className="segmented" role="radiogroup" aria-label="Style">
-                        {CAPTION_PRESETS.map((choice) => (
-                          <button
-                            key={choice.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={preset?.id === choice.id}
-                            data-active={preset?.id === choice.id}
-                            onClick={() => change(whole
-                              ? applyPreset(words, line.first, choice, durationS)
-                              : applyWordPreset(words, at, choice, durationS), at, true)}
-                          >
-                            {choice.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {!whole && (
-                      <div className="card-row">
-                        <span>Time</span>
-                        <div className="card-span">
-                          <TimeField
-                            label="Word start"
-                            value={words[at].start}
-                            onChange={(value) => change(retimeWord(words, at, value, words[at].end), at)}
-                          />
-                          <span className="card-arrow" aria-hidden="true">–</span>
-                          <TimeField
-                            label="Word end"
-                            value={words[at].end}
-                            onChange={(value) => change(retimeWord(words, at, words[at].start, value), at)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    <div className="card-actions">
+                  {selected && (
+                    <div className="card-icons" onMouseDown={keepTextFocus}>
                       <button
                         type="button"
-                        className="card-preview"
-                        title="Show how this caption moves, without playing the video"
+                        className="icon-button"
+                        aria-label="Preview"
+                        title="Preview its motion"
                         onClick={() => preview(line.start, line.end)}
                       >
-                        <Play size={12} fill="currentColor" strokeWidth={0} />
-                        Preview
+                        <Play size={14} />
                       </button>
                       <button
                         type="button"
-                        disabled={lineWords.length < 2 && lineWords[0].text.length < 2}
-                        title="Split into two captions where the text cursor is"
-                        onMouseDown={(event) => event.preventDefault()}
+                        className="icon-button"
+                        aria-label="Split at the cursor"
+                        title="Split at the cursor"
+                        disabled={lineWords.length < 2 && first.text.length < 2}
                         onClick={() => {
-                          const draft = textRef.current?.value ?? lineWords.map((word) => word.text).join(" ");
+                          const field = listRef.current?.querySelector<HTMLTextAreaElement>(
+                            ".caption-card[data-selected=true] .card-text");
+                          const draft = field?.value ?? text;
                           const split = splitLineAt(words, line.first, draft, caretRef.current);
                           if (!split) return;
                           caretRef.current = null;
-                          setTarget(null);
+                          setSel(null);
                           change(split.words, line.first);
                         }}
                       >
-                        <Scissors size={13} />
-                        Split
+                        <Scissors size={14} />
                       </button>
                       <button
                         type="button"
+                        className="icon-button"
+                        aria-label="Join with the caption above"
+                        title="Join with the caption above"
                         disabled={line.first === 0}
-                        title="Make this and the caption above one caption"
                         onClick={() => {
-                          setTarget(null);
+                          setSel(null);
                           change(joinPrevious(words, line.first), line.first);
                         }}
                       >
-                        <Merge size={13} />
-                        Join
+                        <Merge size={14} />
                       </button>
                       <button
                         type="button"
-                        className="card-delete"
-                        aria-label={whole ? "Delete this caption" : `Delete “${words[at].text}”`}
-                        title={whole ? "Delete this caption" : `Delete “${words[at].text}”`}
+                        className="icon-button card-delete"
+                        aria-label={range ? "Delete the selected words" : "Delete this caption"}
+                        title={range ? "Delete the selected words" : "Delete this caption"}
                         onClick={() => {
-                          if (whole) {
+                          if (range) {
+                            setSel(null);
+                            change(words.filter((_, index) => index < range[0] || index > range[1]), line.first);
+                          } else {
                             setPicked(null);
                             change(removeLine(words, line.first), Math.max(0, line.first - 1));
-                          } else {
-                            setTarget(null);
-                            change(removeWord(words, at), line.first);
                           }
                         }}
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
+                  )}
+                </div>
+                <CaptionText
+                  text={text}
+                  autoFocus={typing === line.first}
+                  caretRef={selected ? caretRef : undefined}
+                  onSelectRange={selected ? (value, start, end) => {
+                    const found = value === text ? wordsInSelection(value, start, end) : null;
+                    const next: [number, number] | null = found
+                      ? [line.first + found[0], line.first + found[1]]
+                      : null;
+                    if (next?.[0] !== sel?.[0] || next?.[1] !== sel?.[1]) setSel(next);
+                  } : undefined}
+                  onFocus={() => {
+                    choose(line);
+                    if (typing !== null) setTyping(null);
+                  }}
+                  onCommit={(value) => {
+                    setSel(null);
+                    change(setLineText(words, line.first, value), line.first);
+                  }}
+                />
+                {selected && (
+                  <div
+                    className="card-tools"
+                    onClick={(event) => event.stopPropagation()}
+                    onMouseDown={keepTextFocus}
+                  >
+                    {range && (
+                      <div className="card-scope">
+                        <span>“{picked.map((word) => word.text).join(" ")}”</span>
+                        {range[0] === range[1] && (
+                          <span className="card-span">
+                            <TimeField
+                              label="Word start"
+                              value={words[range[0]].start}
+                              onChange={(value) => change(
+                                retimeWord(words, range[0], value, words[range[0]].end), range[0])}
+                            />
+                            <span className="card-arrow" aria-hidden="true">–</span>
+                            <TimeField
+                              label="Word end"
+                              value={words[range[0]].end}
+                              onChange={(value) => change(
+                                retimeWord(words, range[0], words[range[0]].start, value), range[0])}
+                            />
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="swatches" role="radiogroup" aria-label="Color">
+                      {doc.speakers.map((speaker) => (
+                        <button
+                          key={speaker}
+                          type="button"
+                          role="radio"
+                          aria-checked={!colour.rainbow && colour.speaker === speaker}
+                          aria-label={speakerName(speaker)}
+                          title={speakerName(speaker)}
+                          className="swatch"
+                          style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
+                          onClick={() => recolour({speaker})}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={Boolean(colour.rainbow)}
+                        aria-label="Rainbow"
+                        title="Rainbow"
+                        className="swatch rainbow-dot"
+                        onClick={() => recolour({rainbow: true})}
+                      />
+                      <button
+                        type="button"
+                        className="swatch swatch-new"
+                        aria-label={`New speaker, ${speakerName(newSpeaker)}`}
+                        title={`New speaker (${speakerName(newSpeaker)})`}
+                        onClick={() => recolour({speaker: newSpeaker})}
+                      >
+                        <Plus size={12} />
+                      </button>
+                    </div>
+                    <div className="segmented" role="radiogroup" aria-label="Style">
+                      {CAPTION_PRESETS.map((choice) => (
+                        <button
+                          key={choice.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={preset?.id === choice.id}
+                          data-active={preset?.id === choice.id}
+                          onClick={() => change(range
+                            ? across((current, index) => applyWordPreset(current, index, choice, durationS))
+                            : applyPreset(words, line.first, choice, durationS), range ? range[0] : line.first, true)}
+                        >
+                          {choice.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </li>
             );
           })}
-        </ol>
+        </OverlayScroll>
       )}
     </section>
   );
