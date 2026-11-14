@@ -29,6 +29,7 @@ A recording is known whole before its first frame is shown. Weave uses that to f
 * Motion values live in `config.yaml` under `video_motion`.
 * The renderer sets each animation's time itself. Chrome's animation clock keeps running while the page clock is paused.
 * Captions are drawn at 60 frames a second, whatever the recording's own rate. `--fps 120` raises it.
+* Chrome runs without its frame rate limit. Otherwise each screenshot waits about three 60 Hz frames, which was 90% of the drawing time. Chrome uses about three cores while it draws.
 
 ## Limits
 

@@ -37,6 +37,7 @@ CHROME_FLAGS = (
     "--disable-threaded-scrolling",
     "--run-all-compositor-stages-before-draw",
     "--disable-checker-imaging",
+    "--disable-frame-rate-limit",
 )
 WINDOW = (1600, 1000)
 CANVAS = (1280, 720)
