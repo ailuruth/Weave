@@ -44,6 +44,7 @@ import {
 } from "@/lib/caption-paragraphs";
 import type {CaptionWord, LevelEvent} from "@/lib/caption-store";
 import {mediaSyncAction} from "@/lib/media-sync";
+import {CaptionEditor} from "@/components/caption-editor";
 import {
   activeCue,
   buildCues,
@@ -165,11 +166,14 @@ function useSpeakerColors(
   paragraphs: CaptionParagraph[],
   runtime: RuntimeConfig,
   lightStage: boolean,
+  known: readonly string[],
 ): SpeakerColorMap {
   return useMemo(() => {
     // Order of FIRST APPEARANCE, which is what config.yaml has always claimed.
-    const order: string[] = [];
-    const seen = new Set<string>();
+    // A recording names its speakers up front (`known`), so a line played on
+    // its own wears the colours it has in the whole film.
+    const order: string[] = [...known];
+    const seen = new Set<string>(known);
     for (const paragraph of paragraphs) {
       for (const {word} of paragraph.words) {
         const speaker = word.speaker;
@@ -194,7 +198,7 @@ function useSpeakerColors(
       });
     }
     return themed;
-  }, [paragraphs, runtime, lightStage]);
+  }, [paragraphs, runtime, lightStage, known]);
 }
 
 function useElapsed(startedAt: number): string {
@@ -1730,7 +1734,11 @@ function MediaBackdrop({
       ended: player.ended,
       durationS: player.duration,
     });
-    if (action.kind === "none" || action.kind === "hold") return;
+    if (action.kind === "hold") {
+      if (!player.paused) player.pause();
+      return;
+    }
+    if (action.kind === "none") return;
     if (action.kind === "trim") {
       if (player.playbackRate !== action.rate) player.playbackRate = action.rate;
       return;
@@ -2184,6 +2192,7 @@ export function LiveStudio() {
   });
   const [view, setView] = useState<ViewMode>("stage");
   const [railOpen, setRailOpen] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const {
     model,
@@ -2198,6 +2207,7 @@ export function LiveStudio() {
     scheduleWord,
     clockEpoch,
     playheadMs,
+    speakerOrder,
     startedAt,
     lastEventAt,
   } = useCaptionStream({reducedMotion: settings.reducedMotion});
@@ -2232,6 +2242,7 @@ export function LiveStudio() {
   const mediaMode = activeMedia
     ? (activeMedia.video ? "video" : "audio")
     : "none";
+  const editorOpen = editing && Boolean(activeMedia) && session.state === "listening";
   const activeLanguage = session.languages.find(
     (language) => language.id === session.language,
   );
@@ -2352,6 +2363,7 @@ export function LiveStudio() {
     paragraphs,
     runtime,
     lightCaptions,
+    speakerOrder,
   );
   const fallbackColor = (lightCaptions && runtime.paletteLight.length
     ? runtime.paletteLight
@@ -2399,7 +2411,8 @@ export function LiveStudio() {
   return (
     <main
       className="studio-shell"
-      data-rail={railOpen ? "open" : "closed"}
+      data-rail={railOpen || editorOpen ? "open" : "closed"}
+      data-editor={editorOpen ? "open" : "closed"}
       data-contrast={settings.highContrast ? "high" : "normal"}
       data-theme={settings.lightStage ? "light" : "dark"}
       data-reduced-motion={settings.reducedMotion ? "true" : "false"}
@@ -2445,6 +2458,16 @@ export function LiveStudio() {
             <Mic2 size={14} />
             {number(level.rms_db, -72).toFixed(1)} dBFS
           </span>
+          {activeMedia && session.state === "listening" && (
+            <button
+              type="button"
+              className="edit-toggle"
+              aria-pressed={editorOpen}
+              onClick={() => setEditing((value) => !value)}
+            >
+              Edit captions
+            </button>
+          )}
           {activeMedia && session.state === "listening" && (
             <ExportMenu />
           )}
@@ -2527,7 +2550,13 @@ export function LiveStudio() {
         </div>
       </section>
 
-      <aside className="signal-rail" aria-label="Live signal intelligence">
+      <aside
+        className="signal-rail"
+        aria-label={editorOpen ? "Caption editor" : "Live signal intelligence"}
+      >
+        {editorOpen ? (
+          <CaptionEditor colors={speakerColors} close={() => setEditing(false)} />
+        ) : (<>
         <section className="rail-section compass-section">
           {/* The arrow glyph went with the heading: an icon alone in an
               otherwise empty row is decoration, and the dial already draws a
@@ -2596,6 +2625,7 @@ export function LiveStudio() {
         {/* A fourth "system" section listed Recognition (a hardcoded string),
             Expression (the settings slider's own value) and Direction (the
             compass readout, again). None of it was a signal. */}
+        </>)}
       </aside>
 
       {settingsOpen && (

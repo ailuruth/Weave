@@ -58,11 +58,14 @@ def to_srt(words: list[dict]) -> str:
     return "\n".join(blocks)
 
 
-def speaker_colors(words: list[dict], palette: list[str]) -> dict[str, str]:
-    """Speaker -> colour by order of first appearance, as `fuse.py` does."""
+def speaker_colors(
+    words: list[dict],
+    palette: list[str],
+    order: list[str] | None = None,
+) -> dict[str, str]:
+    """Speaker -> colour by `order`, then by order of first appearance, as `fuse.py` does."""
     colors: dict[str, str] = {}
-    for word in words:
-        speaker = word.get("speaker")
+    for speaker in [*(order or []), *(word.get("speaker") for word in words)]:
         if speaker and speaker not in colors:
             colors[speaker] = palette[len(colors) % len(palette)]
     return colors
@@ -72,8 +75,8 @@ def _vtt_escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def to_vtt(words: list[dict], palette: list[str]) -> str:
-    colors = speaker_colors(words, palette)
+def to_vtt(words: list[dict], palette: list[str], order: list[str] | None = None) -> str:
+    colors = speaker_colors(words, palette, order)
     out = ["WEBVTT", ""]
     if colors:
         out.append("STYLE")
@@ -110,9 +113,15 @@ def to_vtt(words: list[dict], palette: list[str]) -> str:
     return "\n".join(out)
 
 
-def to_spec(words: list[dict], cfg: dict, media_path: str, duration_s: float) -> CaptionSpec:
+def to_spec(
+    words: list[dict],
+    cfg: dict,
+    media_path: str,
+    duration_s: float,
+    order: list[str] | None = None,
+) -> CaptionSpec:
     palette = list(cfg["palette"]) + list(cfg.get("palette_support", []))
-    colors = speaker_colors(words, palette)
+    colors = speaker_colors(words, palette, order)
     speakers = {name: Speaker(color=color) for name, color in colors.items()}
     if any(not w.get("speaker") for w in words):
         speakers[UNKNOWN] = Speaker(color=UNKNOWN_COLOR)
@@ -241,9 +250,14 @@ def _rgb(hex_color: str) -> list[float]:
     return [round(int(value[i:i + 2], 16) / 255, 4) for i in (0, 2, 4)] + [1]
 
 
-def to_ae_jsx(words: list[dict], palette: list[str], media_name: str) -> str:
+def to_ae_jsx(
+    words: list[dict],
+    palette: list[str],
+    media_name: str,
+    order: list[str] | None = None,
+) -> str:
     """An ExtendScript that builds the template's caption layers."""
-    colors = speaker_colors(words, palette)
+    colors = speaker_colors(words, palette, order)
     lines = []
     for line in caption_lines(words):
         counts: dict[str, int] = {}
@@ -279,8 +293,13 @@ def write_exports(
     cfg: dict,
     media_path: str,
     duration_s: float,
+    speakers: list[str] | None = None,
 ) -> dict[str, Path]:
-    """Write every file; return ``{"srt": ..., "vtt": ..., "json": ..., "jsx": ...}``."""
+    """Write every file; return ``{"srt": ..., "vtt": ..., "json": ..., "jsx": ...}``.
+
+    `speakers` fixes the colour order, so a speaker keeps a colour when a
+    person reassigns the first line.
+    """
 
     out_dir.mkdir(parents=True, exist_ok=True)
     palette = list(cfg["palette"]) + list(cfg.get("palette_support", []))
@@ -291,10 +310,10 @@ def write_exports(
         "jsx": out_dir / f"{stem}.aftereffects.jsx",
     }
     paths["srt"].write_text(to_srt(words), encoding="utf-8")
-    paths["vtt"].write_text(to_vtt(words, palette), encoding="utf-8")
+    paths["vtt"].write_text(to_vtt(words, palette, speakers), encoding="utf-8")
     paths["jsx"].write_text(
-        to_ae_jsx(words, palette, Path(media_path).name), encoding="utf-8")
-    spec = to_spec(words, cfg, media_path, duration_s)
+        to_ae_jsx(words, palette, Path(media_path).name, speakers), encoding="utf-8")
+    spec = to_spec(words, cfg, media_path, duration_s, speakers)
     paths["json"].write_text(
         json.dumps(json.loads(spec.model_dump_json(exclude_none=True)),
                    ensure_ascii=False, indent=2),

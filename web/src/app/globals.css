@@ -2964,3 +2964,314 @@ button {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* THE CAPTION EDITOR. Chrome: nothing here reaches `.caption-word`. The dots
+   are the speakers' colours as data, the way the compass rim shows them. */
+.edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 29px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text);
+  font: 400 12px/1 var(--font-ui);
+  letter-spacing: .02em;
+  cursor: pointer;
+}
+
+.edit-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.studio-shell[data-editor="open"] {
+  --rail-width: clamp(300px, 30vw, 400px);
+}
+
+.studio-shell[data-editor="open"] .signal-rail {
+  display: block;
+  overflow: hidden;
+}
+
+.caption-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--text);
+  font: 400 13px/1.35 var(--font-ui);
+}
+
+.editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  padding: 16px 12px 10px 22px;
+}
+
+.editor-bar h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.editor-bar > div {
+  display: flex;
+  gap: 2px;
+}
+
+.editor-bar .icon-button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.editor-bar .icon-button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.editor-error,
+.editor-note {
+  flex: none;
+  margin: 0;
+  padding: 8px 22px;
+  color: var(--muted-2);
+  font-size: 12px;
+}
+
+.editor-error {
+  color: var(--danger);
+}
+
+.editor-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 12px 12px;
+  overflow: auto;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.editor-lines li {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+}
+
+.editor-lines li[data-selected="true"] {
+  background: var(--surface);
+}
+
+.editor-lines p {
+  margin: 0;
+  line-height: 1.75;
+}
+
+.editor-line-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 23px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-2);
+  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.editor-line-play:hover {
+  color: var(--accent);
+}
+
+.editor-dot,
+.speaker-choices i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.editor-dot {
+  margin: 0 3px 1px 1px;
+}
+
+.editor-word {
+  margin: 0 1px 0 0;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.editor-word[data-size="small"] {
+  color: var(--muted-2);
+}
+
+.editor-word[data-size="large"],
+.editor-word[data-size="largest"] {
+  font-weight: 600;
+}
+
+.editor-word:hover {
+  border-color: var(--line-strong);
+}
+
+.editor-word[data-selected="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-inspector {
+  flex: none;
+  max-height: 58%;
+  padding: 2px 22px 14px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.caption-editor[data-busy="true"] .editor-inspector {
+  pointer-events: none;
+  opacity: .7;
+}
+
+.editor-field {
+  display: grid;
+  gap: 7px;
+  padding: 11px 0;
+  font-size: 12px;
+}
+
+.editor-inspector .range-control {
+  padding: 11px 0;
+}
+
+.editor-inspector .toggle-row {
+  min-height: 42px;
+}
+
+.editor-time {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.editor-field + .editor-field,
+.editor-field + .range-control {
+  border-top: 1px solid var(--line);
+}
+
+.editor-field > span {
+  color: var(--text);
+}
+
+.editor-field small {
+  color: var(--muted-2);
+  font-size: 11px;
+}
+
+.editor-field input {
+  height: 32px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--text);
+  font: 400 14px/1 var(--font-ui);
+}
+
+.editor-field input:focus-visible,
+.editor-word:focus-visible,
+.speaker-choices button:focus-visible,
+.editor-word-actions button:focus-visible,
+.editor-time button:focus-visible,
+.edit-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.speaker-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.speaker-choices button,
+.editor-word-actions button,
+.editor-time button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text);
+  font: 400 12px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.speaker-choices button[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-word-actions button:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.editor-time > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-time input {
+  width: 92px;
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-time em {
+  color: var(--muted-2);
+  font-style: normal;
+}
+
+.editor-word-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 720px) {
+  .studio-shell[data-editor="open"] .signal-rail {
+    overflow: visible;
+  }
+  .caption-editor {
+    height: auto;
+  }
+  .editor-lines {
+    max-height: 46vh;
+  }
+  .editor-inspector {
+    max-height: none;
+  }
+}

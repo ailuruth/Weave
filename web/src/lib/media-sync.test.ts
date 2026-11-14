@@ -70,6 +70,16 @@ test("a finished recording is never restarted by the running playhead", () => {
   );
 });
 
+test("a finished recording plays again when the playhead is sent back into it", () => {
+  assert.deepEqual(
+    mediaSyncAction({
+      playheadMs: 12_000, currentTimeS: 60, paused: true, ended: true,
+      durationS: 60,
+    }),
+    {kind: "play", atS: 12},
+  );
+});
+
 test("unknown duration does not block playback", () => {
   assert.deepEqual(
     mediaSyncAction({

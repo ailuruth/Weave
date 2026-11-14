@@ -98,6 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--lang", required=True, choices=["en", "ko", "multi"],
                     help="the language spoken in the recording")
     cp.add_argument("--out", default="out")
+    cp.add_argument("--captions", default=None, metavar="FILE",
+                    help="a NAME.cwi.json you have adjusted: its words, "
+                         "speakers, sizes and lines are drawn as written")
     cp.add_argument("--no-video", dest="no_video", action="store_true",
                     help="write the caption files only")
     cp.add_argument("--fps", type=int, default=None,
@@ -134,6 +137,9 @@ def build_parser() -> argparse.ArgumentParser:
                          "Writes OUT/exports/NAME.{srt,vtt,cwi.json,"
                          "aftereffects.jsx}; add --once to export and exit "
                          "without opening the studio.")
+    lv.add_argument("--captions", default=None, metavar="FILE",
+                    help="with --import: a NAME.cwi.json you have adjusted, "
+                         "used instead of transcribing the recording")
     lv.add_argument("--render", action="store_true",
                     help="with --import: also write OUT/exports/"
                          "NAME.captioned.mp4, the recording with the "
@@ -359,7 +365,17 @@ def main(argv: list[str] | None = None) -> None:
         args = build_parser().parse_args([
             "live", "--import", args.file, "--lang", args.lang, "--out", args.out,
             "--once" if args.no_video else "--render",
+            *(["--captions", args.captions] if args.captions else []),
             *(["--fps", str(args.fps)] if args.fps else [])])
+    if args.cmd == "live" and getattr(args, "captions", None):
+        from .recording import CaptionError, read_captions
+
+        if not args.import_file:
+            raise SystemExit("weave: --captions needs --import FILE")
+        try:
+            read_captions(args.captions)
+        except CaptionError as exc:
+            raise SystemExit(f"weave: {exc}") from None
     if args.cmd == "check":
         from .check import check_file, report
 

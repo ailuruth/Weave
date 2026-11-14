@@ -78,28 +78,22 @@ def replay_score(
         yield ev
 
 
-def analysed_events(
+def analyse(
     events: Iterable[dict],
     *,
     duration_s: float = 0.0,
     progress: Callable[[float], None] | None = None,
-    ready: Callable[[], None] | None = None,
     cancelled: Callable[[], bool] | None = None,
     direct: Callable[[list[dict]], list[dict]] | None = None,
-    on_score: Callable[[list[dict]], None] | None = None,
-    on_timeline: Callable[[list[tuple[float, dict]]], None] | None = None,
-    paced: bool = True,
-    _clock=None,
-    _sleep=None,
-):
-    """Hear the whole recording first, then play it back on the source clock."""
+) -> list[tuple[float, dict]] | None:
+    """Hear the whole recording and return what the stage should play, or None if it was cancelled."""
 
     heard: list[dict] = []
     reported = -1.0
     try:
         for ev in events:
             if cancelled is not None and cancelled():
-                return
+                return None
             heard.append(ev)
             if (progress is not None and duration_s > 0
                     and ev.get("type") == "level"):
@@ -126,11 +120,4 @@ def analysed_events(
                 score[i] = (cue_start.get(word.get("cue"), score[i][0]), word)
             order = sorted(range(len(score)), key=lambda k: (score[k][0], k))
             score = [score[k] for k in order]
-    if on_score is not None:
-        on_score([ev for _, ev in score if ev.get("type") == "word"])
-    if on_timeline is not None:
-        on_timeline(list(score))
-    if ready is not None:
-        ready()
-    yield from replay_score(
-        score, paced=paced, cancelled=cancelled, _clock=_clock, _sleep=_sleep)
+    return score

@@ -14,7 +14,7 @@ export interface MediaSyncInput {
 }
 
 export type MediaSyncAction =
-  /** The playhead has not reached the recording: wait on its first frame. */
+  /** There is no playhead, or it has not reached the recording: stand still. */
   | {kind: "hold"}
   /** Start (or restart) playback from this position. */
   | {kind: "play"; atS: number}
@@ -44,10 +44,8 @@ export function mediaSyncAction({
 }: MediaSyncInput): MediaSyncAction {
   if (!Number.isFinite(playheadMs) || playheadMs < 0) return {kind: "hold"};
   const target = playheadMs / 1000;
-  if (ended || (Number.isFinite(durationS) && target >= durationS)) {
-    return {kind: "none"};
-  }
-  if (paused) return {kind: "play", atS: target};
+  if (Number.isFinite(durationS) && target >= durationS) return {kind: "none"};
+  if (paused || ended) return {kind: "play", atS: target};
   const error = currentTimeS - target;
   if (Math.abs(error) > toleranceS) return {kind: "seek", atS: target};
   if (Math.abs(error) <= MEDIA_SYNC_DEADBAND_S) return {kind: "trim", rate: 1};

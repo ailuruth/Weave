@@ -53,9 +53,15 @@ import numpy as np
 
 from autocwi import haptics, netaudio
 from autocwi.recording import (
+    CAPTIONS_MAX_BYTES,
     MEDIA_MAX_BYTES,
     MEDIA_SUFFIXES,
+    RESTAGE,
+    CaptionDesk,
+    CaptionError,
+    Play,
     RecordingHooks,
+    Stop,
     media_has_audio,
     recording_events,
     render_score,
@@ -6023,6 +6029,7 @@ class LiveLanguageSession:
         self._video_lock = threading.Lock()
         self._video_job: Callable[[], Path] | None = None
         self._video: Path | None = None
+        self._desk: CaptionDesk | None = None
         if language:
             self._selected.set()
 
@@ -6068,6 +6075,15 @@ class LiveLanguageSession:
         with self._lock:
             path = getattr(self, "_exports", {}).get(kind)
         return (path, path.name) if path is not None and path.is_file() else None
+
+    def set_desk(self, desk: CaptionDesk | None) -> None:
+        """The captions a person may now adjust from the studio."""
+        with self._lock:
+            self._desk = desk
+
+    def desk(self) -> CaptionDesk | None:
+        with self._lock:
+            return self._desk
 
     def set_video_job(self, job: Callable[[], Path] | None) -> None:
         """How to draw this session's recording with its captions on it."""
@@ -6118,6 +6134,7 @@ class LiveLanguageSession:
             self._restart.set()
             stale, self._media, self._media_name = self._media, None, None
             self._video_job = self._video = None
+            self._desk = None
             snapshot = self._snapshot_locked()
         if stale is not None:
             stale.unlink(missing_ok=True)
@@ -6272,7 +6289,7 @@ class Broadcaster:
             data = (f"id: {event_id}\n"
                     f"data: {json.dumps(obj, ensure_ascii=False)}\n\n").encode()
             event_type = obj.get("type", "word")
-            durable = event_type in {"commit", "verification"} or (
+            durable = event_type in {"commit", "verification", RESTAGE} or (
                 event_type == "word" and obj.get("final", True)
             ) or (event_type == "sound" and obj.get("state") == "end")
             if durable:
@@ -6450,6 +6467,12 @@ def make_handler(
                 self._send_json(
                     language_session.snapshot() if rendering
                     else language_session.begin_page_load())
+            elif path == "/session/captions" and language_session is not None:
+                desk = language_session.desk()
+                if desk is None:
+                    self.send_error(404)
+                    return
+                self._send_json(desk.document())
             elif path == "/session/captions.mp4" and language_session is not None:
                 try:
                     target = language_session.video()
@@ -6552,6 +6575,48 @@ def make_handler(
             else:
                 self.send_error(404)
 
+        def _adjust_captions(self) -> None:
+            desk = language_session.desk()
+            if desk is None:
+                self._send_json(
+                    {"error": "there is no recording to adjust"}, status=404)
+                return
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > CAPTIONS_MAX_BYTES:
+                self._send_json({"error": "invalid request body"}, status=400)
+                return
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                action = str(payload.get("action", ""))
+                then = None
+                if action == "stop":
+                    then = Stop()
+                elif payload.get("from") is not None:
+                    until = payload.get("until")
+                    then = Play(
+                        max(0.0, float(payload["from"])),
+                        None if until is None else float(until))
+                if action == "adjust":
+                    document = desk.adjust(payload.get("words") or [], then)
+                elif action == "revert":
+                    document = desk.revert(then)
+                elif action in ("play", "stop"):
+                    desk.play(then or Play())
+                    document = desk.document()
+                else:
+                    raise CaptionError(f"unknown action {action!r}")
+            except CaptionError as exc:
+                self._send_json({"error": str(exc)}, status=400)
+                return
+            except (UnicodeDecodeError, json.JSONDecodeError, AttributeError,
+                    TypeError, ValueError):
+                self._send_json({"error": "invalid JSON body"}, status=400)
+                return
+            self._send_json(document)
+
         def _receive_media(self) -> None:
             origin = self.headers.get("Origin")
             if origin and urlsplit(origin).hostname not in (
@@ -6619,6 +6684,9 @@ def make_handler(
                     and media_dir is not None):
                 self._receive_media()
                 return
+            if path == "/session/captions" and language_session is not None:
+                self._adjust_captions()
+                return
             if path != "/session/language" or language_session is None:
                 self.send_error(404)
                 return
@@ -6647,7 +6715,8 @@ def make_handler(
 
         def do_OPTIONS(self):
             path = urlsplit(self.path).path
-            if (path not in ("/session/language", "/session/media")
+            if (path not in ("/session/language", "/session/media",
+                             "/session/captions")
                     or language_session is None):
                 self.send_error(404)
                 return
@@ -7472,6 +7541,8 @@ def run_live(args, cfg: dict, device: str) -> None:
                         return target
                     return draw
 
+                adjustable = server is not None and not (
+                    getattr(args, "once", False) or getattr(args, "render", False))
                 events = recording_events(
                     imported,
                     language_session.snapshot().get("media") or imported.name,
@@ -7488,10 +7559,16 @@ def run_live(args, cfg: dict, device: str) -> None:
                             (lambda score: language_session.set_video_job(
                                 _video_job(score)))
                             if server is not None else None),
+                        desk=language_session.set_desk if adjustable else None,
+                        restaged=broadcaster.reset if adjustable else None,
                     ),
                     paced=not (getattr(args, "once", False)
                                or getattr(args, "render", False)),
                     cache=recording_cache,
+                    captions=(
+                        Path(args.captions)
+                        if getattr(args, "captions", None)
+                        and getattr(args, "import_file", None) else None),
                 )
         events_path = out / "live_events.jsonl"
 

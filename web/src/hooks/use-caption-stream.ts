@@ -396,6 +396,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
   const [languageError, setLanguageError] = useState<string | null>(null);
   const [playheadMs, setPlayheadMs] = useState(Number.NEGATIVE_INFINITY);
   const [clockEpoch, setClockEpoch] = useState<number | null>(null);
+  const [speakerOrder, setSpeakerOrder] = useState<string[]>([]);
   const [startedAt] = useState(() => Date.now());
   const [lastEventAt, setLastEventAt] = useState<number | null>(null);
 
@@ -506,6 +507,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     setWaveform(Array(32).fill(-72));
     setPlayheadMs(Number.NEGATIVE_INFINITY);
     setClockEpoch(null);
+    setSpeakerOrder([]);
   }, []);
 
   const dispatch = useCallback((event: CaptionEvent, eventId?: number) => {
@@ -756,6 +758,13 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     source.onmessage = (message) => {
       try {
         const event = JSON.parse(message.data) as CaptionEvent;
+        if (event.type === "restage") {
+          resetStage();
+          setSpeakerOrder(Array.isArray(event.speakers)
+            ? event.speakers.map(String)
+            : []);
+          return;
+        }
         if (event.type === "boot") {
           // `choose language` is published both at startup and when a reload
           // resets the session, and it means the PICKER -- mapping it onto
@@ -982,6 +991,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     scheduleWord,
     clockEpoch,
     playheadMs,
+    speakerOrder,
     startedAt,
     lastEventAt,
     dispatch,

@@ -20,6 +20,12 @@ The clip is from [Sintel](https://durian.blender.org), © Blender Foundation, CC
 
 This writes the captioned video to `out/exports/`, with the captions as `.srt`, `.vtt`, an After Effects script and `.cwi.json`. A sound only file comes back as captions on a black frame.
 
+The captions are a first draft. To correct them, edit `out/exports/clip.cwi.json` and draw the video again from it, or use **Edit captions** in the studio.
+
+```bash
+./weave caption clip.mp4 --lang en --captions out/exports/clip.cwi.json
+```
+
 ## Install
 
 You need Python 3.11, Node.js, ffmpeg and Chrome, on macOS (Apple Silicon) or Linux.
@@ -44,7 +50,7 @@ Weave can also caption a microphone while people speak, in a studio that opens i
 ./weave live --sample         # the bundled film, no microphone
 ```
 
-In the studio you can also choose **Import a video** to watch a recording being captioned, and **Export** to save the results.
+In the studio you can also choose **Import a video** to watch a recording being captioned, **Edit captions** to correct a word, a speaker, a size or a line, and **Export** to save the results.
 
 ## Documentation
 
