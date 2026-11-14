@@ -22,15 +22,15 @@
      #5e6ad2 measures 3.9:1 on a panel, so it only fills buttons, and a
      hovered button darkens rather than lightening, which would drop white
      type to 2.9:1. */
-  --bg: #010102;
-  --surface: #18191a;
-  --surface-soft: #0f1011;
-  --line: #23252a;
-  --line-strong: #34343a;
-  --control-line: #62666d;
-  --surface-selected: #191a1b;
-  --segment-track: #0f1011;
-  --segment-active: #23252a;
+  --bg: #050506;
+  --surface: #26272b;
+  --surface-soft: #1f2023;
+  --line: #2b2d32;
+  --line-strong: #3a3c42;
+  --control-line: #6c7078;
+  --surface-selected: #2a2b30;
+  --segment-track: #111214;
+  --segment-active: #33353a;
   --text: #f7f8f8;
   --muted: #d0d6e0;
   --muted-2: #8a8f98;
@@ -44,8 +44,8 @@
   --tint: 255 255 255;
   /* THE CHROME IS ONE FRAME, AND THE STAGE IS THE DARK THING INSIDE IT
      (2026-08-13). */
-  --rail-bg: #0f1011;
-  --workspace-bg: #010102;
+  --rail-bg: #1b1c1f;
+  --workspace-bg: #050506;
   /* Box mode keeps a tile: the CWI captions box is black at 94% and needs
      something to read against. Rules mode overrides this below. */
   --stage-bg: #272729;
@@ -80,10 +80,10 @@
   --caption-gutter-em: 2.50;
 
   /* THE CHROME'S SCALES. Every value the chrome repeats is named here. */
-  --text-2xs: 11px;
-  --text-xs: 12px;
-  --text-sm: 13px;
-  --text-md: 14px;
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-md: 15px;
   --text-lg: 17px;
   --text-xl: 21px;
   --text-display: clamp(22px, 3.4vw, 34px);
@@ -100,8 +100,8 @@
   --space-8: 20px;
   --space-9: 24px;
   --space-10: 32px;
-  --control-h: 28px;
-  --control-icon: 32px;
+  --control-h: 32px;
+  --control-icon: 34px;
   --row-h: 48px;
   --row-h-compact: 40px;
   --ease-out: cubic-bezier(.2, .72, .24, 1);
@@ -115,8 +115,8 @@
   --action-hover: #545fc6;
   --on-action: #ffffff;
   --track-rest: rgb(255 255 255 / .14);
-  --sheet-bg: #010102;
-  --group-bg: #0f1011;
+  --sheet-bg: #161719;
+  --group-bg: #1f2023;
   --scrim: rgba(0, 0, 0, .6);
   /* `--caption-width-cap` is NOT declared here -- see `.studio-shell`. */
 }
@@ -125,7 +125,7 @@
 :root[data-theme="light"] {
   /* Apple parchment page / white canvas. The alternation IS the divider -- the
      stage needs no border or shadow to read as a distinct surface. */
-  --bg: #f6f7f7;
+  --bg: #ebedef;
   --surface: #ffffff;
   --surface-soft: #ffffff;
   --line: #e4e6e8;
@@ -146,7 +146,7 @@
   --danger: #b3202f;
   --tint: 0 0 0;
   --rail-bg: #ffffff;
-  --workspace-bg: #f6f7f7;
+  --workspace-bg: #ebedef;
   /* Type sits DIRECTLY on this, so it is the surface every light speaker colour
      in `palette_light` is measured against. Keep the two in step. */
   --stage-bg: #ffffff;
@@ -245,12 +245,19 @@ button {
     "topbar topbar" var(--topbar-height)
     "workspace signals" minmax(0, 1fr)
     / minmax(0, 1fr) var(--rail-width);
+  /* THE TOOLS ARE TILES ON A DARK GROUND (2026-11-14, at the user's
+     request: the flat, hairline-divided chrome read as too light). The
+     stage, the timeline and the rail are rounded tiles 8px apart; the top
+     bar sits on the ground itself. */
+  column-gap: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
   background: var(--bg);
   isolation: isolate;
 }
 
 .studio-shell[data-rail="closed"] {
   --rail-width: 0px;
+  column-gap: 0;
 }
 
 .studio-shell[data-language="ko"] {
@@ -297,8 +304,7 @@ button {
   align-items: center;
   gap: var(--space-7);
   min-width: 0;
-  padding: 0 var(--space-6) 0 var(--space-8);
-  border-bottom: 1px solid var(--line);
+  padding: 0 var(--space-2) 0 var(--space-5);
   background: var(--bg);
 }
 
@@ -493,7 +499,8 @@ button {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--workspace-bg);
+  gap: var(--space-4);
+  background: transparent;
 }
 
 .caption-stage {
@@ -501,8 +508,9 @@ button {
   flex: 1 1 auto;
   min-height: 300px;
   overflow: hidden;
-  /* No border and no radius: flush against the topbar rule, the rail rule and
-     the window, a border here would double every one of them. */
+  /* A radius, still no border: the stage is a tile like the others, and its
+     own dark ground is its edge. */
+  border-radius: var(--r-lg);
   background: var(--stage-bg);
   /* The caption size is bounded by this box in BOTH axes -- see `.caption-
      feed`. */
@@ -1084,7 +1092,8 @@ button {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-left: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--rail-bg);
   transition: opacity var(--dur-base) ease;
   scrollbar-width: thin;
@@ -2321,6 +2330,7 @@ button.media-import:hover .language-arrow {
       "workspace" minmax(620px, calc(100dvh - var(--topbar-height)))
       "signals" auto
       / 1fr;
+    row-gap: var(--space-4);
   }
   .topbar {
     position: sticky;
@@ -3513,7 +3523,8 @@ button.media-import:hover .language-arrow {
   position: relative;
   flex: none;
   display: grid;
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
   background: var(--rail-bg);
   padding-bottom: var(--space-6);
   user-select: none;
@@ -3756,14 +3767,14 @@ button.media-import:hover .language-arrow {
   top: 0;
   height: var(--lane-captions);
   min-width: 3px;
-  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-5);
   overflow: hidden;
   border: 0;
   border-radius: var(--r-xs);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--muted);
-  font: 400 var(--text-2xs)/14px var(--font-ui);
+  font: 400 var(--text-2xs)/16px var(--font-ui);
   text-align: left;
   cursor: pointer;
   transition: background var(--dur-quick) ease;

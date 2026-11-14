@@ -14,6 +14,8 @@ The analysis is from VoltAgent's awesome-design-md collection (MIT), read from L
 - Controls stay 28px tall and type stays on the studio's own scale. Linear's sizes are a marketing page's.
 - The light theme is derived from Linear's inverse tokens. Linear's site ships no light theme.
 - The font is the system face. Linear's own faces are not distributed.
+- The tools are tiles: the stage, the timeline and the rail are rounded 12px tiles, 8px apart, on a near-black ground (`#050506`), and the panels are lifted to `#1b1c1f`. Linear's own dark steps sit so close to its canvas that the studio read as flat and light.
+- Chrome type runs one step larger (12, 13, 14 and 15px) and controls are 32px tall.
 
 ## Linear, as analysed
 
