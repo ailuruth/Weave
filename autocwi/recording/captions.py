@@ -242,13 +242,17 @@ def window(
 ) -> list[tuple[float, dict]]:
     """The part of `score` that plays the captions from `start_s` to `end_s`, timed from zero.
 
-    Sound and level run on for `tail_s` after `end_s` so the stage's delayed
-    playhead reaches the last word.
+    A part with an end closes by clearing the stage `tail_s` after `end_s`,
+    which gives the stage's delayed playhead time to reach the last word. The
+    recording may run out of sound before then, so the close is timed here and
+    not left to the last level reading.
     """
     part: list[tuple[float, dict]] = []
+    clear = {"type": RESTAGE, "speakers": []}
     for release, ev in score:
         kind = ev.get("type", "word")
         if kind == RESTAGE:
+            clear = ev
             part.append((0.0, ev))
         elif kind == "word":
             if release < start_s - EDGE_S:
@@ -258,6 +262,8 @@ def window(
             part.append((max(0.0, release - start_s), ev))
         elif release >= start_s and (end_s is None or release <= end_s + tail_s):
             part.append((release - start_s, ev))
+    if end_s is not None:
+        part.append((max(0.0, end_s + tail_s - start_s), dict(clear)))
     return part
 
 

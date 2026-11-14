@@ -129,7 +129,3 @@ class CaptionDesk:
                 _clock=_clock, _sleep=_sleep)
             if cancelled():
                 return
-            if order.end_s is not None and not self._waiting():
-                if restaged is not None:
-                    restaged()
-                yield clear

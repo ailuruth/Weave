@@ -6577,6 +6577,10 @@ def make_handler(
                 self.send_error(404)
 
         def _adjust_captions(self) -> None:
+            if self._foreign_origin():
+                self._send_json({"error": "cross-origin edit refused"},
+                                status=403)
+                return
             desk = language_session.desk()
             if desk is None:
                 self._send_json(
@@ -6618,12 +6622,15 @@ def make_handler(
                 return
             self._send_json(document)
 
-        def _receive_media(self) -> None:
+        def _foreign_origin(self) -> bool:
             origin = self.headers.get("Origin")
-            if origin and urlsplit(origin).hostname not in (
+            return bool(origin) and urlsplit(origin).hostname not in (
                 "127.0.0.1", "localhost", "::1",
                 (self.headers.get("Host") or "").rsplit(":", 1)[0],
-            ):
+            )
+
+        def _receive_media(self) -> None:
+            if self._foreign_origin():
                 self._send_json({"error": "cross-origin import refused"},
                                 status=403)
                 return
