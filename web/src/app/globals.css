@@ -4350,9 +4350,8 @@ i.rainbow-dot,
   align-self: flex-end;
   display: grid;
   gap: var(--space-6);
-  width: clamp(168px, 15vw, 216px);
-  padding: var(--space-7) var(--space-6) var(--space-6);
-  border: 1px solid var(--line);
+  width: 184px;
+  padding: var(--space-6);
   border-radius: var(--r-lg);
   background: var(--rail-bg);
 }
@@ -4371,8 +4370,15 @@ i.rainbow-dot,
   margin: 0;
 }
 
+.voice-dock .compass-layout {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
 .voice-dock .voice-compass {
-  width: clamp(108px, 82%, 168px);
+  width: calc(100% / 1.24);
 }
 
 .voice-dock .signal-waveform {
@@ -4380,7 +4386,7 @@ i.rainbow-dot,
 }
 
 .voice-dock .level-line {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
 }
 
 @media (max-width: 720px) {
