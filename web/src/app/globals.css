@@ -2070,13 +2070,120 @@ button {
 .language-gate-card {
   display: grid;
   justify-items: center;
-  gap: var(--space-9);
-  width: min(100%, 540px);
+  gap: var(--space-10);
+  width: min(100%, 460px);
 }
 
 .language-gate-mark {
   display: block;
-  margin-bottom: var(--space-4);
+}
+
+/* THE PICKER IS A LIST (2026-11-14, at the user's choice): a row per
+   language, named large, hairlines between, import as the last row. */
+.language-list {
+  display: grid;
+  width: 100%;
+  border-top: 1px solid var(--line);
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-7);
+  width: 100%;
+  min-height: 72px;
+  padding: var(--space-6) var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-quick) ease;
+}
+
+button.language-option:hover {
+  background: var(--surface-soft);
+}
+
+.language-option:active {
+  transform: none;
+}
+
+.language-label {
+  font: 500 28px/1.15 var(--font-ui);
+  letter-spacing: -.6px;
+}
+
+.language-arrow {
+  flex: none;
+  color: var(--muted-2);
+  transition: color var(--dur-quick) ease, translate var(--dur-quick) var(--ease-out);
+}
+
+button.language-option:hover .language-arrow {
+  color: var(--text);
+  translate: 3px 0;
+}
+
+.media-import .language-label {
+  color: var(--muted);
+}
+
+.media-import .language-arrow {
+  translate: 0 0;
+}
+
+button.media-import:hover .language-arrow {
+  translate: 0 -2px;
+}
+
+.language-gate[data-file="true"] button.language-option .language-arrow {
+  color: var(--accent);
+}
+
+.language-gate[data-dropping="true"] .media-import {
+  background: var(--surface-soft);
+}
+
+.media-import-text {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.media-import-name {
+  overflow: hidden;
+  color: var(--text);
+  font: 500 var(--text-xl)/1.2 var(--font-ui);
+  letter-spacing: -.4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-import-hint {
+  color: var(--accent);
+  font: 400 var(--text-sm)/1.3 var(--font-ui);
+}
+
+.media-import-remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-icon);
+  height: var(--control-icon);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--muted-2);
+  cursor: pointer;
+}
+
+.media-import-remove:hover {
+  background: var(--surface-selected);
+  color: var(--text);
 }
 
 .language-gate-copy {
@@ -2105,61 +2212,6 @@ button {
   letter-spacing: var(--track-snug);
 }
 
-.language-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-6);
-  width: 100%;
-}
-
-.language-option {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: var(--space-6);
-  min-height: 156px;
-  padding: var(--space-8) var(--space-6);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface-soft);
-  color: var(--text);
-  cursor: pointer;
-  transition: border-color var(--dur-quick) ease, background var(--dur-quick) ease,
-    transform var(--dur-press) var(--ease-out);
-}
-
-.language-option:hover {
-  border-color: var(--control-line);
-  background: var(--surface);
-}
-
-.language-option {
-  position: relative;
-}
-
-.language-key {
-  position: absolute;
-  top: var(--space-5);
-  right: var(--space-5);
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-xs);
-  color: var(--muted-2);
-  font: 500 var(--text-2xs)/1 var(--font-ui);
-}
-
-.language-gate[data-file="true"] .language-option {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
-}
-
-.language-gate[data-file="true"] .language-option:hover {
-  border-color: var(--accent);
-}
-
 .language-drop {
   position: fixed;
   inset: var(--space-7);
@@ -2177,26 +2229,7 @@ button {
   pointer-events: none;
 }
 
-@media (hover: none) {
-  .language-key {
-    display: none;
-  }
-}
 
-.language-option:active {
-  transform: scale(.97);
-}
-
-.language-glyph {
-  font: 600 44px/1 var(--font-ui);
-  letter-spacing: -.04em;
-}
-
-.language-label {
-  color: var(--muted);
-  font: 500 var(--text-md)/1.2 var(--font-ui);
-  letter-spacing: var(--track-snug);
-}
 
 .language-gate-state {
   display: flex;
@@ -2297,21 +2330,12 @@ button {
     padding: 0;
     justify-content: center;
   }
-  .language-options {
-    grid-template-columns: 1fr;
+  .language-label {
+    font-size: var(--text-xl);
+    letter-spacing: -.4px;
   }
   .language-option {
-    grid-template-columns: 56px 1fr;
-    justify-items: start;
-    min-height: 68px;
-    padding: var(--space-5) var(--space-7);
-  }
-  .language-glyph {
-    font-size: var(--text-xl);
-  }
-  .language-label {
-    color: var(--text);
-    font-size: var(--text-lg);
+    min-height: 60px;
   }
   .topbar-actions .connection-pill {
     display: none;
@@ -2706,84 +2730,6 @@ button {
 .studio-shell[data-reduced-motion="true"] .compass-sound i,
 .studio-shell[data-reduced-motion="true"] .stage-sound i {
   animation: none !important;
-}
-
-.media-import {
-  display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  width: 100%;
-  min-height: 64px;
-  padding: var(--space-5) var(--space-7) var(--space-5) var(--space-5);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface-soft);
-  transition: border-color var(--dur-quick) ease, background var(--dur-quick) ease;
-}
-
-.media-import:hover,
-.language-gate[data-dropping="true"] .media-import {
-  border-color: var(--control-line);
-}
-
-.language-gate[data-dropping="true"] .media-import {
-  border-color: var(--accent);
-  background: var(--surface);
-}
-
-.media-import-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--r-md);
-  background: var(--surface-selected);
-  color: var(--text);
-}
-
-.media-import-action {
-  padding: var(--space-3) 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: 400 var(--text-md)/1.2 var(--font-ui);
-  letter-spacing: var(--track-snug);
-  cursor: pointer;
-}
-
-.media-import-open {
-  flex: 1 1 auto;
-  align-self: stretch;
-  font-size: var(--text-lg);
-  text-align: left;
-}
-
-.media-import-action:active {
-  opacity: .6;
-  transform: none;
-}
-
-.media-import-text {
-  display: grid;
-  flex: 1 1 auto;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.media-import-name {
-  overflow: hidden;
-  color: var(--text);
-  font: 600 var(--text-lg)/1.24 var(--font-ui);
-  letter-spacing: var(--track-tight);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.media-import-hint {
-  color: var(--muted-2);
-  font: 400 var(--text-sm)/1.3 var(--font-ui);
-  letter-spacing: var(--track-snug);
 }
 
 .studio-shell[data-cues="true"][data-motion="enhanced"]

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowRight,
   AudioWaveform,
   ChevronDown,
   Film,
@@ -10,6 +11,7 @@ import {
   PanelRightOpen,
   PencilLine,
   SlidersHorizontal,
+  Upload,
   X,
 } from "lucide-react";
 import {
@@ -1950,10 +1952,10 @@ function ExportMenu() {
   );
 }
 
-const LANGUAGE_GLYPHS: Record<string, string> = {
-  en: "Aa",
-  ko: "가",
-  multi: "Aa가",
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  ko: "Korean",
+  multi: "English + Korean",
 };
 
 function LanguageGate({
@@ -2039,8 +2041,8 @@ function LanguageGate({
         {/* EVERY LINE OF COPY IS GONE (2026-09-06, at the user's direction):
             the brand header, the "What language will be spoken?" heading, the
             eyebrow, the descriptions and the "On-device processing" footer.
-            While choosing, the screen is the mark, the language cards (a
-            script sample and the label, no description) and import. A heading
+            While choosing, the screen is the mark and one list: a row per
+            language, named in English, then import. A heading
             renders only when there is a state to report: preparing, or the
             engine being unreachable. */}
         {!selecting && (
@@ -2067,7 +2069,7 @@ function LanguageGate({
                     : stage === "transcribing"
                       ? "Transcribing"
                     : selected
-                      ? `Preparing ${selected.label}`
+                      ? `Preparing ${LANGUAGE_NAMES[selected.id] ?? selected.label}`
                       : "Preparing language setup"}
               </h1>
             </div>
@@ -2080,10 +2082,10 @@ function LanguageGate({
           </div>
         )}
 
-        {selecting && <WeaveMark size={52} className="language-gate-mark" />}
+        {selecting && <WeaveMark size={40} className="language-gate-mark" />}
 
         {selecting && (
-          <div className="language-options" role="list" aria-label="Caption language">
+          <div className="language-list" role="list" aria-label="Caption language">
             {session.languages.map((language: LiveLanguageOption, index) => (
               <button
                 className="language-option"
@@ -2092,18 +2094,12 @@ function LanguageGate({
                 type="button"
                 aria-keyshortcuts={String(index + 1)}
               >
-                <kbd className="language-key" aria-hidden="true">{index + 1}</kbd>
-                <span className="language-glyph" aria-hidden="true">
-                  {LANGUAGE_GLYPHS[language.id] ?? language.label.slice(0, 2)}
+                <span className="language-label">
+                  {LANGUAGE_NAMES[language.id] ?? language.label}
                 </span>
-                <span className="language-label">{language.label}</span>
+                <ArrowRight className="language-arrow" size={20} aria-hidden="true" />
               </button>
             ))}
-          </div>
-        )}
-
-        {selecting && (
-          <div className="media-import" data-file={file ? "true" : "false"}>
             <input
               ref={picker}
               type="file"
@@ -2114,30 +2110,30 @@ function LanguageGate({
                 event.target.value = "";
               }}
             />
-            <span className="media-import-icon" aria-hidden="true">
-              <Film size={18} />
-            </span>
             {file ? (
-              <>
+              <div className="language-option media-import" data-file="true">
                 <span className="media-import-text">
                   <span className="media-import-name">{file.name}</span>
                   <span className="media-import-hint">Choose the language spoken in it</span>
                 </span>
                 <button
-                  className="media-import-action"
+                  className="media-import-remove"
                   onClick={() => setFile(null)}
                   type="button"
+                  aria-label="Remove the video"
+                  title="Remove (Esc)"
                 >
-                  Remove
+                  <X size={18} />
                 </button>
-              </>
+              </div>
             ) : (
               <button
-                className="media-import-action media-import-open"
+                className="language-option media-import"
                 onClick={() => picker.current?.click()}
                 type="button"
               >
-                Import a video
+                <span className="language-label">Import a video</span>
+                <Upload className="language-arrow" size={20} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -2732,7 +2728,7 @@ export function LiveStudio() {
             {activeLanguage && (
               <span className="language-pill">
                 <Globe2 size={13} aria-hidden="true" />
-                {activeLanguage.label}
+                {LANGUAGE_NAMES[activeLanguage.id] ?? activeLanguage.label}
               </span>
             )}
             {!activeMedia && (
