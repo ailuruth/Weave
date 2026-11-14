@@ -246,8 +246,7 @@ button {
   min-width: 0;
   padding: 0 18px 0 16px;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg) 96%, transparent);
-  backdrop-filter: blur(22px);
+  background: var(--bg);
 }
 
 .brand {
@@ -262,8 +261,10 @@ button {
   gap: 2px;
 }
 
-.brand strong {
+.brand h1 {
+  margin: 0;
   font-size: 14px;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -.224px;
 }
@@ -324,7 +325,7 @@ button {
 .session-clock {
   margin-right: 2px;
   color: var(--muted);
-  font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 500 11px/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -335,14 +336,12 @@ button {
   height: 29px;
   padding: 0 4px;
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .10em;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .02em;
 }
 
-.connection-pill i,
-.live-dot {
+.connection-pill i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -350,10 +349,8 @@ button {
 }
 
 .connection-pill[data-state="live"] i,
-.connection-pill[data-state="demo"] i,
-.live-dot {
+.connection-pill[data-state="demo"] i {
   background: var(--good);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--good) 70%, transparent);
 }
 
 .connection-pill[data-state="reconnecting"] i {
@@ -1052,14 +1049,6 @@ button {
 
 /* 10px at weight 700 with .14em tracking is a shout at the smallest size on
    screen. */
-.eyebrow {
-  color: var(--muted-2);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .10em;
-  text-transform: uppercase;
-}
-
 /* The eyebrow above each of these is gone -- it repeated the heading. Without
    it the h2 is the section title, so it carries the weight. */
 .rail-heading h2,
@@ -1072,19 +1061,6 @@ button {
 }
 
 /* GOOD is the expected state. */
-.health-badge {
-  padding: 4px 0;
-  color: var(--muted-2);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-
-.health-badge[data-good="true"] {
-  color: var(--muted-2);
-}
-
 .signal-waveform {
   display: flex;
   align-items: center;
@@ -1102,34 +1078,6 @@ button {
   border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--active-color) calc(42% + var(--bar-height) * 58%), var(--line-strong));
   transition: height 90ms linear, background 140ms ease;
-}
-
-.metric-row {
-  display: grid;
-  gap: 10px;
-  margin-top: 13px;
-}
-
-.metric-row.three {
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.metric-row div {
-  display: grid;
-  gap: 3px;
-}
-
-.metric-row strong {
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.metric-row span {
-  color: var(--muted-2);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .06em;
 }
 
 /* THE DIAL GETS THE RAIL'S FULL WIDTH, and the readout sits under it. */
@@ -1300,9 +1248,6 @@ button {
   -webkit-mask: radial-gradient(closest-side, transparent 0 84%, #000 85%);
   mask: radial-gradient(closest-side, transparent 0 84%, #000 85%);
   opacity: .88;
-  /* A settled speaker's arc is narrow (floor 8deg), so the glow has to stay
-     tighter than the band or it reads as a smudge. */
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--slot-color) 45%, transparent));
 }
 
 /* REMEMBERED, NOT LIVE. */
@@ -1318,7 +1263,6 @@ button {
 
 .compass-slot[data-stale="true"] {
   opacity: .34;
-  filter: none;
 }
 
 /* THE NEEDLE: centre to rim, in the active speaker's colour. */
@@ -1363,7 +1307,6 @@ button {
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
   border-bottom: 8px solid currentColor;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 55%, transparent));
 }
 
 .voice-compass[data-direction="known"] .compass-direction i {
@@ -1433,42 +1376,6 @@ button {
   transition: none;
 }
 
-.compass-pitch {
-  position: absolute;
-  z-index: 3;
-  left: 50%;
-  top: var(--pitch-y);
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: currentColor;
-  transform: translate(-50%, -50%);
-  transition: top 110ms cubic-bezier(.2,.72,.24,1);
-}
-
-.compass-texture {
-  position: absolute;
-  z-index: 2;
-  inset: 38% 30%;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  opacity: var(--texture-opacity);
-  transform:
-    scale(var(--texture-size))
-    scaleX(calc(var(--texture-x) * var(--delivery-stretch-x)))
-    scaleY(var(--delivery-stretch-y))
-    rotate(var(--texture-angle));
-  box-shadow:
-    0 0 calc(16px * var(--delivery-energy))
-    color-mix(in srgb, currentColor calc(38% * var(--delivery-energy)), transparent);
-  filter: blur(calc(var(--delivery-texture) * .45px));
-  transition:
-    transform 130ms cubic-bezier(.2,.72,.24,1),
-    box-shadow 130ms ease,
-    filter 130ms ease;
-}
-
 /* THE BEARING IS THE POINT OF THIS SECTION, so it is sized like one. */
 .level-line {
   display: flex;
@@ -1478,10 +1385,8 @@ button {
 
 .level-line strong {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: .10em;
-  text-transform: uppercase;
 }
 
 .level-line span {
@@ -1490,100 +1395,9 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.section-count {
-  display: grid;
-  place-items: center;
-  min-width: 23px;
-  height: 23px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
-.speaker-list {
-  display: grid;
-  gap: 4px;
-}
-
 /* THE SPEAKER'S OWN COLOUR IS THE ONLY MARK IT NEEDS. */
-.speaker-card {
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  align-items: center;
-  gap: 11px;
-  min-height: 42px;
-  padding: 3px 0;
-}
-
-.speaker-avatar {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--r-sm);
-  background: var(--speaker-color);
-  color: var(--on-speaker);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.speaker-card > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.speaker-card strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.speaker-card div span {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* The confidence bar is gone from the layout above; the rule is kept inert so
    a future variant can re-place it deliberately rather than by accident. */
-.speaker-card > i {
-  display: none;
-  width: 4px;
-  height: 24px;
-  border-radius: var(--r-pill);
-  background: var(--speaker-color);
-}
-
-.speaker-empty {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px;
-  border: 1px dashed var(--line);
-  border-radius: var(--r-sm);
-}
-
-.speaker-empty > span {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  color: var(--muted-2);
-}
-
-.speaker-empty p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .settings-scrim {
   position: fixed;
   z-index: 80;
@@ -1593,7 +1407,6 @@ button {
   padding: 0;
   border: 0;
   background: rgba(0,0,0,.42);
-  backdrop-filter: blur(2px);
   cursor: default;
 }
 
@@ -3099,7 +2912,7 @@ button {
   border: 0;
   background: none;
   color: var(--muted-2);
-  font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font: 500 11px/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }

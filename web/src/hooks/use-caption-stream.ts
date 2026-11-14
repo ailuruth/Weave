@@ -194,8 +194,8 @@ export interface RuntimeConfig {
 }
 
 export const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
-  palette: ["#e6ff2e", "#56e39f", "#55d7ff", "#c387ff", "#ff667d", "#ffb84d"],
-  paletteLight: ["#6d7816", "#31805a", "#307b91", "#895fb4", "#bd4c5d", "#936a2c"],
+  palette: ["#E5E517", "#17E517", "#17E5E5", "#E517E5", "#E51717", "#E58017"],
+  paletteLight: ["#76760C", "#0D840D", "#0D7F7F", "#C714C7", "#E11717", "#AA5F11"],
   paletteSupportCount: 0,
   displayMode: "fast",
   maxWords: 8,
@@ -337,18 +337,18 @@ function demoEvents(): Array<{delay: number; event: CaptionEvent}> {
     speaker_confidence: 0.92,
   };
   const phrases = [
-    ["The", 0.00, 0.22, 0.42, 188],
-    ["voice", 0.23, 0.60, 0.72, 154],
-    ["isn't", 0.62, 0.91, 0.48, 176],
-    ["just", 0.94, 1.18, 0.62, 168],
-    ["heard.", 1.20, 1.66, 0.82, 148],
+    ["Can", 0.00, 0.22, 0.42, 188],
+    ["you", 0.23, 0.60, 0.72, 154],
+    ["hear", 0.62, 0.91, 0.48, 176],
+    ["me", 0.94, 1.18, 0.62, 168],
+    ["now?", 1.20, 1.66, 0.82, 148],
   ] as const;
   const second = [
-    ["Now", 1.95, 2.20, 0.54, 224],
-    ["you", 2.22, 2.43, 0.46, 236],
-    ["can", 2.45, 2.68, 0.58, 228],
-    ["see", 2.70, 3.08, 0.74, 244],
-    ["it.", 3.10, 3.42, 0.50, 218],
+    ["Yes,", 1.95, 2.20, 0.54, 224],
+    ["I", 2.22, 2.43, 0.46, 236],
+    ["hear", 2.45, 2.68, 0.58, 228],
+    ["you", 2.70, 3.08, 0.74, 244],
+    ["clearly.", 3.10, 3.42, 0.50, 218],
   ] as const;
   const events: Array<{delay: number; event: CaptionEvent}> = [
     {delay: 0, event: {type: "boot", stage: "listening"}},

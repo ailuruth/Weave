@@ -2,19 +2,11 @@
 
 import {
   AudioWaveform,
-  AlignEndHorizontal,
-  Captions,
-  CircleGauge,
-  Eye,
   Globe2,
   Mic2,
-  Minus,
   PanelRightClose,
   PanelRightOpen,
   SlidersHorizontal,
-  Sparkles,
-  Sun,
-  Type,
   X,
 } from "lucide-react";
 import {
@@ -29,6 +21,7 @@ import {
 } from "react";
 import {
   useCaptionStream,
+  type ConnectionState,
   type LanguageSession,
   type LiveLanguageOption,
   type RuntimeConfig,
@@ -1822,6 +1815,13 @@ function StageSound({
   );
 }
 
+const CONNECTION_LABELS: Record<ConnectionState, string> = {
+  connecting: "Connecting",
+  live: "Live",
+  reconnecting: "Reconnecting",
+  demo: "Preview",
+};
+
 type VideoExport = "idle" | "drawing" | "failed";
 
 function ExportMenu() {
@@ -2040,7 +2040,7 @@ function SettingsPanel({
       </header>
 
       <label className="range-control">
-        <span><Captions size={15} /> Caption scale</span>
+        <span>Caption scale</span>
         <output>{Math.round(settings.captionScale * 100)}%</output>
         {/* 100% is now the LARGEST size that still fits a full row across the
             stage, not an arbitrary middle. The width cap is a hard bound -- rows
@@ -2065,7 +2065,7 @@ function SettingsPanel({
       </label>
 
       <label className="range-control">
-        <span><Sparkles size={15} /> Expression</span>
+        <span>Expression</span>
         <output>{Math.round(settings.motionIntensity * 100)}%</output>
         <input
           type="range"
@@ -2091,7 +2091,7 @@ function SettingsPanel({
           reducedMotion: !settings.reducedMotion,
         })}
       >
-        <span><Eye size={15} /> Reduce motion</span>
+        <span>Reduce motion</span>
         <i data-on={settings.reducedMotion ? "true" : "false"} />
       </button>
 
@@ -2103,7 +2103,7 @@ function SettingsPanel({
           highContrast: !settings.highContrast,
         })}
       >
-        <span><CircleGauge size={15} /> High contrast</span>
+        <span>High contrast</span>
         <i data-on={settings.highContrast ? "true" : "false"} />
       </button>
 
@@ -2115,7 +2115,7 @@ function SettingsPanel({
           lightStage: !settings.lightStage,
         })}
       >
-        <span><Sun size={15} /> Light stage</span>
+        <span>Light stage</span>
         <i data-on={settings.lightStage ? "true" : "false"} />
       </button>
 
@@ -2127,7 +2127,7 @@ function SettingsPanel({
           hangulWave: !settings.hangulWave,
         })}
       >
-        <span><Type size={15} /> Hangul-shaped motion</span>
+        <span>Hangul-shaped motion</span>
         <i data-on={settings.hangulWave ? "true" : "false"} />
       </button>
 
@@ -2139,7 +2139,7 @@ function SettingsPanel({
           rollingCaptions: !settings.rollingCaptions,
         })}
       >
-        <span><AlignEndHorizontal size={15} /> Rolling captions</span>
+        <span>Rolling captions</span>
         <i data-on={settings.rollingCaptions ? "true" : "false"} />
       </button>
 
@@ -2151,7 +2151,7 @@ function SettingsPanel({
           captionRules: !settings.captionRules,
         })}
       >
-        <span><Minus size={15} /> Caption rules, not a box</span>
+        <span>Caption rules, not a box</span>
         <i data-on={settings.captionRules ? "true" : "false"} />
       </button>
 
@@ -2163,7 +2163,7 @@ function SettingsPanel({
           enhancedMotion: !settings.enhancedMotion,
         })}
       >
-        <span><Sparkles size={15} /> Enhanced motion</span>
+        <span>Enhanced motion</span>
         <i data-on={settings.enhancedMotion ? "true" : "false"} />
       </button>
     </aside>
@@ -2439,8 +2439,8 @@ export function LiveStudio() {
       <header className="topbar">
         <div className="brand">
           <div>
-            <strong>Weave</strong>
-            <span>Expressive caption studio</span>
+            <h1>Weave</h1>
+            <span>Caption studio</span>
           </div>
         </div>
 
@@ -2490,7 +2490,7 @@ export function LiveStudio() {
           <span className="session-clock">{elapsed}</span>
           <span className="connection-pill" data-state={connection}>
             <i />
-            {connection === "demo" ? "Preview" : connection}
+            {CONNECTION_LABELS[connection]}
           </span>
           <button
             className="icon-button settings-button"
@@ -2617,7 +2617,7 @@ export function LiveStudio() {
               behind it. Read together they answer "is the microphone working"
               once instead of twice. */}
           <div className="level-line" data-good={inputGood ? "true" : "false"}>
-            <strong>{settledStatus}</strong>
+            <strong>{settledStatus.charAt(0).toUpperCase() + settledStatus.slice(1)}</strong>
             <span>{number(level.rms_db, -72).toFixed(1)} dBFS</span>
           </div>
         </section>
