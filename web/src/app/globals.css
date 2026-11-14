@@ -3811,7 +3811,7 @@ button {
 
 .timeline-body {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 108px minmax(0, 1fr);
   padding-right: var(--space-7);
 }
 
@@ -3829,7 +3829,8 @@ button {
   align-items: center;
   gap: var(--space-3);
   color: var(--muted-2);
-  font: 400 var(--text-2xs)/1 var(--font-ui);
+  font: 400 var(--text-xs)/1 var(--font-ui);
+  white-space: nowrap;
 }
 
 .timeline-track {
@@ -4783,7 +4784,7 @@ i.rainbow-dot,
   gap: var(--space-1) var(--space-2);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--r-sm);
-  background: var(--bg);
+  background: rgb(0 0 0 / .94);
 }
 
 .strip-word {
@@ -5053,4 +5054,22 @@ i.rainbow-dot,
 .language-gate .language-error {
   -webkit-user-select: text;
   user-select: text;
+}
+
+.caption-stage.is-transcript .stage-media {
+  visibility: hidden;
+}
+
+.transcript-feed .caption-paragraph header {
+  gap: var(--space-4);
+  height: auto;
+  padding: 0 6px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.transcript-feed .speaker-index {
+  display: none;
 }

@@ -137,3 +137,10 @@ export function speakerColor(
   if (!speaker) return "var(--caption-unknown)";
   return colors.get(speaker)?.color ?? "var(--accent)";
 }
+
+/** How a speaker is named on screen: "Speaker 2" for `S2`. */
+export function speakerName(speaker: string | null): string {
+  if (!speaker) return "No speaker";
+  const n = /^S(\d+)$/.exec(speaker);
+  return n ? `Speaker ${n[1]}` : speaker;
+}

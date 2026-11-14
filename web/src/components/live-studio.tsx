@@ -49,6 +49,7 @@ import {useRecordingTransport} from "@/hooks/use-recording-transport";
 import {
   lineAt as timelineLineAt,
   nextLineStart,
+  positionLabel,
   previousLineStart,
 } from "@/lib/transport";
 import {
@@ -1555,11 +1556,11 @@ function CaptionFeed({
                 paragraph.status === "mixed"
                   ? "Speaker transition"
                   : paragraph.speaker
-                    ? `Speaker ${speakerNumber(paragraph.speaker)}`
+                    ? `Speaker ${Number(speakerNumber(paragraph.speaker))}`
                     : "Attribution pending"
               }</span>
               {transcript && (
-                <time>{number(firstWord?.start).toFixed(1)}s</time>
+                <time>{positionLabel(number(firstWord?.start))}</time>
               )}
             </header>
             <div className="caption-surface">

@@ -33,7 +33,7 @@ import {
   setColour,
   type EditWord,
 } from "@/lib/caption-edit";
-import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
+import {speakerColor, type SpeakerColorMap, speakerName} from "@/lib/speaker-colors";
 import {
   fitView,
   followView,
@@ -573,7 +573,7 @@ export function RecordingTimeline({
                 : speaker
                   ? <i style={{"--dot": speakerColor(speaker, colors)} as CSSVars} />
                   : <Captions size={13} />}
-              {speaker === RAINBOW_ROW ? "Rainbow" : speaker || "Unknown"}
+              {speaker === RAINBOW_ROW ? "Rainbow" : speakerName(speaker || null)}
             </span>
           ))}
         </li>

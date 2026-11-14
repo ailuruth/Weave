@@ -34,7 +34,7 @@ import {
 import {positionLabel} from "@/lib/transport";
 import {OverlayScroll} from "@/components/overlay-scroll";
 import {PREVIEW_LEAD_S} from "@/hooks/use-recording-transport";
-import {speakerColor, type SpeakerColorMap} from "@/lib/speaker-colors";
+import {speakerColor, speakerName, type SpeakerColorMap} from "@/lib/speaker-colors";
 import type {CaptionDocumentState} from "@/hooks/use-caption-document";
 
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
@@ -49,12 +49,6 @@ const LEAVE_MS = 170;
 const keepTextFocus = (event: {target: EventTarget; preventDefault: () => void}) => {
   if ((event.target as HTMLElement).closest("button")) event.preventDefault();
 };
-function speakerName(speaker: string | null): string {
-  if (!speaker) return "No speaker";
-  const n = /^S(\d+)$/.exec(speaker);
-  return n ? `Speaker ${n[1]}` : speaker;
-}
-
 function TimeField({
   label,
   value,
