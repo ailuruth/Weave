@@ -28,6 +28,12 @@ The captions are a first draft. To correct them, edit `out/exports/clip.cwi.json
 ./weave caption clip.mp4 --captions out/exports/clip.cwi.json
 ```
 
+The caption line sits low in the frame, as Caption with Intention places it. If your video already has a logo or subtitles there, move the line up. If people will watch on a phone, make the captions larger.
+
+```bash
+./weave caption clip.mp4 --position top --size 1.2
+```
+
 ## Install
 
 You need Python 3.11, Node.js, ffmpeg and Chrome, on macOS (Apple Silicon) or Linux.

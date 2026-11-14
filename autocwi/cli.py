@@ -125,6 +125,10 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--fps", type=int, default=None,
                     help="frames a second the captions are drawn at "
                          "(default 60)")
+    cp.add_argument("--position", default=None, metavar="top|bottom",
+                    help="where the caption line sits (default: bottom)")
+    cp.add_argument("--size", default=None, metavar="SCALE",
+                    help="how large the captions are, 1 being the default")
 
     ck = sub.add_parser(
         "check", help="check a caption file (spec.json / NAME.cwi.json) "
@@ -166,6 +170,12 @@ def build_parser() -> argparse.ArgumentParser:
     lv.add_argument("--fps", type=int, default=None,
                     help="with --render: frames a second the captions are "
                          "drawn at (default 60)")
+    lv.add_argument("--position", default=None, metavar="top|bottom",
+                    help="for a recording: where the caption line sits "
+                         "(default: bottom)")
+    lv.add_argument("--size", default=None, metavar="SCALE",
+                    help="for a recording: how large the captions are, 1 "
+                         "being the default")
     lv.add_argument("--sample", action="store_true",
                     help="stream the bundled sample for the selected language")
     # The PR film changes treatment at 28 s: before it is the titles demo on
@@ -399,6 +409,13 @@ def main(argv: list[str] | None = None) -> None:
         print(report(findings))
         raise SystemExit(1 if any(f.severity == "error" for f in findings) else 0)
     cfg = load_config(args.config)
+    if args.cmd == "live":
+        from .recording import with_cue_look
+
+        try:
+            cfg = with_cue_look(cfg, args.position, args.size)
+        except ValueError as exc:
+            raise SystemExit(f"weave: {exc}") from None
     seed_everything(cfg["seed"])
     device = pick_device()
 

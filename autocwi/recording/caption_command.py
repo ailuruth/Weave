@@ -6,7 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from ..config import load_config
 from .captions import CaptionError, read_captions
+from .display import with_cue_look
 from .language import NAMES, LanguageUnclear, detect_language
 from .report import (
     NothingToCaption,
@@ -21,6 +23,11 @@ LOG = "caption.log"
 
 def caption(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     media = Path(args.file)
+    try:
+        with_cue_look(load_config(None), args.position, args.size)
+    except ValueError as exc:
+        print(f"weave: {exc}", file=sys.stderr)
+        return 1
     problem = tooling_problem(draw=not args.no_video)
     try:
         duration_s = None if problem else inspect_media(media)
@@ -75,11 +82,10 @@ def caption(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
 
 def _run(args, parser, media: Path, reporter: Reporter | None) -> None:
-    from ..config import load_config
     from ..device import pick_device, seed_everything
     from ..live import run_live
 
-    cfg = load_config(None)
+    cfg = with_cue_look(load_config(None), args.position, args.size)
     seed_everything(cfg["seed"])
     device = pick_device()
     cache: dict = {}

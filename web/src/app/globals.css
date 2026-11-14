@@ -2422,19 +2422,34 @@ button {
 }
 
 .studio-shell[data-cues="true"] .caption-feed {
+  /* CWI 2.4.2: the box scales with its type. Above 1 it grows only as far as
+     the type does after --cue-fit, so a narrowed line keeps the default box. */
+  --cue-box: calc(var(--frame-h, 100cqh) * .0722 * max(
+    min(var(--cue-size, 1), 1), var(--cue-size, 1) * var(--cue-fit, 1)));
   left: var(--frame-left, 0px);
   right: auto;
   width: var(--frame-w, 100%);
-  top: calc(var(--frame-top, 0px) + var(--frame-h, 100cqh) * .8667);
+  top: calc(
+    var(--frame-top, 0px) + var(--frame-h, 100cqh) * (.8667 + .0722) - var(--cue-box));
   bottom: auto;
-  height: calc(var(--frame-h, 100cqh) * .0722);
+  height: var(--cue-box);
   max-height: none;
   padding: 0;
   overflow: visible;
   align-items: center;
   justify-content: center;
   font-size: calc(
-    var(--frame-h, 100cqh) * .042 * var(--caption-scale, 1) * var(--cue-fit, 1));
+    var(--frame-h, 100cqh) * .042 * var(--caption-scale, 1) * var(--cue-size, 1)
+    * var(--cue-fit, 1));
+}
+
+.studio-shell[data-cues="true"][data-cue-position="top"] .caption-feed {
+  top: calc(var(--frame-top, 0px) + var(--frame-h, 100cqh) * (1 - .8667 - .0722));
+}
+
+.studio-shell[data-cues="true"][data-cue-position="top"] .stage-sound {
+  top: auto;
+  bottom: 5%;
 }
 
 .studio-shell[data-cues="true"] .caption-feed .caption-paragraph[data-row-id] {

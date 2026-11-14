@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {activeCue, buildCues, quietRuns} from "./caption-cues.ts";
+import {
+  CUE_FRAME_SHARE,
+  activeCue,
+  buildCues,
+  crestWidth,
+  cueFit,
+  quietRuns,
+} from "./caption-cues.ts";
 import type {CaptionWord} from "./caption-store.ts";
 
 function word(id: string, cue: number | undefined, t: number, dur = 0.3) {
@@ -90,4 +97,33 @@ test("a run never crosses from one caption line into the next", () => {
   ]), quiet, 200);
   assert.equal(runs.get("a")?.spanMs, 500);
   assert.equal(runs.get("b")?.leadMs, 200);
+});
+
+test("at size 1 and below only the line at rest is fitted, as before the size option", () => {
+  const room = 400 * CUE_FRAME_SHARE;
+  assert.equal(cueFit(400, 1, 500, 2000), Math.min(1, room / 500));
+  assert.equal(cueFit(400, 1, 300, 2000), 1);
+  assert.equal(cueFit(400, 0.75, 300, 2000), 1);
+});
+
+test("above size 1 a line is narrowed until its crest fits the picture", () => {
+  const room = 400 * CUE_FRAME_SHARE;
+  for (const [rest, crest] of [[300, 450], [250, 380], [360, 420]]) {
+    const fit = cueFit(400, 1.4, rest, crest);
+    assert.ok(rest * fit <= room + 1e-9, `rest ${rest}`);
+    assert.ok(crest * fit <= room + 1e-9, `crest ${crest}`);
+  }
+  assert.equal(cueFit(400, 1.4, 150, 200), 1);
+});
+
+test("a larger size never draws a line smaller than size 1 does", () => {
+  for (const [rest, crest] of [[300, 3000], [500, 900], [100, 1200]]) {
+    const atOne = cueFit(400, 1, rest / 1.4, crest / 1.4);
+    assert.ok(1.4 * cueFit(400, 1.4, rest, crest) >= atOne - 1e-9, `rest ${rest}`);
+  }
+});
+
+test("only growing words widen the crest", () => {
+  assert.equal(crestWidth(300, [{width: 80, scale: 1}, {width: 60, scale: 0.6}], 0.14), 300);
+  assert.equal(crestWidth(300, [{width: 100, scale: 2}], 0.14), 300 + (2 * 1.14 - 1) * 100);
 });

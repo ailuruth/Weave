@@ -11,7 +11,7 @@ from .direct import (
     settle_speakers,
     soften,
 )
-from .display import video_motion
+from .display import cue_look, video_motion, with_cue_look
 from .export import write_exports
 from .media import MEDIA_MAX_BYTES, MEDIA_SUFFIXES, media_has_audio
 from .pipeline import RecordingHooks, recording_events
@@ -26,11 +26,11 @@ __all__ = [
     "LOUDNESS_PIVOT", "MEDIA_MAX_BYTES", "MEDIA_SUFFIXES", "Play", "RecordingHooks",
     "ScriptWord", "ScriptedRecognizer", "StepClock", "Stop", "align_words",
     "analyse",
-    "assign_cues", "build_media_score", "direct", "direct_recording", "lead_in",
+    "assign_cues", "build_media_score", "cue_look", "direct", "direct_recording", "lead_in",
     "line_length",
     "media_has_audio", "read_captions", "recording_events", "render_recording", "render_score",
     "replay_score", "romanize_hangul",
     "settle_speakers",
     "snap_onsets", "soften", "transcribe_recording", "video_motion",
-    "write_exports",
+    "with_cue_look", "write_exports",
 ]

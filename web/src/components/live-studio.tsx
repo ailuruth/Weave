@@ -48,6 +48,8 @@ import {CaptionEditor} from "@/components/caption-editor";
 import {
   activeCue,
   buildCues,
+  crestWidth,
+  cueFit,
   quietRuns,
   type QuietRun,
 } from "@/lib/caption-cues";
@@ -1820,9 +1822,6 @@ function StageSound({
   );
 }
 
-/** The widest a caption line may be, as a share of the picture's width. */
-const CUE_FRAME_SHARE = 0.92;
-
 type VideoExport = "idle" | "drawing" | "failed";
 
 function ExportMenu() {
@@ -2317,6 +2316,8 @@ export function LiveStudio() {
   }] : []), [cue]);
   const cueMode = cues.length > 0;
   const cueId = cue?.cue ?? null;
+  const cueSize = runtime.cueLook.size;
+  const widenMax = runtime.videoMotion.widenMax;
   useLayoutEffect(() => {
     const stage = stageRef.current;
     const line = stage?.querySelector<HTMLElement>(".caption-feed .caption-surface");
@@ -2324,10 +2325,16 @@ export function LiveStudio() {
     stage.style.setProperty("--cue-fit", "1");
     const frame = parseFloat(stage.style.getPropertyValue("--frame-w"));
     if (!line || !(frame > 0)) return;
-    const room = frame * CUE_FRAME_SHARE;
-    const width = line.getBoundingClientRect().width;
-    if (width > room) stage.style.setProperty("--cue-fit", (room / width).toFixed(4));
-  }, [cueId]);
+    const rest = line.getBoundingClientRect().width;
+    const words = [...line.querySelectorAll<HTMLElement>(".caption-word")].map((word) => ({
+      width: word.offsetWidth,
+      scale: Math.max(
+        Number(word.style.getPropertyValue("--voice-scale")) || 1,
+        Number(word.style.getPropertyValue("--sync-pop")) || 1),
+    }));
+    const fit = cueFit(frame, cueSize, rest, crestWidth(rest, words, widenMax));
+    if (fit < 1) stage.style.setProperty("--cue-fit", fit.toFixed(4));
+  }, [cueId, cueSize, widenMax]);
   const stageRuntime = useMemo(
     () => (cueMode ? {
       ...runtime,
@@ -2380,6 +2387,7 @@ export function LiveStudio() {
   const inputGood = settledStatus === "good";
   const studioStyle: CSSVars = {
     "--caption-scale": settings.captionScale,
+    "--cue-size": cueSize,
     "--active-color": activeColor,
     // The CSS width cap is derived from this, so the type size and the row width
     // can never disagree about how many words a row holds.
@@ -2423,6 +2431,7 @@ export function LiveStudio() {
       data-plate={settings.captionRules ? "rules" : "box"}
       data-media={mediaMode}
       data-cues={cueMode ? "true" : "false"}
+      data-cue-position={runtime.cueLook.position}
       data-language={session.language ?? "pending"}
       lang={session.language === "ko" ? "ko" : "en"}
       style={studioStyle}

@@ -888,6 +888,23 @@ live:
     # higher. The studio moves them at 60, and a 24 fps film drawn at 24
     # shows the motion in steps.
     fps: 60
+    # WHERE THE CAPTION LINE SITS. CWI 2.4.3 puts every caption in "the lower
+    # 20% of the frame", so `bottom` is the design system and the default.
+    # `top` is a deviation for a picture whose own logo, lower third or
+    # burnt-in subtitles already fill that band: the line keeps the distance
+    # from the top edge that it keeps from the bottom one. `weave caption
+    # --position`, `weave live --position`.
+    position: bottom
+    # HOW LARGE THE CAPTIONS ARE, as a multiple of the line's own type (4.2%
+    # of the frame height, fitted to the PR film where CWI 2.3.5 says 5%).
+    # The limits are CWI 2.3.6's, 3% to 12% of the screen height: at 0.75
+    # ordinary words are 3.15%, the smallest 2.3.6 calls readable, and at 1.4
+    # the largest word `video_motion.scale_range` allows (2.0x) is 11.8%.
+    # At 1.4 the box and its margin still sit inside 2.4.3's lower 20%. A
+    # line too wide for the picture is narrowed to fit it at any size.
+    # `weave caption --size`, `weave live --size`.
+    size: 1.0
+    size_range: [0.75, 1.4]
   import_director:
     enabled: true
     # RE-FITTED 2026-11-13 TO THE PIXEL MEASUREMENT (86 trusted words of

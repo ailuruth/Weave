@@ -1,6 +1,8 @@
-"""How a captioned recording moves on the stage, as the studio is told it."""
+"""How a captioned recording moves and where it sits on the stage, as the studio is told it."""
 
 from __future__ import annotations
+
+import math
 
 VIDEO_MOTION_DEFAULTS: dict[str, object] = {
     "cue_lead_ms": 250,
@@ -52,3 +54,39 @@ def video_motion(settings: dict | None) -> dict[str, object]:
         _camel(key): given.get(key, default)
         for key, default in VIDEO_MOTION_DEFAULTS.items()
     }
+
+
+CUE_POSITIONS = ("bottom", "top")
+CUE_LOOK_DEFAULTS: dict[str, object] = {
+    "position": "bottom",
+    "size": 1.0,
+    "size_range": [0.75, 1.4],
+}
+
+
+def cue_look(settings: dict | None) -> dict[str, object]:
+    """`live.import_render`'s position and size, checked, keyed the way the studio reads it."""
+    given = {**CUE_LOOK_DEFAULTS, **(settings or {})}
+    position = given["position"]
+    if position not in CUE_POSITIONS:
+        raise ValueError(f"the caption position is top or bottom, not {position}")
+    low, high = (float(limit) for limit in given["size_range"])
+    try:
+        size = float(given["size"])
+    except (TypeError, ValueError):
+        size = math.nan
+    if not low <= size <= high:
+        raise ValueError(
+            f"the caption size is a number from {low:g} to {high:g}, not {given['size']}")
+    return {"position": position, "size": size}
+
+
+def with_cue_look(cfg: dict, position: str | None, size: str | None) -> dict:
+    """`cfg` with the command line's position and size over `live.import_render`, checked."""
+    render = dict(cfg["live"].get("import_render") or {})
+    if position is not None:
+        render["position"] = position
+    if size is not None:
+        render["size"] = size
+    cue_look(render)
+    return {**cfg, "live": {**cfg["live"], "import_render": render}}
