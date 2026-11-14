@@ -153,6 +153,39 @@ export function readAheadMs(
     idles, the floor overtakes it and it resets -- so a burst can never push a
     word unboundedly into the future.
 */
+/** Whether the playhead should be published to React on this frame.
+
+    It is published coarsely, every `tickMs`, because nothing a word does
+    depends on it. A caption line of a recording does: it is put up and taken
+    down by the published playhead, so waiting for the next tick drew it up to
+    one tick late. `edgeMs` is the next moment a line changes, and crossing it
+    publishes at once. */
+export function playheadDue(
+  nowMs: number,
+  lastPublishMs: number,
+  tickMs: number,
+  playheadMs: number,
+  publishedPlayheadMs: number,
+  edgeMs: number,
+): boolean {
+  if (nowMs - lastPublishMs >= tickMs) return true;
+  return playheadMs >= edgeMs && publishedPlayheadMs < edgeMs;
+}
+
+/** How long a word must have been on screen before it may turn.
+
+    Live words arrive in bursts, so each is held to `minReadAheadMs`. A
+    recording is known whole: its caption line is drawn a set time before its
+    first word, and that lead is all the read-ahead it is meant to have.
+    Holding the first words of a line to the live floor turned them 170 ms or
+    more after they were spoken. */
+export function readAheadFloorMs(
+  word: {cue?: number | null},
+  minReadAheadMs: number,
+): number {
+  return typeof word.cue === "number" ? 0 : Math.max(0, minReadAheadMs);
+}
+
 export interface TurnMoment {
   turnAtMs: number;
   /** True when the read-ahead floor (not the acoustic turn) set the moment. */

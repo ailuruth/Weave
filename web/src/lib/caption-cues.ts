@@ -70,6 +70,21 @@ export function activeCue(
   return playheadMs <= current.endMs + holdMs ? current : null;
 }
 
+/** The next moment after `playheadMs` at which the line on screen changes. */
+export function nextCueEdge(
+  cues: CaptionCue[],
+  playheadMs: number,
+  {leadMs, holdMs}: CueTiming,
+): number {
+  let next = Number.POSITIVE_INFINITY;
+  for (const cue of cues) {
+    for (const edge of [cue.startMs - leadMs, cue.endMs + holdMs + 1]) {
+      if (!(edge <= playheadMs) && edge < next) next = edge;
+    }
+  }
+  return next;
+}
+
 /** HOW A RUN OF QUIET WORDS MOVES, on one caption line. */
 export interface QuietRun {
   /** How long before THIS word's own onset its shrink begins. */

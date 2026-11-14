@@ -8,6 +8,8 @@ import {
   monotonicTimeForAcousticMs,
   presentationNowMs,
   readAheadMs,
+  playheadDue,
+  readAheadFloorMs,
   turnMomentFor,
 } from "./caption-clock.ts";
 
@@ -142,4 +144,36 @@ test("an acoustic-timed word does not advance the floor chain", () => {
   // where it was, or it would inject a phantom gap. The hook only advances
   // `lastFloorTurn` when `clamped` is true; assert the flag that gates it.
   assert.equal(turnMomentFor(9_000, 1_000, 420, 2_000, 60).clamped, false);
+});
+
+test("a recording's word turns when it is spoken, not after the live floor", () => {
+  // The line is drawn 250 ms before its first word. Under the live 420 ms
+  // floor that word turned 170 ms late.
+  const now = 10_000;
+  const firstWordOnset = now + 250;
+  assert.equal(readAheadFloorMs({cue: 3}, 420), 0);
+  const recorded = turnMomentFor(
+    firstWordOnset, now, readAheadFloorMs({cue: 3}, 420), Number.NEGATIVE_INFINITY, 60);
+  assert.deepEqual(recorded, {turnAtMs: firstWordOnset, clamped: false});
+  const live = turnMomentFor(
+    firstWordOnset, now, readAheadFloorMs({}, 420), Number.NEGATIVE_INFINITY, 60);
+  assert.equal(live.turnAtMs, now + 420);
+});
+
+test("a recording's word that is already past still ripples in", () => {
+  const first = turnMomentFor(9_000, 10_000, readAheadFloorMs({cue: 0}, 420), Number.NEGATIVE_INFINITY, 60);
+  assert.deepEqual(first, {turnAtMs: 10_000, clamped: true});
+  const second = turnMomentFor(9_200, 10_000, readAheadFloorMs({cue: 0}, 420), first.turnAtMs, 60);
+  assert.equal(second.turnAtMs, 10_060);
+});
+
+test("the playhead is published on its tick, and at once when a caption line changes", () => {
+  const never = Number.POSITIVE_INFINITY;
+  assert.equal(playheadDue(1_066, 1_000, 66, 5_000, 4_934, never), true);
+  assert.equal(playheadDue(1_020, 1_000, 66, 5_000, 4_980, never), false);
+  assert.equal(playheadDue(1_020, 1_000, 66, 5_000, 4_980, 4_990), true);
+  // Already published past that edge: no second publish for it.
+  assert.equal(playheadDue(1_040, 1_020, 66, 5_020, 5_000, 4_990), false);
+  // No clock yet.
+  assert.equal(playheadDue(1_020, 1_000, 66, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, 0), false);
 });

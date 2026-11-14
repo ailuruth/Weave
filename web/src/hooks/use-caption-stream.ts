@@ -23,6 +23,8 @@ import {
   IDLE_CLOCK,
   monotonicTimeForAcousticMs,
   presentationNowMs,
+  playheadDue,
+  readAheadFloorMs,
   readAheadMs,
   turnMomentFor,
   type PlayheadClock,
@@ -433,6 +435,8 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
   const rearmedWordsRef = useRef(0);
   const minReadAheadRef = useRef(Number.POSITIVE_INFINITY);
   const eventIdRef = useRef(0);
+  const playheadEdgeRef = useRef(Number.POSITIVE_INFINITY);
+  const publishedPlayheadRef = useRef(Number.NEGATIVE_INFINITY);
   /* AN ENDPOINT ARRIVES AS A BURST, AND A BURST IS ONE PAINT (2026-08-14).
      The server publishes an endpoint word by word: MEASURED on the PR film,
      74 SSE messages inside 100 ms, 59 of them `word`. Each one was its own
@@ -504,6 +508,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     settledTextRef.current.clear();
     speakerLockRef.current.clear();
     clockRef.current = IDLE_CLOCK;
+    publishedPlayheadRef.current = Number.NEGATIVE_INFINITY;
     lastFloorTurnRef.current = Number.NEGATIVE_INFINITY;
     lastFloorEpochRef.current = null;
     minReadAheadRef.current = Number.POSITIVE_INFINITY;
@@ -837,7 +842,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     const moment = turnMomentFor(
       acousticTurnMs,
       performance.now(),
-      runtimeRef.current.minReadAheadMs,
+      readAheadFloorMs(word, runtimeRef.current.minReadAheadMs),
       lastFloorTurnRef.current,
       runtimeRef.current.wordRevealCatchupGapMs,
     );
@@ -858,9 +863,17 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     const tick = () => {
       frame = requestAnimationFrame(tick);
       const now = performance.now();
-      if (now - last < PLAYHEAD_TICK_MS) return;
-      last = now;
       const clock = clockRef.current;
+      const due = playheadDue(
+        now,
+        last,
+        PLAYHEAD_TICK_MS,
+        presentationNowMs(clock, now, runtimeRef.current.readAheadDelayMs),
+        publishedPlayheadRef.current,
+        playheadEdgeRef.current,
+      );
+      if (!due) return;
+      last = now;
       if (!clock.started) return;
       // Publishing the epoch is what starts words scheduling, and what tells
       // words from a previous capture to settle. Both are rare transitions, so
@@ -897,6 +910,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
           ),
         );
       }
+      publishedPlayheadRef.current = playhead;
       setPlayheadMs(playhead);
     };
     frame = requestAnimationFrame(tick);
@@ -1001,6 +1015,7 @@ export function useCaptionStream({reducedMotion}: StreamOptions) {
     scheduleWord,
     clockEpoch,
     playheadMs,
+    playheadEdgeRef,
     speakerOrder,
     stagings,
     startedAt,

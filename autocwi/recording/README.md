@@ -60,6 +60,8 @@ The file is used as written and nothing is transcribed. In it `loudness` is the 
 * Motion values live in `config.yaml` under `video_motion`.
 * The renderer sets each animation's time itself. Chrome's animation clock keeps running while the page clock is paused.
 * Captions are drawn at 60 frames a second, whatever the recording's own rate. `--fps 120` raises it.
+* A word of a recording turns when it is spoken. The live rule that a word must be on screen for 420 ms first does not apply: the line is drawn 250 ms ahead, and that is its read-ahead.
+* The playhead is published to the page every 66 ms, and at once when a caption line is due to change.
 * Chrome runs without its frame rate limit. Otherwise each screenshot waits about three 60 Hz frames, which was 90% of the drawing time. Chrome uses about three cores while it draws.
 * The studio applies events in `requestAnimationFrame`, so it only sees them when Chrome makes a frame. With the limit on, the first word turned 8 to 13 frames late, by a different amount each run.
 

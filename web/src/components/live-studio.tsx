@@ -43,6 +43,7 @@ import {
   buildCues,
   crestWidth,
   cueFit,
+  nextCueEdge,
   quietRuns,
   type QuietRun,
 } from "@/lib/caption-cues";
@@ -2206,6 +2207,7 @@ export function LiveStudio() {
     scheduleWord,
     clockEpoch,
     playheadMs,
+    playheadEdgeRef,
     speakerOrder,
     stagings,
     startedAt,
@@ -2307,6 +2309,12 @@ export function LiveStudio() {
         holdMs: runtime.videoMotion.cueHoldMs,
       })
     : null;
+  const cueLeadMs = runtime.videoMotion.cueLeadMs;
+  const cueHoldMs = runtime.videoMotion.cueHoldMs;
+  useEffect(() => {
+    playheadEdgeRef.current = nextCueEdge(
+      cues, playheadMs, {leadMs: cueLeadMs, holdMs: cueHoldMs});
+  }, [cues, playheadMs, cueLeadMs, cueHoldMs, playheadEdgeRef]);
   const cueParagraphs = useMemo<CaptionParagraph[]>(() => (cue ? [{
     id: `cue:${cue.cue}`,
     speaker: cue.words[0]?.word.speaker ?? null,

@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  CUE_FRAME_SHARE,
   activeCue,
   buildCues,
   crestWidth,
+  CUE_FRAME_SHARE,
   cueFit,
+  nextCueEdge,
   quietRuns,
 } from "./caption-cues.ts";
 import type {CaptionWord} from "./caption-store.ts";
@@ -126,4 +127,16 @@ test("a larger size never draws a line smaller than size 1 does", () => {
 test("only growing words widen the crest", () => {
   assert.equal(crestWidth(300, [{width: 80, scale: 1}, {width: 60, scale: 0.6}], 0.14), 300);
   assert.equal(crestWidth(300, [{width: 100, scale: 2}], 0.14), 300 + (2 * 1.14 - 1) * 100);
+});
+
+test("the next edge is when the line on screen next changes", () => {
+  const line = (cue: number, startMs: number, endMs: number) => ({cue, startMs, endMs, words: []});
+  const cues = [line(0, 1_000, 2_000), line(1, 3_000, 4_000)];
+  const timing = {leadMs: 250, holdMs: 600};
+  assert.equal(nextCueEdge(cues, Number.NEGATIVE_INFINITY, timing), 750);
+  assert.equal(nextCueEdge(cues, 750, timing), 2_601);
+  assert.equal(nextCueEdge(cues, 2_700, timing), 2_750);
+  assert.equal(nextCueEdge(cues, 2_750, timing), 4_601);
+  assert.equal(nextCueEdge(cues, 5_000, timing), Number.POSITIVE_INFINITY);
+  assert.equal(nextCueEdge([], 0, timing), Number.POSITIVE_INFINITY);
 });
