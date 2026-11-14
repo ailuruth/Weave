@@ -786,6 +786,13 @@ const MotionWord = memo(function MotionWord({
    in the node, not here. */
 const COMPASS_BEARING_OFFSET_DEG = 180;
 
+/* WITHOUT A MEASURED BEARING EACH SPEAKER IS GIVEN A PLACE ON THE DIAL
+   (2026-11-14, at the user's direction), in the order they were first heard:
+   the front, then the two thirds, then the gaps between. A later speaker never
+   moves an earlier one. DISPLAY ONLY: `direction_deg` stays absent in the data,
+   so nothing downstream, the haptics included, takes it for a bearing. */
+const ALLOTTED_DEG = [0, 120, 240, 60, 180, 300, 30, 150, 270, 90, 210, 330];
+
 /* The XVF3800 steers exactly two talker beams; the other two slots are the
    free-running and auto-select beams, which can be echoing one of them. */
 const COMPASS_BEAMS = 2;
@@ -913,6 +920,7 @@ function VoiceCompass({
   bearingTauMs,
   beamsEnabled,
   sound,
+  activeSpeaker,
 }: {
   level: LevelEvent;
   color: string;
@@ -923,6 +931,8 @@ function VoiceCompass({
       untrustworthy -- see config.yaml. */
   beamsEnabled: boolean;
   sound?: {label?: string; category?: string} | null;
+  /** Who is speaking now, for the place the dial gives them when no bearing is measured. */
+  activeSpeaker?: string | null;
 }) {
   const rawVolume = clamp((number(level.rms_db, -72) + 60) / 45, 0, 1);
   const rawPeriodicity = clamp(number(level.pitch_confidence, 0), 0, 1);
@@ -1049,6 +1059,13 @@ function VoiceCompass({
   const slotSpeaker = (index: number): string =>
     marks.length ? String(marks[index]?.speaker ?? "") : `S${index + 1}`;
 
+  const allotted = speakerColors
+    ? [...speakerColors.entries()]
+      .sort((a, b) => a[1].index - b[1].index)
+      .map(([speaker], order) => ({speaker, angle: ALLOTTED_DEG[order % ALLOTTED_DEG.length]}))
+    : [];
+  const allottedAngle = allotted.find((entry) => entry.speaker === activeSpeaker)?.angle ?? null;
+
   const label = `${profile} delivery, ${number(level.rms_db, -72).toFixed(1)} dB, ${
     number(level.pitch_hz) > 0 ? `${Math.round(number(level.pitch_hz))} Hz` : "unvoiced"
   }${directionMeasured
@@ -1161,6 +1178,28 @@ function VoiceCompass({
           zone rests at its centre and is drawn faint -- it is the zone saying
           "nothing from here", not a claim that somebody is there. `data-heard`
           carries that distinction; `data-active` marks the live one. */}
+      {!directionMeasured && allotted.map(({speaker, angle}) => (
+        <span
+          key={`allot-${speaker}`}
+          className="compass-slot"
+          data-allotted="true"
+          data-active={speaker === activeSpeaker ? "true" : "false"}
+          style={{
+            "--slot-angle": `${angle}deg`,
+            "--slot-span": "30deg",
+            "--slot-color": speakerColors ? speakerColor(speaker, speakerColors) : "var(--accent)",
+          } as CSSVars}
+        />
+      ))}
+      {!directionMeasured && allottedAngle !== null && (
+        <span
+          className="compass-direction"
+          data-allotted="true"
+          data-active="true"
+          data-heard="true"
+          style={{"--direction-angle": `${allottedAngle}deg`} as CSSVars}
+        ><b /><i /></span>
+      )}
       {sectors.needles.map((needle, index) => (
         <span
           key={`sector-${index}`}
@@ -2848,6 +2887,7 @@ export function LiveStudio() {
           <div className="compass-layout">
             <VoiceCompass level={level} color={activeColor}
                           speakerColors={speakerColors}
+                          activeSpeaker={currentParagraph?.speaker ?? null}
                           bearingTauMs={runtime.compassBearingTauMs}
                           beamsEnabled={runtime.compassBeamsEnabled}
                           sound={speechActive ? null : model.sound} />

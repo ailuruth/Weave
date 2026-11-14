@@ -1259,12 +1259,12 @@ button {
   color: var(--caption-unknown);
 }
 
-/* WITH NO BEARING THE DIAL SAYS WHO, NOT WHERE (2026-11-14, at the user's
-   direction; it used to draw the zone arrows faintly at front). Without an
-   array the arrows, the speaker marks and the minor ticks go, and the dial
-   fills with the speaking voice's colour. */
+/* WITH NO BEARING EACH SPEAKER HAS A PLACE (2026-11-14, at the user's
+   direction). The measured arrows, marks and minor ticks go; each speaker's
+   given place is drawn on the rim and one needle points at whoever speaks, on
+   a faint fill of their colour. */
 .voice-compass[data-measured="false"] {
-  background: color-mix(in srgb, var(--orb-color) 16%, transparent);
+  background: color-mix(in srgb, var(--orb-color) 10%, transparent);
   box-shadow: none;
   transition:
     transform 340ms cubic-bezier(.28,.55,.28,1),
@@ -1272,10 +1272,24 @@ button {
     border-color var(--dur-slow) ease;
 }
 
-.voice-compass[data-measured="false"] .compass-direction,
-.voice-compass[data-measured="false"] .compass-slot,
+.voice-compass[data-measured="false"] .compass-direction:not([data-allotted]),
+.voice-compass[data-measured="false"] .compass-slot:not([data-allotted]),
 .voice-compass[data-measured="false"] .compass-tick[data-cardinal="false"] {
   display: none;
+}
+
+/* The place a speaker is given when nothing was measured: their arc, faint
+   until they speak, and one needle that eases to whoever is speaking now. */
+.compass-slot[data-allotted="true"] {
+  opacity: .45;
+}
+
+.compass-slot[data-allotted="true"][data-active="true"] {
+  opacity: 1;
+}
+
+.compass-direction[data-allotted="true"] {
+  transition: transform 420ms var(--ease-out);
 }
 /* EACH TICK IS A FULL-SIZE ROTATING LAYER with the mark at its top edge, so
    the scale follows the diameter. A tick placed at a px offset from the
