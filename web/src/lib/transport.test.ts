@@ -165,3 +165,15 @@ test("minor ticks fall between the labelled ones and never on them", () => {
   assert.deepEqual(minorTicks({startS: 0, endS: 30}, 15), [5, 10, 20, 25]);
   assert.deepEqual(minorTicks({startS: 0, endS: 1}, 7), []);
 });
+
+test("a zoom level runs from the whole recording to the closest view and back", async () => {
+  const {zoomLevel, viewAtLevel, MIN_VIEW_S} = await import("./transport.ts");
+  const whole = {startS: 0, endS: 120};
+  assert.equal(zoomLevel(whole, 120), 0);
+  const close = viewAtLevel(whole, 1, 60, 120);
+  assert.ok(Math.abs(close.endS - close.startS - MIN_VIEW_S) < 1e-9);
+  assert.ok(close.startS <= 60 && close.endS >= 60);
+  assert.ok(Math.abs(zoomLevel(close, 120) - 1) < 1e-9);
+  const half = viewAtLevel(whole, 0.5, 30, 120);
+  assert.ok(Math.abs(zoomLevel(half, 120) - 0.5) < 1e-9);
+});

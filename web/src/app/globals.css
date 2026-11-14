@@ -497,10 +497,14 @@ button {
   transition: color var(--dur-quick) ease, background var(--dur-quick) ease;
 }
 
-.topbar-tools .icon-button:hover,
-.timeline .icon-button:hover {
-  background: transparent;
+.topbar-tools .icon-button:hover:not(:disabled),
+.timeline .icon-button:hover:not(:disabled) {
+  background: var(--surface-selected);
   color: var(--text);
+}
+
+.timeline .timeline-view .icon-button {
+  color: var(--muted);
 }
 
 /* Nothing but the stage lives here now. */
@@ -3761,8 +3765,7 @@ button {
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: 0;
-  margin-right: calc((16px - var(--control-icon)) / 2);
+  gap: var(--space-2);
 }
 
 .timeline-zoom {
@@ -3770,16 +3773,59 @@ button {
   align-items: center;
 }
 
+.timeline-zoom input[type="range"] {
+  width: 96px;
+  height: var(--control-h);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.timeline-zoom input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+
+.timeline-zoom input[type="range"]::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--text);
+  appearance: none;
+  transition: transform var(--dur-quick) var(--ease-standard);
+}
+
+.timeline-zoom input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.timeline-zoom input[type="range"]::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+}
+
+.timeline-zoom input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+
 .timeline-speed {
   display: grid;
   place-items: center;
   height: var(--control-h);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
   overflow: hidden;
-  border: 0;
+  border: 1px solid var(--control-line);
   border-radius: var(--r-sm);
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -3787,7 +3833,7 @@ button {
 }
 
 .timeline-speed:hover {
-  color: var(--text);
+  background: var(--surface-selected);
 }
 
 .timeline-speed span {

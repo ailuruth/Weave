@@ -206,6 +206,21 @@ export function zoomView(view: View, factor: number, anchorS: number, durationS:
   return clampView(anchorS - share * next, next, durationS);
 }
 
+/** How far in a view is zoomed, 0 for the whole recording to 1 for the closest view, on a log scale. */
+export function zoomLevel(view: View, durationS: number): number {
+  const total = Math.max(MIN_VIEW_S, durationS);
+  if (total <= MIN_VIEW_S) return 0;
+  const span = Math.min(total, Math.max(MIN_VIEW_S, view.endS - view.startS));
+  return Math.log(total / span) / Math.log(total / MIN_VIEW_S);
+}
+
+/** The view zoomed to `level` (see `zoomLevel`), keeping `anchorS` where it is. */
+export function viewAtLevel(view: View, level: number, anchorS: number, durationS: number): View {
+  const total = Math.max(MIN_VIEW_S, durationS);
+  const span = total * (MIN_VIEW_S / total) ** Math.min(1, Math.max(0, level));
+  return zoomView(view, span / Math.max(1e-6, view.endS - view.startS), anchorS, durationS);
+}
+
 export function panView(view: View, deltaS: number, durationS: number): View {
   return clampView(view.startS + deltaS, view.endS - view.startS, durationS);
 }

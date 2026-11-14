@@ -47,6 +47,8 @@ import {
   tickLabel,
   zoomView,
   type View,
+  viewAtLevel,
+  zoomLevel,
 } from "@/lib/transport";
 
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
@@ -535,15 +537,15 @@ export function RecordingTimeline({
             >
               <ZoomOut size={16} />
             </button>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label="Show the whole recording"
-              title="Show the whole recording"
-              onClick={() => setView({startS: 0, endS: Math.max(2, durationS)})}
-            >
-              <Maximize2 size={16} />
-            </button>
+            <input
+              type="range"
+              min={0}
+              max={1000}
+              step={1}
+              aria-label="Zoom"
+              value={Math.round(zoomLevel(view, durationS) * 1000)}
+              onChange={(event) => setView(viewAtLevel(view, Number(event.target.value) / 1000, position(), durationS))}
+            />
             <button
               type="button"
               className="icon-button"
@@ -554,6 +556,15 @@ export function RecordingTimeline({
               <ZoomIn size={16} />
             </button>
           </div>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Show the whole recording"
+            title="Show the whole recording"
+            onClick={() => setView({startS: 0, endS: Math.max(2, durationS)})}
+          >
+            <Maximize2 size={16} />
+          </button>
         </div>
       </div>
 
