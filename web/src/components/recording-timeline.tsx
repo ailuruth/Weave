@@ -34,6 +34,7 @@ import {
   type EditWord,
 } from "@/lib/caption-edit";
 import {speakerColor, type SpeakerColorMap, speakerName} from "@/lib/speaker-colors";
+import {useMoreBelow} from "@/lib/use-more-below";
 import {
   fitView,
   followView,
@@ -423,6 +424,8 @@ export function RecordingTimeline({
     });
   };
 
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useMoreBelow(bodyRef);
   const {step, ticks} = useMemo(() => rulerTicks(view, width), [view, width]);
   const minor = useMemo(() => minorTicks(view, step), [view, step]);
   const bars = useMemo(
@@ -577,7 +580,7 @@ export function RecordingTimeline({
         </div>
       </div>
 
-      <div className="timeline-body">
+      <div className="timeline-body" ref={bodyRef}>
       <ul className="timeline-lanes" aria-hidden="true">
         <li data-lane="audio"><AudioLines size={14} />Audio</li>
         <li data-lane="captions">
