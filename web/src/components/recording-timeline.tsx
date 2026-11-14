@@ -250,6 +250,14 @@ export function RecordingTimeline({
     const track = trackRef.current;
     if (!track) return;
     const onWheel = (event: WheelEvent) => {
+      const body = track.closest(".timeline-body");
+      const vertical = !event.shiftKey && !event.ctrlKey && !event.metaKey
+        && Math.abs(event.deltaY) > Math.abs(event.deltaX);
+      if (vertical && body && body.scrollHeight > body.clientHeight + 1) {
+        event.preventDefault();
+        body.scrollTop += event.deltaY;
+        return;
+      }
       event.preventDefault();
       const shown = viewRef.current;
       const span = shown.endS - shown.startS;

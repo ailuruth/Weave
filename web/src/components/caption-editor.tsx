@@ -465,7 +465,8 @@ export function CaptionEditor({
       ? (presetIds.size === 1 ? wordPresetOf(chosen[0]) : null)
       : presetOf(words, line.first);
     const colour = chosen[0];
-    const colourAt = colour.rainbow ? doc!.speakers.length : doc!.speakers.indexOf(colour.speaker ?? "");
+    const speaking = new Set(words.map((word) => word.speaker));
+    const voices = doc!.speakers.filter((speaker) => speaking.has(speaker) || speaker === colour.speaker);
     const recolour = (choice: {speaker: string | null} | {rainbow: true}) => change(range
       ? across((current, index) => setColour(current, index, choice, false))
       : setColour(words, line.first, choice, true), range ? range[0] : line.first, true);
@@ -624,9 +625,8 @@ export function CaptionEditor({
             className="swatches"
             role="radiogroup"
             aria-label="Color"
-            style={{"--seg-n": doc!.speakers.length + 2, "--seg-i": Math.max(0, colourAt), "--seg-on": colourAt < 0 ? 0 : 1} as CSSVars}
           >
-            {doc!.speakers.map((speaker) => (
+            {voices.map((speaker) => (
               <button
                 key={speaker}
                 type="button"

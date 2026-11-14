@@ -3681,8 +3681,11 @@ button {
   --lane-sounds: 22px;
   --lane-gap: 4px;
   position: relative;
-  flex: none;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--rail-bg);
@@ -3864,7 +3867,15 @@ button {
 .timeline-body {
   display: grid;
   grid-template-columns: minmax(108px, max-content) minmax(0, 1fr);
+  min-height: 0;
   padding-right: var(--space-7);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.timeline-body::-webkit-scrollbar {
+  display: none;
 }
 
 .timeline-lanes {
@@ -3925,6 +3936,7 @@ button {
   position: absolute;
   inset: 0 0 auto;
   height: var(--lane-ruler);
+  overflow: hidden;
 }
 
 .timeline-ruler span {
@@ -4235,6 +4247,7 @@ i.rainbow-dot,
 
 .inspector-body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   animation: inspector-enter var(--dur-base) var(--ease-standard) backwards;
 }
@@ -4287,6 +4300,7 @@ i.rainbow-dot,
 
 .inspector-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -4488,11 +4502,11 @@ i.rainbow-dot,
 }
 
 .swatches {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 26px;
+  display: flex;
+  flex-wrap: wrap;
   justify-self: start;
   width: max-content;
+  max-width: 100%;
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line);
@@ -5021,8 +5035,7 @@ i.rainbow-dot,
 }
 
 .view-switcher::before,
-.segmented::before,
-.swatches::before {
+.segmented::before {
   content: "";
   position: absolute;
   top: var(--space-1);
@@ -5052,8 +5065,7 @@ i.rainbow-dot,
   position: relative;
 }
 
-.segmented button[data-active="true"],
-.swatch[aria-checked="true"] {
+.segmented button[data-active="true"] {
   background: transparent;
 }
 
@@ -5269,4 +5281,9 @@ i.rainbow-dot,
 
 .word-strip:has(.strip-word[aria-pressed="true"]) .strip-word:not([aria-pressed="true"]) {
   opacity: .38;
+}
+
+.word-strip .strip-word {
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
