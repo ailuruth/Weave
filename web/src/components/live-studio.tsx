@@ -42,6 +42,8 @@ import {CaptionEditor} from "@/components/caption-editor";
 import {RecordingTimeline} from "@/components/recording-timeline";
 import {LANGUAGE_NAMES, LanguageGate} from "@/components/language-gate";
 import {OverlayScroll} from "@/components/overlay-scroll";
+import {rainbowPair} from "@/lib/rainbow";
+import {WeaveMark} from "@/components/weave-mark";
 import {useCaptionDocument, type CaptionSpan} from "@/hooks/use-caption-document";
 import {useStageAnimations} from "@/hooks/use-stage-animations";
 import {lineForPlayhead, linesOf, retimeLine} from "@/lib/caption-edit";
@@ -386,6 +388,10 @@ const MotionWord = memo(function MotionWord({
         key={index}
         data-char-index={index}
         style={crest ? {"--char-index": index} as CSSVars : {
+          ...(word.rainbow ? {
+            "--rainbow-from": rainbowPair(index).from,
+            "--rainbow-to": rainbowPair(index).to,
+          } : {}),
           // Where this letter sits in the wave, and how hard it stretches.
           "--char-index": index,
           /* EACH LETTER TILTS SLIGHTLY DIFFERENTLY, and letters move in
@@ -2559,7 +2565,9 @@ export function LiveStudio() {
     >
       <header className="topbar">
         <div className="brand">
-          <h1>Weave</h1>
+          <h1 aria-label="Weave">
+            <WeaveMark size={26} className="brand-mark" />
+          </h1>
           {activeMedia && (
             <span className="brand-document" title={activeMedia.name}>
               {activeMedia.name}

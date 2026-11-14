@@ -175,10 +175,10 @@
   initial-value: 0;
 }
 
-@property --rainbow-hue {
-  syntax: "<angle>";
+@property --rainbow-mix {
+  syntax: "<number>";
   inherits: true;
-  initial-value: 0deg;
+  initial-value: 0;
 }
 
 @property --caption-height-cap {
@@ -328,8 +328,10 @@ button {
 .brand-mark {
   display: block;
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
 .brand h1 {
@@ -1910,20 +1912,21 @@ button {
    runs into it. The hue is cycled on the feed, and only while a rainbow word
    is on it. */
 .caption-feed:has(.caption-word[data-rainbow="true"]) {
-  animation: rainbow-hue 2400ms linear infinite;
+  animation: rainbow-mix 450ms ease-in-out infinite alternate;
 }
 
 .caption-word[data-rainbow="true"] .caption-character {
-  color: oklch(var(--rainbow-l, 82%) .19
-    calc(var(--rainbow-hue) + var(--char-index, 0) * 46deg));
+  color: color-mix(in oklab, var(--rainbow-from, #fff),
+    var(--rainbow-to, #fff) calc(var(--rainbow-mix) * 100%));
 }
 
-:root[data-theme="light"] .caption-word[data-rainbow="true"] {
-  --rainbow-l: 58%;
+:root[data-theme="light"] .caption-word[data-rainbow="true"] .caption-character {
+  color: color-mix(in oklab, color-mix(in oklab, var(--rainbow-from, #000),
+    var(--rainbow-to, #000) calc(var(--rainbow-mix) * 100%)), #000 28%);
 }
 
-@keyframes rainbow-hue {
-  to { --rainbow-hue: 360deg; }
+@keyframes rainbow-mix {
+  to { --rainbow-mix: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3842,7 +3845,7 @@ button {
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--muted);
-  font: 500 var(--text-xs)/1 var(--font-ui);
+  font: 600 var(--text-sm)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition: color var(--dur-quick) ease, background-color var(--dur-quick) ease;
@@ -4110,14 +4113,13 @@ button {
 
 /* THE RAINBOW'S OWN DOT, wherever a speaker's dot would be. */
 i.rainbow-dot,
-.swatch.rainbow-dot::before,
 .speaker-choices i.rainbow-dot,
 .timeline-lanes li[data-lane="captions"] i.rainbow-dot {
-  background: conic-gradient(#ff5a5a, #ffb13d, #f5e663, #5fe08a, #4fc3ff, #c58bff, #ff5a5a);
+  background: conic-gradient(#e8dd31, #29d9df, #eb1b32, #e1862c, #27d829, #e11fef, #4bbcf2, #e8dd31);
 }
 
 .timeline-line[data-rainbow="true"]::before {
-  background: linear-gradient(#ff5a5a, #f5e663, #5fe08a, #4fc3ff, #c58bff);
+  background: linear-gradient(#e8dd31, #29d9df, #eb1b32, #e1862c, #27d829, #e11fef, #4bbcf2);
 }
 
 /* THE CAPTION EDITOR IS A LIST AND A FIXED INSPECTOR (2026-11-15, at the
@@ -4505,46 +4507,44 @@ i.rainbow-dot,
   display: flex;
   flex-wrap: wrap;
   justify-self: start;
-  width: max-content;
+  gap: var(--space-3);
   max-width: 100%;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--bg);
 }
 
 .swatch {
+  --chip-fill: color-mix(in srgb, var(--dot) 28%, var(--rail-bg));
+  --chip-edge: color-mix(in srgb, var(--dot) 62%, var(--rail-bg));
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--muted-2);
+  border: 1px solid var(--chip-edge);
+  border-radius: 6px;
+  background: var(--chip-fill);
+  color: color-mix(in srgb, var(--dot) 80%, var(--text));
   cursor: pointer;
-}
-
-.swatch::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--dot);
+  transition: border-color var(--dur-quick) ease, background-color var(--dur-quick) ease;
 }
 
 .swatch:hover {
-  background: var(--surface-selected);
+  --chip-fill: color-mix(in srgb, var(--dot) 40%, var(--rail-bg));
+  --chip-edge: var(--dot);
 }
 
-.swatch[aria-checked="true"] {
-  background: var(--segment-active);
+.swatch.rainbow-dot {
+  border-color: color-mix(in srgb, var(--text) 30%, var(--rail-bg));
+  background:
+    linear-gradient(color-mix(in srgb, var(--rail-bg) 62%, transparent), color-mix(in srgb, var(--rail-bg) 62%, transparent)),
+    conic-gradient(#e8dd31, #29d9df, #eb1b32, #e1862c, #27d829, #e11fef, #4bbcf2, #e8dd31);
+  color: var(--text);
 }
 
-.swatch-new::before {
-  content: none;
+.swatch-new {
+  border-style: dashed;
+  border-color: var(--control-line);
+  background: transparent;
+  color: var(--muted-2);
 }
 
 .segmented {
@@ -5019,7 +5019,7 @@ i.rainbow-dot,
 }
 
 .strip-word[data-rainbow="true"] {
-  background-image: linear-gradient(90deg, #ff5a5a, #f5e663, #5fe08a, #4fc3ff, #c58bff);
+  background-image: linear-gradient(90deg, #e8dd31, #29d9df, #eb1b32, #e1862c, #27d829, #e11fef, #4bbcf2);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;

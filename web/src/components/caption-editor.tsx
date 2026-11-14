@@ -1,6 +1,6 @@
 "use client";
 
-import {Merge, Play, Plus, RotateCcw, Scissors, Trash2, Undo2, X} from "lucide-react";
+import {Check, Merge, Play, Plus, RotateCcw, Scissors, Trash2, Undo2, X} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -637,7 +637,9 @@ export function CaptionEditor({
                 className="swatch"
                 style={{"--dot": speakerColor(speaker, colors)} as CSSVars}
                 onClick={() => recolour({speaker})}
-              />
+              >
+                {!colour.rainbow && colour.speaker === speaker && <Check size={14} strokeWidth={2.5} />}
+              </button>
             ))}
             <button
               type="button"
@@ -647,7 +649,9 @@ export function CaptionEditor({
               title="Rainbow"
               className="swatch rainbow-dot"
               onClick={() => recolour({rainbow: true})}
-            />
+            >
+              {colour.rainbow && <Check size={14} strokeWidth={2.5} />}
+            </button>
             <button
               type="button"
               className="swatch swatch-new"
