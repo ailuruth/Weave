@@ -20,10 +20,10 @@
      Action Blue: Action Blue measures 2.68:1 on a dark tile. */
   --bg: #000000;
   --surface: #272729;
-  --surface-raised: #2a2a2c;
   --surface-soft: #252527;
   --line: #37373a;
   --line-strong: #48484c;
+  --control-line: #747479;
   --text: #ffffff;
   --muted: #cccccc;
   --muted-2: #98989d;
@@ -59,8 +59,6 @@
   --r-sm: 8px;
   /* The rare Pearl Button step. Deliberately uncalled -- mixing radii
      grammars is what the analysis warns against. */
-  --r-md: 11px;
-  --r-lg: 18px;
   --r-pill: 9999px;
   /* Row-width budget coefficients: worst-case row = N*linear +
      spread*sqrt(N) em. */
@@ -85,6 +83,20 @@
   --track-tight: -.374px;
   --track-snug: -.224px;
   --track-label: .02em;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+  --space-10: 32px;
+  --control-h: 28px;
+  --control-icon: 32px;
+  --row-h: 48px;
+  --row-h-compact: 40px;
   --ease-out: cubic-bezier(.2, .72, .24, 1);
   --dur-press: 120ms;
   --dur-quick: 140ms;
@@ -102,10 +114,10 @@
      stage needs no border or shadow to read as a distinct surface. */
   --bg: #f5f5f7;
   --surface: #ffffff;
-  --surface-raised: #ffffff;
   --surface-soft: #fafafc;
   --line: #e0e0e0;
   --line-strong: #d2d2d7;
+  --control-line: #86868b;
   --text: #1d1d1f;
   --muted: #333333;
   /* #7a7a7a is the analysis's fine-print/disabled tone and measures 3.94:1
@@ -178,7 +190,8 @@ a {
 
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -241,20 +254,20 @@ button {
 .studio-shell[data-contrast="high"] {
   --line: #545458;
   --line-strong: #6e6e73;
+  --control-line: #a1a1a6;
   --muted: #ffffff;
   --muted-2: #cccccc;
   --surface: #1d1d1f;
-  --surface-raised: #252527;
 }
 
 /* Same intent inverted: deeper rules, darker secondary text. */
 :root[data-theme="light"] .studio-shell[data-contrast="high"] {
   --line: #c7c7cc;
   --line-strong: #8e8e93;
+  --control-line: #636366;
   --muted: #1d1d1f;
   --muted-2: #48484a;
   --surface: #ffffff;
-  --surface-raised: #ffffff;
 }
 
 .topbar {
@@ -264,7 +277,7 @@ button {
   grid-template-columns: 260px 1fr auto;
   align-items: center;
   min-width: 0;
-  padding: 0 18px 0 16px;
+  padding: 0 var(--space-7) 0 var(--space-7);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
 }
@@ -272,13 +285,13 @@ button {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-6);
   min-width: 0;
 }
 
 .brand > div {
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .brand h1 {
@@ -299,15 +312,15 @@ button {
   justify-self: center;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  gap: var(--space-1);
+  padding: var(--space-2);
   border-radius: var(--r-sm);
 }
 
 .view-switcher button {
   min-width: 86px;
-  height: 29px;
-  padding: 0 14px;
+  height: var(--control-h);
+  padding: 0 var(--space-6);
   border: 0;
   border-radius: var(--r-xs);
   background: transparent;
@@ -327,15 +340,15 @@ button {
   justify-self: end;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .language-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 29px;
-  padding: 0 6px;
+  gap: var(--space-3);
+  height: var(--control-h);
+  padding: 0 var(--space-3);
   color: var(--muted);
   font-size: var(--text-xs);
   font-weight: 400;
@@ -343,7 +356,7 @@ button {
 }
 
 .session-clock {
-  margin-right: 2px;
+  margin-right: var(--space-1);
   color: var(--muted);
   font: 500 var(--text-2xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
@@ -352,9 +365,9 @@ button {
 .connection-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 29px;
-  padding: 0 4px;
+  gap: var(--space-4);
+  height: var(--control-h);
+  padding: 0 var(--space-2);
   color: var(--muted);
   font-size: var(--text-xs);
   font-weight: 400;
@@ -383,8 +396,8 @@ button {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: var(--control-icon);
+  height: var(--control-icon);
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
@@ -394,9 +407,6 @@ button {
   transition: color var(--dur-quick) ease;
 }
 
-.icon-button:focus-visible {
-  border-color: var(--line-strong);
-}
 
 /* Nothing but the stage lives here now. */
 /* THE STAGE'S BORDER BOX IS THE WORKSPACE BOX (2026-08-06, at the user's
@@ -993,9 +1003,9 @@ button {
 .mic-state {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 29px;
-  padding: 0 4px;
+  gap: var(--space-3);
+  height: var(--control-h);
+  padding: 0 var(--space-2);
   color: var(--muted-2);
   font-size: var(--text-xs);
   font-weight: 400;
@@ -1037,7 +1047,7 @@ button {
 
 /* SEPARATED BY AIR, NOT BY EDGES. */
 .rail-section {
-  padding: 26px 22px 30px;
+  padding: var(--space-9) var(--space-8) var(--space-10);
 }
 
 /* One hairline only, above the last section: naming people is a different
@@ -1051,9 +1061,9 @@ button {
   display: flex;
   align-items: start;
   justify-content: flex-end;
-  gap: 15px;
+  gap: var(--space-7);
   min-height: 12px;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-6);
 }
 
 .rail-heading h2 {
@@ -1400,7 +1410,7 @@ button {
 .level-line {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .level-line strong {
@@ -1445,7 +1455,7 @@ button {
   bottom: 0;
   width: min(365px, 100vw);
   overflow: auto;
-  padding: 26px 22px 30px;
+  padding: var(--space-9) var(--space-8) var(--space-10);
   border-left: 1px solid var(--line);
   background: var(--rail-bg);
   animation: panel-enter var(--dur-base) var(--ease-out) both;
@@ -1457,14 +1467,14 @@ button {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  margin-bottom: 31px;
+  margin-bottom: var(--space-10);
 }
 
 .range-control {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
-  padding: 17px 0;
+  gap: var(--space-5);
+  padding: var(--space-7) 0;
   border-top: 1px solid var(--line);
   color: var(--text);
   font-size: var(--text-xs);
@@ -1474,7 +1484,7 @@ button {
 .toggle-row > span {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .range-control output {
@@ -1494,7 +1504,7 @@ button {
   grid-column: 1 / -1;
   width: 100%;
   height: 20px;
-  margin: 2px 0 0;
+  margin: var(--space-1) 0 0;
   appearance: none;
   background: transparent;
   cursor: pointer;
@@ -1547,7 +1557,7 @@ button {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 50px;
+  min-height: var(--row-h);
   padding: 0;
   border: 0;
   border-top: 1px solid var(--line);
@@ -1820,7 +1830,7 @@ button {
   display: grid;
   place-items: center;
   overflow: auto;
-  padding: 32px 20px;
+  padding: var(--space-10) var(--space-8);
   /* No decorative gradients: atmosphere comes from photography, and this
      system has none. A flat canvas is the whole treatment. */
   background: var(--bg);
@@ -1835,13 +1845,13 @@ button {
 .language-gate-card {
   display: grid;
   justify-items: center;
-  gap: 28px;
+  gap: var(--space-9);
   width: min(100%, 420px);
 }
 
 .language-gate-copy {
   display: grid;
-  gap: 10px;
+  gap: var(--space-5);
   justify-items: center;
   text-align: center;
 }
@@ -1867,7 +1877,7 @@ button {
 
 .language-options {
   display: grid;
-  gap: 14px;
+  gap: var(--space-6);
   width: 100%;
 }
 
@@ -1876,8 +1886,8 @@ button {
    boundary rule: nothing outside `.caption-word` is CWI. */
 .language-option {
   min-height: 62px;
-  padding: 16px 32px;
-  border: 1px solid var(--line-strong);
+  padding: var(--space-7) var(--space-10);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-pill);
   background: none;
   color: var(--text);
@@ -1902,7 +1912,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: var(--space-6);
 }
 
 .language-loader {
@@ -2025,7 +2035,7 @@ button {
     display: none;
   }
   .language-gate {
-    padding: 20px;
+    padding: var(--space-8);
   }
 }
 
@@ -2383,12 +2393,12 @@ button {
 .media-import {
   display: grid;
   justify-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   text-align: center;
 }
 
 .media-import-action {
-  padding: 6px 10px;
+  padding: var(--space-3) var(--space-5);
   border: 0;
   background: none;
   color: var(--accent);
@@ -2739,9 +2749,9 @@ button {
 .export-menu summary {
   display: inline-flex;
   align-items: center;
-  height: 29px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  height: var(--control-h);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-pill);
   color: var(--text);
   cursor: pointer;
@@ -2764,7 +2774,7 @@ button {
   right: 0;
   display: grid;
   min-width: 220px;
-  padding: 6px;
+  padding: var(--space-3);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-xs);
   background: var(--bg);
@@ -2774,9 +2784,9 @@ button {
 .export-menu button {
   display: flex;
   justify-content: space-between;
-  gap: 18px;
-  padding: 9px 10px;
-  border-radius: 4px;
+  gap: var(--space-7);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--r-xs);
   color: var(--text);
   font-size: var(--text-sm);
   line-height: 1.2;
@@ -2818,9 +2828,9 @@ button {
 .edit-toggle {
   display: inline-flex;
   align-items: center;
-  height: 29px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  height: var(--control-h);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
@@ -2857,7 +2867,7 @@ button {
   align-items: center;
   justify-content: space-between;
   flex: none;
-  padding: 16px 12px 10px 22px;
+  padding: var(--space-7) var(--space-6) var(--space-5) var(--space-8);
 }
 
 .editor-bar h2 {
@@ -2869,7 +2879,7 @@ button {
 
 .editor-bar > div {
   display: flex;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .editor-bar .icon-button:hover:not(:disabled) {
@@ -2885,7 +2895,7 @@ button {
 .editor-note {
   flex: none;
   margin: 0;
-  padding: 8px 22px;
+  padding: var(--space-4) var(--space-8);
   color: var(--muted-2);
   font-size: var(--text-xs);
 }
@@ -2898,7 +2908,7 @@ button {
   flex: 1 1 auto;
   min-height: 0;
   margin: 0;
-  padding: 4px 12px 12px;
+  padding: var(--space-2) var(--space-6) var(--space-6);
   overflow: auto;
   list-style: none;
   scrollbar-width: thin;
@@ -2908,9 +2918,9 @@ button {
 .editor-lines li {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr);
-  gap: 6px;
+  gap: var(--space-3);
   align-items: start;
-  padding: 7px 10px;
+  padding: var(--space-4) var(--space-5);
   border-radius: var(--r-sm);
 }
 
@@ -2926,7 +2936,7 @@ button {
 .editor-line-play {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   height: 23px;
   padding: 0;
   border: 0;
@@ -2951,12 +2961,12 @@ button {
 }
 
 .editor-dot {
-  margin: 0 3px 1px 1px;
+  margin: 0 var(--space-2) 1px 1px;
 }
 
 .editor-word {
   margin: 0 1px 0 0;
-  padding: 1px 4px;
+  padding: 1px var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--r-xs);
   background: none;
@@ -2975,7 +2985,7 @@ button {
 }
 
 .editor-word:hover {
-  border-color: var(--line-strong);
+  border-color: var(--control-line);
 }
 
 .editor-word[data-selected="true"] {
@@ -2986,7 +2996,7 @@ button {
 .editor-inspector {
   flex: none;
   max-height: 58%;
-  padding: 2px 22px 14px;
+  padding: var(--space-1) var(--space-8) var(--space-6);
   overflow: auto;
   border-top: 1px solid var(--line);
   scrollbar-width: thin;
@@ -3000,17 +3010,17 @@ button {
 
 .editor-field {
   display: grid;
-  gap: 7px;
-  padding: 11px 0;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
   font-size: var(--text-xs);
 }
 
 .editor-inspector .range-control {
-  padding: 11px 0;
+  padding: var(--space-6) 0;
 }
 
 .editor-inspector .toggle-row {
-  min-height: 42px;
+  min-height: var(--row-h-compact);
 }
 
 .editor-time {
@@ -3035,28 +3045,19 @@ button {
 .editor-field input {
   height: 32px;
   min-width: 0;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-sm);
   background: var(--bg);
   color: var(--text);
   font: 400 var(--text-md)/1 var(--font-ui);
 }
 
-.editor-field input:focus-visible,
-.editor-word:focus-visible,
-.speaker-choices button:focus-visible,
-.editor-word-actions button:focus-visible,
-.editor-time button:focus-visible,
-.edit-toggle:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
-}
 
 .speaker-choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .speaker-choices button,
@@ -3064,10 +3065,10 @@ button {
 .editor-time button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 11px;
-  border: 1px solid var(--line-strong);
+  gap: var(--space-3);
+  height: var(--control-h);
+  padding: 0 var(--space-6);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
@@ -3088,7 +3089,7 @@ button {
 .editor-time > div {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .editor-time input {
@@ -3104,8 +3105,8 @@ button {
 .editor-word-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 11px;
+  gap: var(--space-3);
+  padding-top: var(--space-6);
   border-top: 1px solid var(--line);
 }
 
@@ -3131,7 +3132,7 @@ button {
   display: grid;
   border-top: 1px solid var(--line);
   background: var(--rail-bg);
-  padding-bottom: 12px;
+  padding-bottom: var(--space-6);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -3140,16 +3141,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-6);
   height: 44px;
-  padding: 0 10px;
+  padding: 0 var(--space-5);
 }
 
 .timeline-transport,
 .timeline-zoom {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-1);
 }
 
 .timeline-bar .icon-button:hover {
@@ -3161,7 +3162,7 @@ button {
 }
 
 .timeline-time {
-  margin-left: 10px;
+  margin-left: var(--space-5);
   color: var(--text);
   font: 500 var(--text-xs)/1 var(--font-ui);
   font-variant-numeric: tabular-nums;
@@ -3174,7 +3175,7 @@ button {
 .timeline-track {
   position: relative;
   height: 116px;
-  margin: 0 16px;
+  margin: 0 var(--space-7);
   overflow: hidden;
   cursor: default;
   touch-action: none;
@@ -3224,9 +3225,9 @@ button {
   top: 0;
   height: 34px;
   min-width: 3px;
-  padding: 3px 6px 0;
+  padding: var(--space-2) var(--space-3) 0;
   overflow: hidden;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-xs);
   background: var(--surface);
   color: var(--muted);
@@ -3289,7 +3290,7 @@ button {
   top: 0;
   height: 18px;
   min-width: 3px;
-  padding: 0 6px;
+  padding: 0 var(--space-3);
   overflow: hidden;
   border-radius: var(--r-xs);
   background: var(--surface-soft);
@@ -3301,10 +3302,10 @@ button {
 
 .timeline-speed {
   min-width: 40px;
-  height: 28px;
-  margin-right: 6px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  height: var(--control-h);
+  margin-right: var(--space-3);
+  padding: 0 var(--space-5);
+  border: 1px solid var(--control-line);
   border-radius: var(--r-pill);
   background: transparent;
   color: var(--text);
@@ -3313,10 +3314,6 @@ button {
   cursor: pointer;
 }
 
-.timeline-speed:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
-}
 
 .timeline-line:hover {
   color: var(--text);
@@ -3327,10 +3324,6 @@ button {
   color: var(--text);
 }
 
-.timeline-line:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
-}
 
 .timeline-playhead {
   position: absolute;
@@ -3364,9 +3357,9 @@ button {
 
 @media (max-width: 720px) {
   .timeline-track {
-    margin: 0 12px;
+    margin: 0 var(--space-6);
   }
   .timeline-time {
-    margin-left: 4px;
+    margin-left: var(--space-2);
   }
 }
