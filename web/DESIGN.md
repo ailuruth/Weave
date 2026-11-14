@@ -15,7 +15,7 @@ The analysis is from VoltAgent's awesome-design-md collection (MIT), read from L
   2. Secondary: a 1px outline. Edit captions (inverted while its panel is open) and Add a caption.
   3. Text: no outline. Reset.
   4. Icon: a 32px square whose glyph (16px) brightens on hover. It never shows a box, so a glyph can sit on an edge.
-  5. Switch: a 32px track with 26px cells of 4px corners and one fill that slides to the choice. Stage and Transcript, speed, zoom, Style and Color.
+  5. Switch: a 32px track with 26px cells of 4px corners and one fill that slides to the choice. Stage and Transcript, Style and Color. Playback speed is a text button that steps through its three speeds, and zoom is three icons.
   6. Play: the 40px white circle that leads the timeline, the one exception.
 - Icons inside a caption card are 28px with 14px glyphs, to share a row with the card's 28px times.
 - The light theme is derived from Linear's inverse tokens. Linear's site ships no light theme.

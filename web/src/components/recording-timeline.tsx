@@ -496,25 +496,15 @@ export function RecordingTimeline({
           </button>
         </div>
         <div className="timeline-view">
-          <div
+          <button
+            type="button"
             className="timeline-speed"
-            role="radiogroup"
-            aria-label="Playback speed"
-            style={{"--seg-i": Math.max(0, SPEEDS.indexOf(rate))} as CSSVars}
+            aria-label={`Playback speed ${rate}×, change`}
+            title="Playback speed"
+            onClick={() => setRate(SPEEDS[(SPEEDS.indexOf(rate) + 1) % SPEEDS.length])}
           >
-            {SPEEDS.map((speed) => (
-              <button
-                key={speed}
-                type="button"
-                role="radio"
-                aria-checked={rate === speed}
-                data-active={rate === speed}
-                onClick={() => setRate(speed)}
-              >
-                {speed}×
-              </button>
-            ))}
-          </div>
+            <span key={rate}>{rate}×</span>
+          </button>
           <button
             type="button"
             className="icon-button timeline-add-toggle"
