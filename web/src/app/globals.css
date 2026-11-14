@@ -4185,9 +4185,11 @@ i.rainbow-dot,
 .caption-editor .field-text {
   height: auto;
   min-height: var(--control-h);
+  max-height: calc(4 * 18px + 12px + 2px);
   padding-block: 6px;
   line-height: 18px;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
   resize: none;
   field-sizing: content;
 }
@@ -4197,9 +4199,27 @@ i.rainbow-dot,
 }
 
 .inspector {
-  flex: none;
+  flex: 0 1 auto;
+  min-height: 0;
   margin: var(--space-7) var(--space-7) 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+
+.inspector::-webkit-scrollbar {
+  display: none;
+}
+
+.inspector[data-more="true"] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.caption-editor > .caption-list-frame {
+  flex: 1 1 0;
+  min-height: calc(3 * 32px + var(--space-4) + var(--space-7));
 }
 
 .inspector-frame {
@@ -4357,6 +4377,12 @@ i.rainbow-dot,
   padding: var(--space-4) var(--space-7) var(--space-7);
   overflow: auto;
   list-style: none;
+  scroll-snap-type: y proximity;
+  scroll-padding-block: var(--space-4) var(--space-7);
+}
+
+.caption-row {
+  scroll-snap-align: start;
 }
 
 .caption-list li {

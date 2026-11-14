@@ -312,6 +312,23 @@ export function CaptionEditor({
   const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
   const inspectorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = inspectorRef.current;
+    if (!box) return;
+    const mark = () => {
+      const more = box.scrollHeight - box.clientHeight - box.scrollTop > 1;
+      box.dataset.more = more ? "true" : "false";
+    };
+    mark();
+    const observer = new ResizeObserver(mark);
+    observer.observe(box);
+    if (box.firstElementChild) observer.observe(box.firstElementChild);
+    box.addEventListener("scroll", mark, {passive: true});
+    return () => {
+      observer.disconnect();
+      box.removeEventListener("scroll", mark);
+    };
+  }, []);
   const [fresh, setFresh] = useState<number | null>(null);
   const [leaving, setLeaving] = useState<number | null>(null);
   const flash = (set: (value: (current: number | null) => number | null) => void, value: number, ms: number) => {
