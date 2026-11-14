@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  AudioLines,
+  Captions,
   Maximize2,
   Pause,
   Play,
   SkipBack,
   SkipForward,
+  Volume2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -39,7 +42,7 @@ import {
 type CSSVars = CSSProperties & Record<`--${string}`, string | number>;
 
 const ZOOM_STEP = 1.6;
-const BAR_PX = 3;
+const BAR_PX = 4;
 const SNAP_PX = 8;
 const DRAG_PX = 3;
 const SPEEDS = [1, 0.75, 0.5];
@@ -283,8 +286,8 @@ export function RecordingTimeline({
     [levels, view, width],
   );
   const wave = useMemo(() => bars.map((height, index) => {
-    const h = Math.max(0.04, height) * 100;
-    return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_PX - 1}v${h}h-${BAR_PX - 1}z`;
+    const h = Math.max(0.06, height) * 100;
+    return `M${index * BAR_PX} ${(100 - h) / 2}h${BAR_PX - 1.5}v${h}h-${BAR_PX - 1.5}z`;
   }).join(""), [bars]);
   const shownLines = lines
     .map((line) => (drag?.span && drag.cue === line.cue ? {...line, ...drag.span} : line))
@@ -295,6 +298,10 @@ export function RecordingTimeline({
   return (
     <section className="timeline" aria-label="Timeline">
       <div className="timeline-bar">
+        <span className="timeline-time">
+          <span ref={timeRef}>{positionLabel(0)}</span>
+          <span>{positionLabel(durationS)}</span>
+        </span>
         <div className="timeline-transport">
           <button
             type="button"
@@ -303,16 +310,18 @@ export function RecordingTimeline({
             title="Previous line (↑)"
             onClick={() => seek(previousLineStart(lines, position()))}
           >
-            <SkipBack size={15} />
+            <SkipBack size={16} fill="currentColor" />
           </button>
           <button
             type="button"
-            className="icon-button timeline-play"
+            className="timeline-play"
             aria-label={playing ? "Pause" : "Play"}
             title={playing ? "Pause (Space)" : "Play (Space)"}
             onClick={toggle}
           >
-            {playing ? <Pause size={17} /> : <Play size={17} />}
+            {playing
+              ? <Pause size={18} fill="currentColor" strokeWidth={0} />
+              : <Play size={18} fill="currentColor" strokeWidth={0} />}
           </button>
           <button
             type="button"
@@ -324,53 +333,62 @@ export function RecordingTimeline({
               if (next !== null) seek(next);
             }}
           >
-            <SkipForward size={15} />
+            <SkipForward size={16} fill="currentColor" />
           </button>
-          <span className="timeline-time">
-            <span ref={timeRef}>{positionLabel(0)}</span>
-            <span> / {positionLabel(durationS)}</span>
-          </span>
         </div>
-        <div className="timeline-zoom">
-          <button
-            type="button"
-            className="timeline-speed"
-            aria-label={`Playback speed ${rate}×`}
-            title="Playback speed"
-            onClick={() => setRate(SPEEDS[(SPEEDS.indexOf(rate) + 1) % SPEEDS.length])}
-          >
-            {rate}×
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Zoom out"
-            title="Zoom out (⌘ scroll)"
-            onClick={() => setView(zoomView(view, ZOOM_STEP, position(), durationS))}
-          >
-            <ZoomOut size={15} />
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Show the whole recording"
-            title="Show the whole recording"
-            onClick={() => setView({startS: 0, endS: Math.max(2, durationS)})}
-          >
-            <Maximize2 size={14} />
-          </button>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Zoom in"
-            title="Zoom in (⌘ scroll)"
-            onClick={() => setView(zoomView(view, 1 / ZOOM_STEP, position(), durationS))}
-          >
-            <ZoomIn size={15} />
-          </button>
+        <div className="timeline-view">
+          <div className="timeline-speed" role="radiogroup" aria-label="Playback speed">
+            {SPEEDS.map((speed) => (
+              <button
+                key={speed}
+                type="button"
+                role="radio"
+                aria-checked={rate === speed}
+                data-active={rate === speed}
+                onClick={() => setRate(speed)}
+              >
+                {speed}×
+              </button>
+            ))}
+          </div>
+          <div className="timeline-zoom">
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Zoom out"
+              title="Zoom out (⌘ scroll)"
+              onClick={() => setView(zoomView(view, ZOOM_STEP, position(), durationS))}
+            >
+              <ZoomOut size={15} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Show the whole recording"
+              title="Show the whole recording"
+              onClick={() => setView({startS: 0, endS: Math.max(2, durationS)})}
+            >
+              <Maximize2 size={14} />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Zoom in"
+              title="Zoom in (⌘ scroll)"
+              onClick={() => setView(zoomView(view, 1 / ZOOM_STEP, position(), durationS))}
+            >
+              <ZoomIn size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
+      <div className="timeline-body">
+      <ul className="timeline-lanes" aria-hidden="true">
+        <li data-lane="audio"><AudioLines size={14} />Audio</li>
+        <li data-lane="captions"><Captions size={14} />Captions</li>
+        <li data-lane="sounds"><Volume2 size={14} />Sounds</li>
+      </ul>
       <div
         className="timeline-track"
         ref={trackRef}
@@ -379,6 +397,9 @@ export function RecordingTimeline({
         onPointerUp={endScrub}
         onPointerCancel={endScrub}
       >
+        <div className="timeline-band" data-lane="audio" aria-hidden="true" />
+        <div className="timeline-band" data-lane="captions" aria-hidden="true" />
+        <div className="timeline-band" data-lane="sounds" aria-hidden="true" />
         <div className="timeline-ruler" aria-hidden="true">
           {ticks.map((tick) => (
             <span key={tick} style={{left: `${at(tick)}%`}}>{tickLabel(tick, step)}</span>
@@ -441,6 +462,7 @@ export function RecordingTimeline({
           ))}
         </div>
         <div className="timeline-playhead" ref={playheadRef} aria-hidden="true" />
+      </div>
       </div>
     </section>
   );

@@ -2,11 +2,13 @@
 
 import {
   AudioWaveform,
+  ChevronDown,
   Film,
   Globe2,
-  Mic2,
+  Minus,
   PanelRightClose,
   PanelRightOpen,
+  PencilLine,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -19,6 +21,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 import {
   useCaptionStream,
@@ -871,6 +874,32 @@ function useSettledStatus(status: string): string {
     });
   }, [status]);
   return shown;
+}
+
+const MIC_BARS = 5;
+
+function MicMeter({level, good}: {level: LevelEvent; good: boolean}) {
+  const db = number(level.rms_db, -72);
+  const {volume} = useMeterBallistics(
+    clamp((db + 60) / 45, 0, 1), 0, number(level.t, Number.NaN),
+  );
+  const lit = Math.round(volume * MIC_BARS);
+  return (
+    <span
+      className="mic-meter"
+      data-good={good ? "true" : "false"}
+      role="meter"
+      aria-label="Microphone level"
+      aria-valuemin={-72}
+      aria-valuemax={0}
+      aria-valuenow={Math.round(db)}
+      title={`${db.toFixed(1)} dBFS`}
+    >
+      {Array.from({length: MIC_BARS}, (_, index) => (
+        <i key={index} data-on={index < lit ? "true" : "false"} />
+      ))}
+    </span>
+  );
 }
 
 /* THE SIDE-GRID INSTRUMENT, AND NOW THE ONLY ONE. */
@@ -1886,7 +1915,10 @@ function ExportMenu() {
   };
   return (
     <details className="export-menu" data-busy={video === "drawing"}>
-      <summary>{video === "drawing" ? "Drawing video…" : "Export"}</summary>
+      <summary>
+        {video === "drawing" ? "Drawing video…" : "Export"}
+        <ChevronDown size={14} aria-hidden="true" />
+      </summary>
       <div role="menu">
         <a role="menuitem" href="/session/captions.srt" download>
           SubRip <span>.srt</span>
@@ -1918,6 +1950,12 @@ function ExportMenu() {
   );
 }
 
+const LANGUAGE_GLYPHS: Record<string, string> = {
+  en: "Aa",
+  ko: "가",
+  multi: "Aa가",
+};
+
 function LanguageGate({
   session,
   error,
@@ -1938,6 +1976,7 @@ function LanguageGate({
   const unavailable = session.state === "unavailable";
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
+  const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const selecting = session.state === "selecting" && !importing;
   const choose = (language: string) => {
@@ -1955,13 +1994,29 @@ function LanguageGate({
       role="dialog"
       aria-modal="true"
       aria-label="Caption language setup"
+      data-dropping={dropping ? "true" : "false"}
+      onDragOver={(event) => {
+        if (!selecting || !event.dataTransfer.types.includes("Files")) return;
+        event.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget === event.target) setDropping(false);
+      }}
+      onDrop={(event) => {
+        setDropping(false);
+        const dropped = event.dataTransfer.files?.[0];
+        if (!selecting || !dropped) return;
+        event.preventDefault();
+        if (/^(video|audio)\//.test(dropped.type)) setFile(dropped);
+      }}
     >
       <div className="language-gate-card">
         {/* EVERY LINE OF COPY IS GONE (2026-09-06, at the user's direction):
             the brand header, the "What language will be spoken?" heading, the
             eyebrow, the descriptions and the "On-device processing" footer.
-            While choosing, the three options ARE the screen -- a centred
-            stack of pill buttons, each just the English label. A heading
+            While choosing, the screen is the mark, the language cards (a
+            script sample and the label, no description) and import. A heading
             renders only when there is a state to report: preparing, or the
             engine being unreachable. */}
         {!selecting && (
@@ -2001,6 +2056,8 @@ function LanguageGate({
           </div>
         )}
 
+        {selecting && <WeaveMark size={52} className="language-gate-mark" />}
+
         {selecting && (
           <div className="language-options" role="list" aria-label="Caption language">
             {session.languages.map((language: LiveLanguageOption) => (
@@ -2010,14 +2067,17 @@ function LanguageGate({
                 onClick={() => choose(language.id)}
                 type="button"
               >
-                {language.label}
+                <span className="language-glyph" aria-hidden="true">
+                  {LANGUAGE_GLYPHS[language.id] ?? language.label.slice(0, 2)}
+                </span>
+                <span className="language-label">{language.label}</span>
               </button>
             ))}
           </div>
         )}
 
         {selecting && (
-          <div className="media-import">
+          <div className="media-import" data-file={file ? "true" : "false"}>
             <input
               ref={picker}
               type="file"
@@ -2028,12 +2088,15 @@ function LanguageGate({
                 event.target.value = "";
               }}
             />
+            <span className="media-import-icon" aria-hidden="true">
+              <Film size={18} />
+            </span>
             {file ? (
               <>
-                <p className="media-import-name">{file.name}</p>
-                <p className="media-import-hint">
-                  Choose the language spoken in it
-                </p>
+                <span className="media-import-text">
+                  <span className="media-import-name">{file.name}</span>
+                  <span className="media-import-hint">Choose the language spoken in it</span>
+                </span>
                 <button
                   className="media-import-action"
                   onClick={() => setFile(null)}
@@ -2044,11 +2107,10 @@ function LanguageGate({
               </>
             ) : (
               <button
-                className="media-import-action"
+                className="media-import-action media-import-open"
                 onClick={() => picker.current?.click()}
                 type="button"
               >
-                <Film size={16} aria-hidden="true" />
                 Import a video
               </button>
             )}
@@ -2096,6 +2158,44 @@ const SETTING_GROUPS: ReadonlyArray<{
   },
 ];
 
+function SettingSlider({
+  label,
+  value,
+  min,
+  max,
+  low,
+  high,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  low: ReactNode;
+  high: ReactNode;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="range-control">
+      <span>{label}</span>
+      <output>{Math.round(value * 100)}%</output>
+      <span className="range-row">
+        <span className="range-end" aria-hidden="true">{low}</span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step="0.05"
+          value={value}
+          style={{"--fill": `${((value - min) / (max - min)) * 100}%`} as CSSVars}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+        <span className="range-end" aria-hidden="true">{high}</span>
+      </span>
+    </label>
+  );
+}
+
 function SettingsPanel({
   settings,
   setSettings,
@@ -2109,66 +2209,52 @@ function SettingsPanel({
     <aside className="settings-panel" aria-label="Presentation settings">
       <header>
         <h2>Presentation</h2>
-        <button className="icon-button" onClick={close} aria-label="Close settings">
-          <X size={17} />
+        <button className="sheet-close" onClick={close} aria-label="Close settings">
+          <X size={14} strokeWidth={2.4} />
         </button>
       </header>
 
       {SETTING_GROUPS.map((group) => (
         <section className="settings-group" key={group.title} aria-label={group.title}>
           <h3>{group.title}</h3>
-          {group.sliders && (
-            <>
-              {/* 100% is the LARGEST size that still fits a full row across
-                  the stage: rows are clipped, not wrapped, past the width cap,
-                  which is why the scale only reduces. */}
-              <label className="range-control">
-                <span>Caption scale</span>
-                <output>{Math.round(settings.captionScale * 100)}%</output>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="1"
-                  step="0.05"
+          <div className="settings-list">
+            {group.sliders && (
+              <>
+                {/* 100% is the LARGEST size that still fits a full row across
+                    the stage: rows are clipped, not wrapped, past the width cap,
+                    which is why the scale only reduces. */}
+                <SettingSlider
+                  label="Caption scale"
                   value={settings.captionScale}
-                  style={{
-                    "--fill": `${((settings.captionScale - 0.6) / 0.4) * 100}%`,
-                  } as CSSVars}
-                  onChange={(event) => setSettings({
-                    ...settings,
-                    captionScale: Number(event.target.value),
-                  })}
+                  min={0.6}
+                  max={1}
+                  low={<span className="range-glyph" data-size="small">A</span>}
+                  high={<span className="range-glyph" data-size="large">A</span>}
+                  onChange={(captionScale) => setSettings({...settings, captionScale})}
                 />
-              </label>
-              <label className="range-control">
-                <span>Expression</span>
-                <output>{Math.round(settings.motionIntensity * 100)}%</output>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
+                <SettingSlider
+                  label="Expression"
                   value={settings.motionIntensity}
-                  style={{"--fill": `${settings.motionIntensity * 100}%`} as CSSVars}
-                  onChange={(event) => setSettings({
-                    ...settings,
-                    motionIntensity: Number(event.target.value),
-                  })}
+                  min={0}
+                  max={1}
+                  low={<Minus size={14} />}
+                  high={<AudioWaveform size={15} />}
+                  onChange={(motionIntensity) => setSettings({...settings, motionIntensity})}
                 />
-              </label>
-            </>
-          )}
-          {group.toggles.map(([key, label]) => (
-            <button
-              key={key}
-              className="toggle-row"
-              aria-pressed={settings[key]}
-              onClick={() => setSettings({...settings, [key]: !settings[key]})}
-            >
-              <span>{label}</span>
-              <i data-on={settings[key] ? "true" : "false"} />
-            </button>
-          ))}
+              </>
+            )}
+            {group.toggles.map(([key, label]) => (
+              <button
+                key={key}
+                className="toggle-row"
+                aria-pressed={settings[key]}
+                onClick={() => setSettings({...settings, [key]: !settings[key]})}
+              >
+                <span>{label}</span>
+                <i data-on={settings[key] ? "true" : "false"} />
+              </button>
+            ))}
+          </div>
         </section>
       ))}
     </aside>
@@ -2542,6 +2628,11 @@ export function LiveStudio() {
         <div className="brand">
           <WeaveMark className="brand-mark" />
           <h1>Weave</h1>
+          {activeMedia && (
+            <span className="brand-document" title={activeMedia.name}>
+              {activeMedia.name}
+            </span>
+          )}
         </div>
 
         <nav className="view-switcher" aria-label="Studio view">
@@ -2564,49 +2655,59 @@ export function LiveStudio() {
               "Local processing / No cloud / Stream active" badges. The badges said
               nothing that changes; the input level does, so it moves up here and
               the stage gets the 61px back. */}
-          <span className="mic-state" data-good={inputGood ? "true" : "false"}>
-            <Mic2 size={14} />
-            {number(level.rms_db, -72).toFixed(1)} dBFS
-          </span>
-          {activeLanguage && (
-            <span className="language-pill">
-              <Globe2 size={13} />
-              {activeLanguage.label}
-            </span>
-          )}
-          <span className="session-clock">{elapsed}</span>
-          <span className="connection-pill" data-state={connection}>
-            <i />
-            {CONNECTION_LABELS[connection]}
-          </span>
+          <div className="topbar-status">
+            {!activeMedia && (
+              <MicMeter level={level} good={inputGood} />
+            )}
+            {activeLanguage && (
+              <span className="language-pill">
+                <Globe2 size={13} aria-hidden="true" />
+                {activeLanguage.label}
+              </span>
+            )}
+            {!activeMedia && (
+              <>
+                <span className="session-clock">{elapsed}</span>
+                <span className="connection-pill" data-state={connection}>
+                  <i />
+                  {CONNECTION_LABELS[connection]}
+                </span>
+              </>
+            )}
+          </div>
           {activeMedia && session.state === "listening" && (
             <>
-              <span className="topbar-divider" aria-hidden="true" />
               <button
                 type="button"
                 className="edit-toggle"
                 aria-pressed={editorOpen}
+                aria-label="Edit captions"
                 onClick={() => setEditing((value) => !value)}
               >
-                Edit captions
+                <PencilLine size={14} aria-hidden="true" />
+                <span className="edit-toggle-label">Edit captions</span>
               </button>
               <ExportMenu />
             </>
           )}
-          <button
-            className="icon-button settings-button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Presentation settings"
-          >
-            <SlidersHorizontal size={17} />
-          </button>
-          <button
-            className="icon-button rail-toggle"
-            onClick={() => setRailOpen((value) => !value)}
-            aria-label={railOpen ? "Close signal rail" : "Open signal rail"}
-          >
-            {railOpen ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
-          </button>
+          <div className="topbar-tools">
+            <button
+              className="icon-button settings-button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Presentation settings"
+              title="Presentation settings"
+            >
+              <SlidersHorizontal size={16} />
+            </button>
+            <button
+              className="icon-button rail-toggle"
+              onClick={() => setRailOpen((value) => !value)}
+              aria-label={railOpen ? "Close signal rail" : "Open signal rail"}
+              title={railOpen ? "Close signal rail" : "Open signal rail"}
+            >
+              {railOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+            </button>
+          </div>
         </div>
       </header>
 
