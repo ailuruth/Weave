@@ -34,7 +34,7 @@ import {
   type EditWord,
 } from "@/lib/caption-edit";
 import {speakerColor, type SpeakerColorMap, speakerName} from "@/lib/speaker-colors";
-import {useMoreBelow} from "@/lib/use-more-below";
+import {useScrollEdges} from "@/lib/use-scroll-edges";
 import {
   fitView,
   followView,
@@ -65,8 +65,16 @@ const GLIDE_MS = 220;
 const PREVIEW_SETTLE_MS = 200;
 const ROW_H = 26;
 const ROW_GAP = 3;
+const ROW_PITCH = ROW_H + ROW_GAP;
+const ROWS_SHOWN = 3;
 const RAINBOW_ROW = "~rainbow";
 const NEW_CAPTION = "Caption";
+
+function revealRow(box: HTMLElement, row: number) {
+  const top = row * ROW_PITCH;
+  if (top < box.scrollTop) box.scrollTo({top});
+  else if (top + ROW_H > box.scrollTop + box.clientHeight) box.scrollTo({top: top + ROW_H - box.clientHeight});
+}
 
 const SHORTCUTS: ReadonlyArray<[string, string]> = [
   ["Space or K", "Play and pause"],
@@ -91,6 +99,8 @@ interface Drag {
   y0: number;
   /** The speaker row it started on and the one it is over. */
   row0: number;
+  /** How far the rows were scrolled when it started. */
+  scroll0: number;
   row: number;
   moved: boolean;
   /** Released and sent: kept on screen until the new score arrives. */
@@ -255,6 +265,12 @@ export function RecordingTimeline({
       const body = track.closest(".timeline-body");
       const vertical = !event.shiftKey && !event.ctrlKey && !event.metaKey
         && Math.abs(event.deltaY) > Math.abs(event.deltaX);
+      const rowBox = rowsRef.current;
+      if (vertical && rowBox && rowBox.scrollHeight > rowBox.clientHeight + 1) {
+        event.preventDefault();
+        rowBox.scrollTop += event.deltaY;
+        return;
+      }
       if (vertical && body && body.scrollHeight > body.clientHeight + 1) {
         event.preventDefault();
         body.scrollTop += event.deltaY;
@@ -358,21 +374,24 @@ export function RecordingTimeline({
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrag({
       cue, mode, x0: event.clientX, y0: event.clientY, row0: row, row,
+      scroll0: rowsRef.current?.scrollTop ?? 0,
       moved: false, sent: false, span: null,
     });
   };
   const rowFor = (current: Drag, clientY: number) => current.mode !== "move"
     ? current.row0
-    : Math.min(rows.length - 1, Math.max(0,
-      current.row0 + Math.round((clientY - current.y0) / (ROW_H + ROW_GAP))));
+    : Math.min(rows.length - 1, Math.max(0, current.row0 + Math.round(
+      (clientY - current.y0 + (rowsRef.current?.scrollTop ?? 0) - current.scroll0) / ROW_PITCH)));
   const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (!drag || drag.sent) return;
     const sideways = Math.abs(event.clientX - drag.x0) > DRAG_PX;
     const moved = drag.moved || sideways || Math.abs(event.clientY - drag.y0) > DRAG_PX;
     if (!moved) return;
     const next = sideways ? placed(drag, event.clientX) : null;
+    const row = rowFor(drag, event.clientY);
+    if (drag.mode === "move" && rowsRef.current) revealRow(rowsRef.current, row);
     setDrag({
-      ...drag, moved, row: rowFor(drag, event.clientY),
+      ...drag, moved, row,
       span: next ? spanOf(next.words, drag.cue) : drag.span,
     });
   };
@@ -425,7 +444,11 @@ export function RecordingTimeline({
   };
 
   const bodyRef = useRef<HTMLDivElement>(null);
-  useMoreBelow(bodyRef);
+  useScrollEdges(bodyRef);
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const labelsRef = useRef<HTMLLIElement>(null);
+  useScrollEdges(rowsRef);
+  useScrollEdges(labelsRef);
   const {step, ticks} = useMemo(() => rulerTicks(view, width), [view, width]);
   const minor = useMemo(() => minorTicks(view, step), [view, step]);
   const bars = useMemo(
@@ -446,6 +469,13 @@ export function RecordingTimeline({
   const rows = order.length ? order : [""];
   const rowOf = (line: {speaker: string | null; rainbow?: boolean}) =>
     Math.max(0, rows.indexOf(rowKey(line)));
+  const shownRows = Math.min(rows.length, ROWS_SHOWN);
+  const currentLine = lines.find((line) => line.cue === currentCue);
+  const currentRow = currentLine ? rowOf(currentLine) : null;
+  const dragging = Boolean(drag?.moved);
+  useEffect(() => {
+    if (rowsRef.current && currentRow !== null && !dragging) revealRow(rowsRef.current, currentRow);
+  }, [currentRow, dragging]);
   const shownLines = lines
     .map((line) => (drag?.span && drag.cue === line.cue ? {...line, ...drag.span} : line))
     .filter((line) => line.endS > view.startS && line.startS < view.endS);
@@ -456,7 +486,8 @@ export function RecordingTimeline({
     <section
       className="timeline"
       aria-label="Timeline"
-      style={{"--lane-captions": `${rows.length * ROW_H + (rows.length - 1) * ROW_GAP}px`} as CSSVars}
+      data-sounds={sounds.length > 0 ? "true" : "false"}
+      style={{"--lane-captions": `${shownRows * ROW_PITCH - ROW_GAP}px`} as CSSVars}
     >
       {keysOpen && (
         <div className="timeline-keys" role="dialog" aria-label="Keyboard shortcuts">
@@ -583,7 +614,7 @@ export function RecordingTimeline({
       <div className="timeline-body" ref={bodyRef}>
       <ul className="timeline-lanes" aria-hidden="true">
         <li data-lane="audio"><AudioLines size={14} />Audio</li>
-        <li data-lane="captions">
+        <li data-lane="captions" ref={labelsRef}>
           {rows.map((speaker) => (
             <span key={speaker || "unknown"}>
               {speaker === RAINBOW_ROW
@@ -626,12 +657,18 @@ export function RecordingTimeline({
             <path d={wave} />
           </svg>
         ))}
-        <div className="timeline-lines">
+        <div
+          className="timeline-lines"
+          ref={rowsRef}
+          onScroll={(event) => {
+            labelsRef.current?.scrollTo({top: event.currentTarget.scrollTop});
+          }}
+        >
           {rows.map((speaker, row) => (
             <div
               key={speaker || "unknown"}
               className="timeline-row"
-              style={{top: `${row * (ROW_H + ROW_GAP)}px`, height: `${ROW_H}px`}}
+              style={{top: `${row * ROW_PITCH}px`, height: `${ROW_H}px`}}
               aria-hidden="true"
             />
           ))}
@@ -648,7 +685,7 @@ export function RecordingTimeline({
               style={{
                 left: `${at(line.startS)}%`,
                 width: `${Math.max(0.2, at(line.endS) - at(line.startS))}%`,
-                top: `${row * (ROW_H + ROW_GAP)}px`,
+                top: `${row * ROW_PITCH}px`,
                 height: `${ROW_H}px`,
                 "--line-color": speakerColor(
                   rows[row] && rows[row] !== RAINBOW_ROW ? rows[row] : line.speaker, colors),

@@ -3691,7 +3691,7 @@ button {
 .timeline {
   container: timeline / inline-size;
   --lane-ruler: 22px;
-  --lane-audio: 40px;
+  --lane-audio: 32px;
   --lane-captions: 44px;
   --lane-sounds: 22px;
   --lane-gap: 4px;
@@ -4004,6 +4004,34 @@ button {
   position: absolute;
   left: 0;
   right: 0;
+  overflow: hidden;
+}
+
+.timeline-lines,
+.timeline-lanes li[data-lane="captions"] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--edge-above, 0px),
+    #000 calc(100% - var(--edge-below, 0px)),
+    transparent
+  );
+}
+
+:is(.timeline-lines, .timeline-lanes li[data-lane="captions"])[data-above="true"] {
+  --edge-above: calc(var(--edge-fade) / 2);
+}
+
+:is(.timeline-lines, .timeline-lanes li[data-lane="captions"])[data-more="true"] {
+  --edge-below: calc(var(--edge-fade) / 2);
+}
+
+.timeline[data-sounds="false"] {
+  --lane-sounds: 0px;
+}
+
+.timeline[data-sounds="false"] :is(li[data-lane="sounds"], .timeline-band[data-lane="sounds"], .timeline-sounds) {
+  display: none;
 }
 
 .timeline-line {
@@ -4062,6 +4090,7 @@ button {
   row-gap: 3px;
   align-content: start;
   align-items: center;
+  overflow: hidden;
 }
 
 .timeline-lanes li[data-lane="captions"] span {

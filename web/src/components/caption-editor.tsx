@@ -37,7 +37,7 @@ import {
 } from "@/lib/caption-edit";
 import {positionLabel} from "@/lib/transport";
 import {OverlayScroll} from "@/components/overlay-scroll";
-import {useMoreBelow} from "@/lib/use-more-below";
+import {useScrollEdges} from "@/lib/use-scroll-edges";
 import {PREVIEW_LEAD_S} from "@/hooks/use-recording-transport";
 import {speakerColor, speakerName, type SpeakerColorMap} from "@/lib/speaker-colors";
 import type {CaptionDocumentState} from "@/hooks/use-caption-document";
@@ -317,7 +317,7 @@ export function CaptionEditor({
   const caretRef = useRef<number | null>(null);
   const scrolledAtRef = useRef(0);
   const inspectorRef = useRef<HTMLDivElement>(null);
-  useMoreBelow(inspectorRef);
+  useScrollEdges(inspectorRef);
   const [fresh, setFresh] = useState<number | null>(null);
   const [leaving, setLeaving] = useState<number | null>(null);
   const flash = (set: (value: (current: number | null) => number | null) => void, value: number, ms: number) => {
