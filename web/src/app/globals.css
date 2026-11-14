@@ -5016,3 +5016,17 @@ i.rainbow-dot,
 .studio-shell[data-reduced-motion="true"] > :is(.topbar, .workspace, .signal-rail) {
   animation: none !important;
 }
+
+.studio-shell,
+.language-gate {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.studio-shell :is(input, textarea, [contenteditable="true"]),
+.studio-shell .transcript-feed,
+.studio-shell :is(.editor-error, .language-error),
+.language-gate .language-error {
+  -webkit-user-select: text;
+  user-select: text;
+}
