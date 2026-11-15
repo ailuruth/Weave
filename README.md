@@ -8,9 +8,9 @@ Weave captions a video with [Caption with Intention](https://captionwithintentio
 
 You give Weave a video. It returns the video with those captions drawn on it. It can also caption a microphone while people speak. It works in English and Korean and runs on your own machine.
 
-![A film scene captioned by Weave. Each word turns to its speaker's colour as it is spoken](docs/figure/caption-demo.gif)
+<img src="docs/figure/caption-demo.webp" alt="A film scene captioned by Weave. Each word turns to its speaker's colour as it is spoken" width="100%">
 
-The clip is from [Sintel](https://durian.blender.org), © Blender Foundation, CC BY 3.0.
+The clip is from [Tears of Steel](https://mango.blender.org), © Blender Foundation, CC BY 3.0.
 
 ## Caption a video
 
@@ -51,7 +51,7 @@ The script sets up everything, including 2.2 GB of models. It takes a few minute
 ./weave live --sample         # the bundled film, no microphone
 ```
 
-![The studio: a recording in its frame, a timeline of speaker rows, and the caption editor with one word picked](docs/figure/studio.png)
+<img src="docs/figure/studio.png" alt="The studio: a recording in its frame, a timeline of speaker rows, and the caption editor with one word picked" width="100%">
 
 The studio opens in the browser. Choose a language to caption a microphone, or choose **Import a video** to caption a recording.
 
