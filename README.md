@@ -1,8 +1,22 @@
-# Weave
+<p align="center">
+  <a href="https://ailuruth.github.io/Weave/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/figure/readme-header-dark.svg">
+      <img src="docs/figure/readme-header-light.svg" width="480" height="116" alt="Weave">
+    </picture>
+  </a>
+</p>
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![sherpa-onnx](https://img.shields.io/badge/sherpa--onnx-1.13-005CED?style=flat&logo=onnx&logoColor=white)](https://github.com/k2-fsa/sherpa-onnx)
-[![Next.js](https://img.shields.io/badge/Next.js-16.2-000000?style=flat&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+<p align="center">Captions that show how it was said.</p>
+
+<p align="center">
+  <a href="#install">Install</a> &ensp;·&ensp;
+  <a href="#caption-a-video">Quickstart</a> &ensp;·&ensp;
+  <a href="#documentation">Documentation</a> &ensp;·&ensp;
+  <a href="https://ailuruth.github.io/Weave/">Website</a>
+</p>
+
+<br>
 
 Weave captions a video with [Caption with Intention](https://captionwithintention.org), the caption design system for Deaf and hard of hearing viewers. Each speaker gets a colour. Each word turns to that colour as it is spoken. The type grows and shrinks with the voice.
 
@@ -10,7 +24,7 @@ You give Weave a video. It returns the video with those captions drawn on it. It
 
 <img src="docs/figure/caption-demo.webp" alt="A film scene captioned by Weave. Each word turns to its speaker's colour as it is spoken" width="100%">
 
-The clip is from [Tears of Steel](https://mango.blender.org), © Blender Foundation, CC BY 3.0.
+The clip is from [Sprite Fright](https://studio.blender.org/films/sprite-fright/), (CC) Blender Foundation, studio.blender.org.
 
 ## Caption a video
 
