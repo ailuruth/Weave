@@ -28,6 +28,8 @@ An older batch pipeline, `autocwi run`, also writes a caption file from recorded
 | `web/` | The studio, built to static files that Python serves |
 | `native/sortformer/` | Speaker separation on Apple Silicon |
 | `scripts/hw/` | The Raspberry Pi node |
+| `docs/` | The project page and the technical notes |
+| `brand/` | The brand films and what makes them |
 | `config.yaml` | Every tunable value |
 
 ## The caption file

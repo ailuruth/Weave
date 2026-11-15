@@ -41,5 +41,7 @@ NEXT_PUBLIC_AUTOCWI_ORIGIN=http://127.0.0.1:7337 npm --prefix web run dev
 * Text changes only while a word is still ahead of the playhead.
 * Rows never move once laid out. A late word is appended.
 * Grey means the speaker is unknown.
-* Captions follow Caption with Intention. Everything else follows Linear's system, as `DESIGN.md` applies it.
+* Captions follow Caption with Intention. The chrome is neutral: greys on black with white as the one accent. `DESIGN.md` has the values.
+* A recording's picture sits in its own frame. The timeline shows three speaker rows and follows whoever is speaking.
+* In the editor the words are the text field. A press picks a word and a double click edits the text.
 * The app must build to static files. Add no Node server.

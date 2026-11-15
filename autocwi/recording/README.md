@@ -26,7 +26,7 @@ The language is detected from the opening of the file when `--lang` is left out.
 
 Weave's captions are a first draft. A person can change the text, the speaker, the size, the line breaks and the time of any word.
 
-In the studio, import a recording and choose **Edit captions**. The panel lists one caption per row, with a search above it, and shows the chosen caption's words, text, color, style and timing between the two. Pick a row and the picture goes to it. Change it and the stage shows the change at once, paused or playing. **Export** writes the adjusted captions.
+In the studio, import a recording and choose **Edit captions**. The panel lists one caption per row, with a search above it, and shows the chosen caption's words, color, style and timing between the two. Press a word to pick it. Double click the words to change the text. Pick a row and the picture goes to it. Change it and the stage shows the change at once, paused or playing. **Export** writes the adjusted captions.
 
 From the command line, edit `NAME.cwi.json` and hand it back:
 
