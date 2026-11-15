@@ -57,8 +57,9 @@ a {
   display: grid;
   grid-template-rows: var(--bar-h) minmax(0, 1fr) auto;
   height: min(100svh, calc(var(--bar-h) + (100vw - 2 * var(--margin)) * .284 + var(--copy-h) + var(--say-h) + var(--margin)));
-  min-height: 600px;
+  min-height: 440px;
   padding: 0 var(--margin) var(--margin);
+  overflow: clip;
 }
 
 .hero-main {
