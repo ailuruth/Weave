@@ -1,0 +1,373 @@
+@font-face {
+  font-family: "Roboto Flex";
+  src: url("RobotoFlex.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-stretch: 25% 151%;
+  font-display: block;
+}
+
+:root {
+  --ground: #000000;
+  --panel: #161616;
+  --ink: #ffffff;
+  --soft: #cfcfcf;
+  --on-ink: #000000;
+  --focus: #ffffff;
+  --margin: 32px;
+  --radius: 6px;
+  --text-head: clamp(34px, 4.2vw, 60px);
+  --text-lead: 20px;
+  --text-body: 16px;
+  --text-small: 14px;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --font: "Roboto Flex", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.hero {
+  --bar-h: 72px;
+  --say-h: 150px;
+  --copy-h: 254px;
+  display: grid;
+  grid-template-rows: var(--bar-h) minmax(0, 1fr) auto;
+  height: min(100svh, calc(var(--bar-h) + (100vw - 2 * var(--margin)) * .284 + var(--copy-h) + var(--say-h) + var(--margin)));
+  min-height: 600px;
+  padding: 0 var(--margin) var(--margin);
+}
+
+.hero-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.wordmark {
+  font-size: var(--text-small);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -.01em;
+  text-decoration: none;
+}
+
+.bar-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: var(--text-small);
+}
+
+.bar-links > a:not(.button) {
+  color: var(--soft);
+  text-decoration: none;
+}
+
+.bar-links > a:not(.button):hover {
+  color: var(--ink);
+}
+
+.lang {
+  display: flex;
+  gap: 4px;
+}
+
+.lang button {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lang button[aria-pressed="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--on-ink);
+  font: 600 var(--text-body)/1 var(--font);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms ease, transform 120ms var(--ease-out);
+}
+
+.button:hover {
+  background: #dedede;
+}
+
+.button:active {
+  transform: scale(.97);
+}
+
+.button-quiet {
+  height: 44px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.button-quiet:hover {
+  background: #262626;
+}
+
+.button[aria-pressed="true"] {
+  background: #E5E517;
+}
+
+.hero-copy {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 44%;
+  right: 0;
+  max-width: 42rem;
+  padding-top: 4px;
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--text-head);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -.02em;
+}
+
+.masked-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: .08em;
+}
+
+.masked-line > span {
+  display: block;
+}
+
+.lead {
+  max-width: 36rem;
+  margin: 20px 0 0;
+  color: var(--soft);
+  font-size: var(--text-lead);
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.word-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.word {
+  margin: 0 0 0 var(--lead, 0);
+  color: var(--word-ink, var(--ink));
+  font-size: var(--fit, 20vw);
+  font-weight: 400;
+  line-height: .72;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  transition: color 250ms linear;
+}
+
+.word span {
+  display: inline-block;
+  font-weight: var(--w, 500);
+  font-stretch: var(--x, 100%);
+}
+
+.say {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 48px;
+  flex-wrap: wrap;
+  padding-top: 28px;
+}
+
+.label {
+  margin: 0 0 10px;
+  color: var(--soft);
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 36px;
+}
+
+.way {
+  position: relative;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 300 var(--text-head)/1.1 var(--font);
+  font-stretch: 92%;
+  letter-spacing: -.02em;
+  cursor: pointer;
+  transition: font-weight 220ms var(--ease-out), font-stretch 220ms var(--ease-out), color 160ms ease;
+}
+
+.way::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 3px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 220ms var(--ease-out);
+}
+
+.way:hover,
+.way[aria-pressed="true"] {
+  font-weight: 700;
+  font-stretch: 108%;
+}
+
+.way[aria-pressed="true"]::after {
+  transform: scaleX(1);
+}
+
+.say-voice {
+  text-align: right;
+}
+
+.say-voice .label {
+  max-width: 22rem;
+  margin-left: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .masked-line > span {
+    animation: line-rise 900ms var(--ease-out) backwards;
+  }
+
+  .masked-line:nth-child(2) > span {
+    animation-delay: 110ms;
+  }
+
+  .rise {
+    animation: fade-up 600ms var(--ease-out) 520ms backwards;
+  }
+
+  .say.rise {
+    animation-delay: 700ms;
+  }
+}
+
+@keyframes line-rise {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --margin: 20px;
+    --text-lead: 17px;
+  }
+
+  .hero {
+    --bar-h: 64px;
+    height: auto;
+    min-height: 0;
+  }
+
+  .hero-copy {
+    position: static;
+    padding-top: 8px;
+  }
+
+  .word-frame {
+    position: static;
+    padding-top: 40px;
+    overflow: hidden;
+  }
+
+  .bar-links {
+    gap: 12px;
+  }
+
+  .bar-links > a:not(.button) {
+    display: none;
+  }
+
+  .say {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ways {
+    gap: 4px 24px;
+  }
+
+  .say-voice {
+    text-align: left;
+  }
+
+  .say-voice .label {
+    margin-left: 0;
+  }
+}

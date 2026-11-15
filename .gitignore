@@ -42,6 +42,9 @@ docs/DECISIONS.md
 docs/DESIGN.md
 docs/*
 !docs/index.html
+!docs/technical.html
+!docs/site.css
+!docs/site.js
 !docs/RobotoFlex.ttf
 !docs/icon.svg
 !docs/favicon.png
