@@ -1,0 +1,149 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Roboto Flex Film";
+      src: url("assets/fonts/RobotoFlex.ttf") format("truetype");
+      font-weight: 100 1000;
+      font-stretch: 25% 151%;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      font-family: "Roboto Flex Film", sans-serif;
+    }
+    #say-ground {
+      position: absolute;
+      inset: 0;
+      background: #000000;
+    }
+    #say-stage {
+      position: absolute;
+      inset: 0;
+      color: #ffffff;
+    }
+    #say-word {
+      position: absolute;
+      left: 96px;
+      bottom: 330px;
+      margin: 0;
+      font-size: 400px;
+      font-weight: 400;
+      line-height: 0.72;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+    #say-word span {
+      display: inline-block;
+    }
+    .say-label {
+      position: absolute;
+      left: 104px;
+      top: 786px;
+      font-size: 54px;
+      font-weight: 400;
+      line-height: 1.2;
+      white-space: nowrap;
+      color: #ffffff;
+    }
+    #say-l3-text,
+    #say-l4-text {
+      color: #000000;
+    }
+  </style>
+  <div id="root" data-composition-id="say" data-width="1920" data-height="1080">
+    <div id="say-ground"></div>
+    <div id="say-stage" class="clip" data-start="0" data-duration="14" data-layout-allow-overflow>
+      <div id="say-word-box">
+        <h1 id="say-word"><span>W</span><span>e</span><span>a</span><span>v</span><span>e</span></h1>
+      </div>
+    </div>
+    <div id="say-l1" class="clip" data-start="0" data-duration="3.2"><p class="say-label" id="say-l1-text">whispered</p></div>
+    <div id="say-l2" class="clip" data-start="3.2" data-duration="3.2"><p class="say-label" id="say-l2-text">spoken</p></div>
+    <div id="say-l3" class="clip" data-start="6.4" data-duration="2.8"><p class="say-label" id="say-l3-text">shouted</p></div>
+    <div id="say-l4" class="clip" data-start="9.2" data-duration="2.8"><p class="say-label" id="say-l4-text">another voice</p></div>
+  </div>
+  <script>
+    (() => {
+      const QUIET = { weight: 260, stretch: 78 };
+      const LOUD = { weight: 1000, stretch: 151 };
+      const LINE_PX = 1728;
+      const ADVANCE_EM = {
+        W: [0.5976, 0.6251, 0.6535, 0.6811, 0.7102, 0.7543, 0.7954, 0.8386, 0.8803, 0.9237, 0.9672, 1.009, 1.0525, 1.096, 1.1379, 1.1815, 1.2235, 1.2672, 1.3092, 1.353, 1.3967],
+        e: [0.3191, 0.3352, 0.3513, 0.3666, 0.3828, 0.4085, 0.4327, 0.458, 0.4827, 0.5082, 0.534, 0.559, 0.5849, 0.611, 0.6363, 0.6626, 0.6882, 0.7147, 0.7405, 0.7673, 0.7942],
+        a: [0.3247, 0.3421, 0.36, 0.3774, 0.3958, 0.4232, 0.449, 0.4726, 0.4955, 0.519, 0.5426, 0.5655, 0.5891, 0.6127, 0.6356, 0.6592, 0.6822, 0.7058, 0.7288, 0.7525, 0.7761],
+        v: [0.2997, 0.3162, 0.3331, 0.3494, 0.3665, 0.3924, 0.4172, 0.4405, 0.4628, 0.4855, 0.5079, 0.5294, 0.5516, 0.5769, 0.6012, 0.6259, 0.6498, 0.674, 0.6974, 0.721, 0.7444],
+      };
+      const advance = (glyph, level) => {
+        const row = ADVANCE_EM[glyph];
+        const at = Math.min(1, Math.max(0, level)) * (row.length - 1);
+        const low = Math.floor(at);
+        const high = Math.min(row.length - 1, low + 1);
+        return row[low] + (row[high] - row[low]) * (at - low);
+      };
+      const LAG_S = 2 / 30;
+      const word = document.getElementById("say-word");
+      const letters = [...word.children];
+      const eases = {
+        land: gsap.parseEase("expo.out"),
+        shout: gsap.parseEase("power4.out"),
+        soften: gsap.parseEase("power2.inOut"),
+      };
+      const SAID = [
+        { at: 0.0, to: 0.0, dur: 14 / 30 * 3, ease: eases.land },
+        { at: 3.2, to: 0.42, dur: 14 / 30, ease: eases.land },
+        { at: 6.4, to: 1.0, dur: 10 / 30, ease: eases.shout },
+        { at: 9.2, to: 0.2, dur: 16 / 30, ease: eases.soften },
+      ];
+      const levelAt = (t) => {
+        let value = 0.3;
+        for (const step of SAID) {
+          if (t <= step.at) break;
+          const k = Math.min(1, (t - step.at) / step.dur);
+          value += (step.to - value) * step.ease(k);
+        }
+        return value;
+      };
+      const draw = (t) => {
+        let line = 0;
+        letters.forEach((letter, index) => {
+          const level = Math.min(1, Math.max(0, levelAt(t - index * LAG_S)));
+          letter.style.fontWeight = String(Math.round(QUIET.weight + level * (LOUD.weight - QUIET.weight)));
+          letter.style.fontStretch = `${(QUIET.stretch + level * (LOUD.stretch - QUIET.stretch)).toFixed(1)}%`;
+          line += advance(letter.textContent, level);
+        });
+        word.style.fontSize = `${(LINE_PX / line).toFixed(2)}px`;
+      };
+
+      const tl = gsap.timeline({ paused: true });
+      const clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, { t: 14, duration: 14, ease: "none", onUpdate: () => draw(clock.t) }, 0);
+
+      const flood = { duration: 0.3, ease: "power2.inOut" };
+      tl.set("#say-ground", { backgroundColor: "#000000" }, 0);
+      tl.set("#say-stage", { color: "#ffffff" }, 0);
+      tl.to("#say-ground", { backgroundColor: "#E5E517", ...flood }, 6.4);
+      tl.to("#say-stage", { color: "#000000", ...flood }, 6.4);
+      tl.to("#say-ground", { backgroundColor: "#17E5E5", ...flood }, 9.2);
+      tl.to("#say-ground", { backgroundColor: "#000000", ...flood }, 12.3);
+      tl.to("#say-stage", { color: "#ffffff", ...flood }, 12.3);
+      tl.fromTo("#say-word-box", { opacity: 1, filter: "blur(0px)" },
+        { opacity: 0, filter: "blur(18px)", duration: 0.5, ease: "power3.in", immediateRender: false }, 13.3);
+
+      const leave = (id, at) => tl.fromTo(id, { opacity: 1, filter: "blur(0px)" },
+        { opacity: 0, filter: "blur(8px)", duration: 0.15, ease: "power2.in", immediateRender: false }, at);
+      const arrive = (id, at) => tl.fromTo(id, { opacity: 0, filter: "blur(8px)" },
+        { opacity: 1, filter: "blur(0px)", duration: 0.17, ease: "power4.out" }, at);
+      leave("#say-l1-text", 3.03);
+      arrive("#say-l2-text", 3.28);
+      leave("#say-l2-text", 6.23);
+      arrive("#say-l3-text", 6.48);
+      leave("#say-l3-text", 9.03);
+      arrive("#say-l4-text", 9.28);
+      leave("#say-l4-text", 11.83);
+
+      draw(0);
+      window.__timelines["say"] = tl;
+    })();
+  </script>
+</template>

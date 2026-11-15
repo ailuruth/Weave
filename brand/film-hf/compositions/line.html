@@ -1,0 +1,81 @@
+<template>
+  <style>
+    @font-face {
+      font-family: "Roboto Flex Film";
+      src: url("assets/fonts/RobotoFlex.ttf") format("truetype");
+      font-weight: 100 1000;
+      font-stretch: 25% 151%;
+    }
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #000000;
+      font-family: "Roboto Flex Film", sans-serif;
+    }
+    .line-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 380px;
+      height: 300px;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 0.34em;
+      margin: 0;
+      padding-top: 220px;
+      font-size: 190px;
+      font-weight: 400;
+      line-height: 0;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      color: #6b6b6b;
+    }
+    .line-row span {
+      display: inline-block;
+      line-height: 0;
+    }
+  </style>
+  <div id="root" data-composition-id="line" data-width="1920" data-height="1080">
+    <div id="line-a" class="clip" data-start="0" data-duration="3.3" data-layout-allow-overflow>
+      <p class="line-row" id="line-a-row"><span>You</span><span>did</span><span>this</span></p>
+    </div>
+    <div id="line-b" class="clip" data-start="3.3" data-duration="3.3" data-layout-allow-overflow>
+      <p class="line-row" id="line-b-row"><span>You</span><span>did</span><span>this</span></p>
+    </div>
+    <div id="line-c" class="clip" data-start="6.6" data-duration="3.2" data-layout-allow-overflow>
+      <p class="line-row" id="line-c-row"><span>You</span><span>did</span><span>this</span></p>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const SPOKEN = "#E5E517";
+      const WAITING = "#6b6b6b";
+      const WORD_GAP_S = 0.34;
+      const tl = gsap.timeline({ paused: true });
+      const say = (rowId, start, stressed) => {
+        const row = document.getElementById(rowId);
+        const words = [...row.children];
+        tl.fromTo(row, { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.18, ease: "power4.out" }, start + 0.05);
+        words.forEach((word, index) => {
+          const at = start + 0.5 + index * WORD_GAP_S;
+          tl.fromTo(word, { color: WAITING }, { color: SPOKEN, duration: 0.13, ease: "none" }, at);
+          if (index === stressed) {
+            tl.fromTo(word, { fontWeight: 400, fontStretch: "100%" },
+              { fontWeight: 1000, fontStretch: "151%", duration: 0.33, ease: "power4.out" }, at);
+          } else {
+            tl.fromTo(word, { fontWeight: 400 }, { fontWeight: 520, duration: 0.13, ease: "power2.out" }, at);
+            tl.fromTo(word, { fontWeight: 520 }, { fontWeight: 400, duration: 0.3, ease: "power2.inOut", immediateRender: false }, at + 0.13);
+          }
+        });
+        tl.fromTo(row, { opacity: 1, filter: "blur(0px)" },
+          { opacity: 0, filter: "blur(10px)", duration: 0.16, ease: "power2.in", immediateRender: false }, start + 3.0);
+      };
+      say("line-a-row", 0, 0);
+      say("line-b-row", 3.3, 1);
+      say("line-c-row", 6.6, 2);
+      window.__timelines["line"] = tl;
+    })();
+  </script>
+</template>
