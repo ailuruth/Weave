@@ -45,6 +45,9 @@ docs/*
 !docs/technical.html
 !docs/site.css
 !docs/site.js
+!docs/technical.css
+!docs/technical.js
+!docs/captions.css
 !docs/RobotoFlex.ttf
 !docs/icon.svg
 !docs/favicon.png

@@ -1,0 +1,279 @@
+:root {
+  --y: #E5E517;
+  --g: #17E517;
+  --b: #17E5E5;
+  --p: #E517E5;
+  --r: #E51717;
+  --o: #E58017;
+  --ahead: #FFFFFF;
+  --ahead-opacity: .9;
+  --unknown: #f4f3ef;
+  --glyph-baseline-em: .38em;
+  --font-caption: "Roboto Flex", system-ui, sans-serif;
+}
+
+.line {
+  font-family: var(--font-caption);
+  font-variation-settings: "opsz" 40;
+  font-size: clamp(26px, 3.6vw, 42px);
+  letter-spacing: -.012em; display: flex; flex-wrap: wrap;
+  align-items: baseline; color: var(--ahead);
+  row-gap: .12em;
+  line-height: 1.38;
+
+  --sweep-duration: 80ms;
+  --color-turn-ms: 90ms;
+  --motion-duration: 538ms;
+  --wave-span: 387ms;
+  --crest-duration: 424ms;
+  --rise-ms: 151ms;
+  --fall-ms: 273ms;
+  --hold-pre: 260ms; --hold-hold: 420ms; --hold-land: 290ms;
+
+  --word-lift-em: .16em;
+  --hold-lift: .525em;
+  --sync-pop: 1;
+}
+
+.hold { --crest-duration: 1050ms; --rise-ms: 375ms; --fall-ms: 675ms; }
+
+.w {
+  position: relative; display: inline-grid; flex: 0 0 auto;
+  margin-right: .30em;
+  text-align: center; vertical-align: baseline;
+  color: var(--sp, var(--y));
+  --crest-scale: calc(1 + var(--phase) * (clamp(1, var(--scale, 1), 1.55) - 1));
+}
+.w:last-child { margin-right: 0; }
+.w .sizer {
+  grid-area: 1 / 1; visibility: hidden; white-space: pre;
+  font-variation-settings: "opsz" 14, "YTLC" 514, "YTUC" 712, "YTAS" 750;
+}
+.w .glyph {
+  position: absolute; left: 50%; bottom: 0;
+  display: block; width: max-content; white-space: nowrap;
+  transform-origin: 50% calc(
+    100% - var(--glyph-baseline-em) * max(1, var(--crest-scale)));
+  translate: 0 calc(var(--glyph-baseline-em) * max(0, var(--crest-scale) - 1));
+  transform: translate3d(-50%, 0, 0) scale(1);
+}
+.w .ink {
+  display: inline-block;
+  transform-origin: 50% calc(100% - var(--glyph-baseline-em));
+  font-size: calc(1em * var(--crest-scale));
+  font-weight: calc(400 + var(--phase) * (var(--wt, 400) - 400));
+  font-stretch: calc(100% + var(--phase) * (var(--wd, 100%) - 100%));
+  font-variation-settings:
+    "opsz" 14,
+    "YTLC" calc(514 + var(--phase) * (var(--ytlc, 514) - 514)),
+    "YTUC" calc(712 + var(--phase) * (var(--ytuc, 712) - 712)),
+    "YTAS" calc(750 + var(--phase) * (var(--ytas, 750) - 750));
+}
+.w .c {
+  display: inline-block; white-space: pre;
+  transform-origin: 50% calc(100% - var(--glyph-baseline-em));
+}
+
+@property --phase { syntax: "<number>"; inherits: true; initial-value: 0; }
+
+@keyframes word-color-turn {
+  from { color: var(--ahead); opacity: var(--ahead-opacity, .9); }
+}
+.turn .c { color: var(--ahead); opacity: var(--ahead-opacity, .9); }
+.play .turn .c { color: var(--sp, var(--y)); opacity: 1; }
+
+@keyframes word-sync-pop-lift-rise {
+  0% { transform: translate3d(-50%, 0, 0) scale(1); }
+  100% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
+      scale(var(--sync-pop));
+  }
+}
+@keyframes word-sync-pop-lift-fall {
+  0% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
+      scale(var(--sync-pop));
+  }
+  6% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.994), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .995));
+  }
+  18% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.94), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .945));
+  }
+  55% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.62), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .58));
+  }
+  82% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * .18), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .16));
+  }
+  100% { transform: translate3d(-50%, 0, 0) scale(1); }
+}
+@keyframes word-sync-pop-lift {
+  0%, 100% { transform: translate3d(-50%, 0, 0) scale(1); }
+  42% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
+      scale(var(--sync-pop));
+  }
+  72% {
+    transform:
+      translate3d(-50%, calc(var(--word-lift-em, .16em) * .3), 0)
+      scale(calc(1 + (var(--sync-pop) - 1) * .34));
+  }
+}
+.play .gl .glyph {
+  animation:
+    word-sync-pop-lift-rise var(--rise-ms) cubic-bezier(.42,0,.22,1)
+      var(--d) forwards,
+    word-sync-pop-lift-fall var(--fall-ms) linear
+      calc(var(--d) + var(--rise-ms)) forwards;
+}
+.play .gl.hold .glyph {
+  animation: word-sync-pop-lift var(--crest-duration)
+    cubic-bezier(.42,0,.22,1) var(--d) both;
+}
+
+@keyframes voice-phase-film-rise {
+  0% { --phase: 0.000; }
+  14.01% { --phase: 0.048; }
+  28.01% { --phase: 0.181; }
+  56.02% { --phase: 0.594; }
+  74% { --phase: 0.836; }
+  86% { --phase: 0.940; }
+  94% { --phase: 0.983; }
+  100% { --phase: 1.000; }
+}
+@keyframes voice-phase-film-fall {
+  0% { --phase: 1.000; }
+  6% { --phase: 0.9975; }
+  16% { --phase: 0.975; }
+  30% { --phase: 0.915; }
+  48% { --phase: 0.790; }
+  66% { --phase: 0.600; }
+  82% { --phase: 0.360; }
+  93% { --phase: 0.140; }
+  100% { --phase: 0.000; }
+}
+@keyframes voice-phase-hold {
+  0%, 100% { --phase: 0; }
+  8%  { --phase: .30; }
+  16% { --phase: .78; }
+  25% { --phase: 1; }
+  33% { --phase: .84; }
+  46% { --phase: .70; }
+  79% { --phase: .70; }
+  86% { --phase: .22; }
+  92% { --phase: 0; }
+}
+.play .ph {
+  animation:
+    voice-phase-film-rise var(--rise-ms) linear var(--d) forwards,
+    voice-phase-film-fall var(--fall-ms) linear
+      calc(var(--d) + var(--rise-ms)) forwards;
+}
+.play .ph.hold {
+  animation: voice-phase-hold var(--crest-duration) linear var(--d) both;
+}
+
+@keyframes word-hold-spring {
+  0% {
+    transform: translateY(0) scale(1, 1);
+    animation-timing-function: cubic-bezier(.4, 0, .7, .3);
+  }
+  7% {
+    transform:
+      translateY(calc(.15em * var(--hold-spring, 0)))
+      scale(calc(1 + .09 * var(--hold-spring, 0)),
+            calc(1 - .28 * var(--hold-spring, 0)));
+    animation-timing-function: cubic-bezier(.2, .8, .4, 1);
+  }
+  11% {
+    transform:
+      translateY(0)
+      scale(calc(1 - .03 * var(--hold-spring, 0)),
+            calc(1 + .12 * var(--hold-spring, 0)));
+    animation-timing-function: cubic-bezier(.15, .7, .35, 1);
+  }
+  17% {
+    transform:
+      translateY(calc(-.82 * var(--hold-lift, 0em)))
+      scale(calc(1 - .07 * var(--hold-spring, 0)),
+            calc(1 + .32 * var(--hold-spring, 0)));
+    animation-timing-function: cubic-bezier(.3, 0, .3, 1);
+  }
+  23% {
+    transform:
+      translateY(calc(-.94 * var(--hold-lift, 0em)))
+      scale(calc(1 - .015 * var(--hold-spring, 0)),
+            calc(1 + .08 * var(--hold-spring, 0)));
+    animation-timing-function: ease-out;
+  }
+  27%, 70% {
+    transform: translateY(calc(-1 * var(--hold-lift, 0em))) scale(1, 1);
+    animation-timing-function: cubic-bezier(.32, 0, .24, 1);
+  }
+  84% {
+    transform:
+      translateY(calc(-.30 * var(--hold-lift, 0em)))
+      scale(calc(1 - .035 * var(--hold-spring, 0)),
+            calc(1 + .11 * var(--hold-spring, 0)));
+    animation-timing-function: cubic-bezier(.33, 0, .28, 1);
+  }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+.play .spring .ink {
+  animation: word-hold-spring
+    calc(var(--hold-pre) + var(--hold-hold) + var(--hold-land))
+    linear calc(var(--d) - var(--hold-pre)) backwards;
+}
+
+@keyframes character-wave {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1, 1); }
+  38% {
+    transform:
+      translateY(calc(
+        (-.05em - var(--group-lift-em, 0em)) * var(--char-wave, 1)))
+      rotate(calc(var(--char-tilt, 0deg) * var(--char-wave, 1)))
+      scale(
+        calc(1 - .022 * var(--char-wave, 1)),
+        calc(1 + .13 * var(--char-wave, 1))
+      );
+  }
+  72% {
+    transform:
+      translateY(calc(
+        (.014em + var(--group-lift-em, 0em) * .22) * var(--char-wave, 1)))
+      rotate(calc(var(--char-tilt, 0deg) * -.28 * var(--char-wave, 1)))
+      scale(
+        calc(1 + .010 * var(--char-wave, 1)),
+        calc(1 - .032 * var(--char-wave, 1))
+      );
+  }
+}
+.play .w .c {
+  animation:
+    word-color-turn var(--color-turn-ms) linear var(--ct, 600000ms) backwards,
+    character-wave var(--wave-span) cubic-bezier(.34,0,.28,1)
+      var(--cw, 600000ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play .ph, .play .ph.hold { --phase: 0 !important; animation: none; }
+  .play .gl .glyph, .play .gl.hold .glyph, .play .spring .ink {
+    animation: none;
+  }
+  .play .w .c {
+    animation: word-color-turn var(--color-turn-ms) linear
+      var(--ct, 600000ms) backwards;
+  }
+}

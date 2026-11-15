@@ -3,665 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weave</title>
-<link rel="canonical" href="https://ailuruth.github.io/Weave/">
+<title>Weave: technical notes</title>
+<link rel="canonical" href="https://ailuruth.github.io/Weave/technical.html">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.png" type="image/png" sizes="64x64">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta property="og:title" content="Weave">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://ailuruth.github.io/Weave/">
-<meta property="og:description" content="Live Caption with Intention captions, offline: the pipeline, the playhead, and the motion channels, all running.">
 <meta name="theme-color" content="#000000">
-<meta name="description" content="Weave turns live speech into Caption with Intention captions, offline: the pipeline, the playhead, and the motion channels, all running.">
-<style>
-
-@font-face {
-  font-family: "Roboto Flex";
-  src: url("RobotoFlex.ttf") format("truetype-variations");
-  font-weight: 100 1000; font-stretch: 25% 151%; font-display: block;
-}
-
-:root {
-  --canvas: #ffffff;
-  --parchment: #f5f5f7;
-  --tile-1: #272729;
-  --tile-2: #2a2a2c;
-  --tile-3: #252527;
-  --black: #000000;
-  --ink: #1d1d1f;
-  --ink-80: #333333;
-  --ink-48: #7a7a7a;
-  --on-dark: #ffffff;
-  --on-dark-muted: #cccccc;
-  --hairline: #e0e0e0;
-  --action: #0066cc;
-  --action-focus: #0071e3;
-  --sky: #2997ff;
-  --y: #E5E517; --g: #17E517; --b: #17E5E5;
-  --p: #E517E5; --r: #E51717; --o: #E58017;
-  --ahead: #FFFFFF;
-  --ahead-opacity: .9;
-  --unknown: #f4f3ef;
-  --caption-box: #000000;
-  --glyph-baseline-em: .38em;
-
-  --font-ui: "SF Pro Display", "SF Pro Text", -apple-system,
-             BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", Pretendard,
-             "Noto Sans KR", "Malgun Gothic", sans-serif;
-  --font-caption: "Roboto Flex", system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
-
-  --nav-h: 44px;
-  --wide: 980px;
-
-  --bg: var(--canvas); --fg: var(--ink); --fg-2: var(--ink-48);
-  --hair: var(--hairline); --accent: var(--action);
-}
-
-.t-light     { --bg: var(--canvas);    --fg: var(--ink); --fg-2: var(--ink-48);
-               --hair: var(--hairline); --accent: var(--action); }
-.t-parchment { --bg: var(--parchment); --fg: var(--ink); --fg-2: var(--ink-48);
-               --hair: var(--hairline); --accent: var(--action); }
-.t-dark      { --bg: var(--tile-1); --fg: var(--on-dark); --fg-2: var(--on-dark-muted);
-               --hair: rgba(255,255,255,.14); --accent: var(--sky); }
-.t-dark-2    { --bg: var(--tile-2); --fg: var(--on-dark); --fg-2: var(--on-dark-muted);
-               --hair: rgba(255,255,255,.14); --accent: var(--sky); }
-.t-dark-3    { --bg: var(--tile-3); --fg: var(--on-dark); --fg-2: var(--on-dark-muted);
-               --hair: rgba(255,255,255,.14); --accent: var(--sky); }
-.t-black     { --bg: var(--black);  --fg: var(--on-dark); --fg-2: var(--on-dark-muted);
-               --hair: rgba(255,255,255,.14); --accent: var(--sky); }
-
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: var(--nav-h); }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-}
-
-body {
-  margin: 0; background: var(--canvas); color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 17px; line-height: 1.47; letter-spacing: -.374px; font-weight: 400;
-  -webkit-font-smoothing: antialiased;
-}
-
-.nav { position: sticky; top: 0; z-index: 40; background: var(--black); height: var(--nav-h); }
-.nav-inner {
-  max-width: 1024px; margin: 0 auto; padding: 0 22px; height: 100%;
-  display: flex; align-items: center; gap: 24px;
-}
-.brand { color: var(--on-dark); font-size: 12px; letter-spacing: -.12px; font-weight: 600; white-space: nowrap; }
-.chapters { display: flex; overflow-x: auto; scrollbar-width: none; margin-left: auto; -webkit-overflow-scrolling: touch; }
-.chapters::-webkit-scrollbar { display: none; }
-.chapters a {
-  color: var(--on-dark-muted); text-decoration: none; white-space: nowrap;
-  font-size: 12px; letter-spacing: -.12px; padding: 0 12px; line-height: var(--nav-h);
-}
-.chapters a[aria-current="true"] { color: var(--on-dark); }
-.chapters a:focus-visible { outline: 2px solid var(--action-focus); outline-offset: -4px; }
-@media (max-width: 620px) { .brand { display: none; } .chapters { margin-left: 0; } }
-
-.tile { background: var(--bg); color: var(--fg); }
-.inner { max-width: var(--wide); margin: 0 auto; padding: 80px 22px; }
-@media (max-width: 700px) { .inner { padding: 56px 22px; } }
-.t-awaiting .inner { padding-bottom: 40px; }
-
-.eyebrow { margin: 0 0 12px; font-size: 14px; font-weight: 600; line-height: 1.29; letter-spacing: -.224px; color: var(--accent); }
-h1 { margin: 0; font-size: clamp(34px, 5.4vw, 54px); font-weight: 600; line-height: 1.07; letter-spacing: -.28px; }
-h2 { margin: 0; font-size: clamp(30px, 4vw, 40px); font-weight: 600; line-height: 1.1; color: var(--fg); }
-.lead { margin: 22px 0 0; font-size: clamp(21px, 2.4vw, 28px); font-weight: 400; line-height: 1.14; letter-spacing: .196px; color: var(--fg-2); }
-p { margin: 24px 0 0; font-size: clamp(19px, 2vw, 24px); font-weight: 300;
-    line-height: 1.5; letter-spacing: 0; color: var(--fg); }
-p.muted { color: var(--fg-2); }
-.tile p strong { font-weight: 600; }
-.tile p em, .tile p i { font-style: italic; }
-a { color: var(--accent); text-decoration: none; }
-
-code {
-  font-family: var(--mono); font-size: .84em; letter-spacing: 0;
-  background: color-mix(in srgb, var(--fg) 8%, transparent);
-  padding: 2px 6px; border-radius: 5px;
-}
-
-.btn {
-  display: inline-block; border: 0; cursor: pointer;
-  font-family: var(--font-ui); font-size: 14px; font-weight: 400;
-  letter-spacing: -.224px; line-height: 1.29;
-  background: var(--canvas); color: var(--action);
-  border-radius: 9999px; padding: 9px 20px;
-}
-.btn:active { transform: scale(.95); }
-.btn:focus-visible { outline: 2px solid var(--action-focus); outline-offset: 3px; }
-
-.box { background: var(--caption-box); border-radius: 18px; padding: 44px 38px; margin-top: 36px; }
-.t-light .box, .t-parchment .box { box-shadow: rgba(0, 0, 0, .22) 3px 5px 30px; }
-.t-dark .box, .t-dark-2 .box, .t-dark-3 .box, .t-black .box { border: 1px solid rgba(255,255,255,.12); }
-.box-foot { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 30px; flex-wrap: wrap; }
-.box-note { margin: 0; font-size: 14px; line-height: 1.43; letter-spacing: -.224px; color: var(--on-dark-muted); }
-.box-note b { color: var(--on-dark); font-weight: 600; }
-.box-note i { font-style: italic; }
-/* Math. The box is black, so the colour is set here and not inherited from KaTeX. */
-.box-math {
-  margin: 26px 0 0; overflow-x: auto; color: var(--on-dark);
-  font-size: 15px; line-height: 1.2;
-}
-.box-math .katex { color: var(--on-dark); }
-.box-syms {
-  margin: 22px 0 0; display: grid; grid-template-columns: max-content 1fr;
-  gap: 9px 20px; align-items: baseline;
-  font-size: 14px; line-height: 1.5; letter-spacing: -.224px;
-  color: var(--on-dark-muted);
-}
-.box-syms dt { color: var(--on-dark); justify-self: end; }
-.box-syms dd { margin: 0; }
-/* One sentence on what the formula does, directly under it. */
-.box-gloss {
-  margin: 16px 0 0; font-size: 14px; line-height: 1.55;
-  letter-spacing: -.224px; color: var(--on-dark-muted); max-width: 86ch;
-}
-.box-syms .katex { font-size: 1.02em; }
-@media (max-width: 620px) { .box-syms { grid-template-columns: 1fr; gap: 2px 0; }
-  .box-syms dt { justify-self: start; margin-top: 8px; } }
-.box-math > :not(.katex-display) { font-family: var(--mono); font-size: 13px;
-  color: var(--on-dark-muted); }
-
-.line {
-  font-family: var(--font-caption);
-  font-variation-settings: "opsz" 40;
-  font-size: clamp(26px, 3.6vw, 42px);
-  letter-spacing: -.012em; display: flex; flex-wrap: wrap;
-  align-items: baseline; color: var(--ahead);
-  row-gap: .12em;
-  line-height: 1.38;
-
-  --sweep-duration: 80ms;
-  --color-turn-ms: 90ms;
-  --motion-duration: 538ms;
-  --wave-span: 387ms;
-  --crest-duration: 424ms;
-  --rise-ms: 151ms;
-  --fall-ms: 273ms;
-  --hold-pre: 260ms; --hold-hold: 420ms; --hold-land: 290ms;
-
-  --word-lift-em: .16em;
-  --hold-lift: .525em;
-  --sync-pop: 1;
-}
-
-.hold { --crest-duration: 1050ms; --rise-ms: 375ms; --fall-ms: 675ms; }
-
-.w {
-  position: relative; display: inline-grid; flex: 0 0 auto;
-  margin-right: .30em;
-  text-align: center; vertical-align: baseline;
-  color: var(--sp, var(--y));
-  --crest-scale: calc(1 + var(--phase) * (clamp(1, var(--scale, 1), 1.55) - 1));
-}
-.w:last-child { margin-right: 0; }
-.w .sizer { grid-area: 1 / 1; visibility: hidden; white-space: pre; }
-.w .glyph {
-  position: absolute; left: 50%; bottom: 0;
-  display: block; width: max-content; white-space: nowrap;
-  transform-origin: 50% calc(
-    100% - var(--glyph-baseline-em) * max(1, var(--crest-scale)));
-  translate: 0 calc(var(--glyph-baseline-em) * max(0, var(--crest-scale) - 1));
-  transform: translate3d(-50%, 0, 0) scale(1);
-}
-.w .ink {
-  display: inline-block;
-  transform-origin: 50% calc(100% - var(--glyph-baseline-em));
-  font-size: calc(1em * var(--crest-scale));
-  font-weight: calc(400 + var(--phase) * (var(--wt, 400) - 400));
-  font-stretch: calc(100% + var(--phase) * (var(--wd, 100%) - 100%));
-  font-variation-settings:
-    "opsz" 14,
-    "YTLC" calc(514 + var(--phase) * (var(--ytlc, 514) - 514)),
-    "YTUC" calc(712 + var(--phase) * (var(--ytuc, 712) - 712)),
-    "YTAS" calc(750 + var(--phase) * (var(--ytas, 750) - 750));
-}
-.w .c {
-  display: inline-block; white-space: pre;
-  transform-origin: 50% calc(100% - var(--glyph-baseline-em));
-}
-
-@property --phase { syntax: "<number>"; inherits: true; initial-value: 0; }
-
-@keyframes word-color-turn {
-  from { color: var(--ahead); opacity: var(--ahead-opacity, .9); }
-}
-.turn .c { color: var(--ahead); opacity: var(--ahead-opacity, .9); }
-.play .turn .c { color: var(--sp, var(--y)); opacity: 1; }
-
-@keyframes word-sync-pop-lift-rise {
-  0% { transform: translate3d(-50%, 0, 0) scale(1); }
-  100% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
-      scale(var(--sync-pop));
-  }
-}
-@keyframes word-sync-pop-lift-fall {
-  0% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
-      scale(var(--sync-pop));
-  }
-  6% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.994), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .995));
-  }
-  18% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.94), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .945));
-  }
-  55% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -.62), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .58));
-  }
-  82% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * .18), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .16));
-  }
-  100% { transform: translate3d(-50%, 0, 0) scale(1); }
-}
-@keyframes word-sync-pop-lift {
-  0%, 100% { transform: translate3d(-50%, 0, 0) scale(1); }
-  42% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * -1), 0)
-      scale(var(--sync-pop));
-  }
-  72% {
-    transform:
-      translate3d(-50%, calc(var(--word-lift-em, .16em) * .3), 0)
-      scale(calc(1 + (var(--sync-pop) - 1) * .34));
-  }
-}
-.play .gl .glyph {
-  animation:
-    word-sync-pop-lift-rise var(--rise-ms) cubic-bezier(.42,0,.22,1)
-      var(--d) forwards,
-    word-sync-pop-lift-fall var(--fall-ms) linear
-      calc(var(--d) + var(--rise-ms)) forwards;
-}
-.play .gl.hold .glyph {
-  animation: word-sync-pop-lift var(--crest-duration)
-    cubic-bezier(.42,0,.22,1) var(--d) both;
-}
-
-@keyframes voice-phase-film-rise {
-  0% { --phase: 0.000; }
-  14.01% { --phase: 0.048; }
-  28.01% { --phase: 0.181; }
-  56.02% { --phase: 0.594; }
-  74% { --phase: 0.836; }
-  86% { --phase: 0.940; }
-  94% { --phase: 0.983; }
-  100% { --phase: 1.000; }
-}
-@keyframes voice-phase-film-fall {
-  0% { --phase: 1.000; }
-  6% { --phase: 0.9975; }
-  16% { --phase: 0.975; }
-  30% { --phase: 0.915; }
-  48% { --phase: 0.790; }
-  66% { --phase: 0.600; }
-  82% { --phase: 0.360; }
-  93% { --phase: 0.140; }
-  100% { --phase: 0.000; }
-}
-@keyframes voice-phase-hold {
-  0%, 100% { --phase: 0; }
-  8%  { --phase: .30; }
-  16% { --phase: .78; }
-  25% { --phase: 1; }
-  33% { --phase: .84; }
-  46% { --phase: .70; }
-  79% { --phase: .70; }
-  86% { --phase: .22; }
-  92% { --phase: 0; }
-}
-.play .ph {
-  animation:
-    voice-phase-film-rise var(--rise-ms) linear var(--d) forwards,
-    voice-phase-film-fall var(--fall-ms) linear
-      calc(var(--d) + var(--rise-ms)) forwards;
-}
-.play .ph.hold {
-  animation: voice-phase-hold var(--crest-duration) linear var(--d) both;
-}
-
-@keyframes word-hold-spring {
-  0% {
-    transform: translateY(0) scale(1, 1);
-    animation-timing-function: cubic-bezier(.4, 0, .7, .3);
-  }
-  7% {
-    transform:
-      translateY(calc(.15em * var(--hold-spring, 0)))
-      scale(calc(1 + .09 * var(--hold-spring, 0)),
-            calc(1 - .28 * var(--hold-spring, 0)));
-    animation-timing-function: cubic-bezier(.2, .8, .4, 1);
-  }
-  11% {
-    transform:
-      translateY(0)
-      scale(calc(1 - .03 * var(--hold-spring, 0)),
-            calc(1 + .12 * var(--hold-spring, 0)));
-    animation-timing-function: cubic-bezier(.15, .7, .35, 1);
-  }
-  17% {
-    transform:
-      translateY(calc(-.82 * var(--hold-lift, 0em)))
-      scale(calc(1 - .07 * var(--hold-spring, 0)),
-            calc(1 + .32 * var(--hold-spring, 0)));
-    animation-timing-function: cubic-bezier(.3, 0, .3, 1);
-  }
-  23% {
-    transform:
-      translateY(calc(-.94 * var(--hold-lift, 0em)))
-      scale(calc(1 - .015 * var(--hold-spring, 0)),
-            calc(1 + .08 * var(--hold-spring, 0)));
-    animation-timing-function: ease-out;
-  }
-  27%, 70% {
-    transform: translateY(calc(-1 * var(--hold-lift, 0em))) scale(1, 1);
-    animation-timing-function: cubic-bezier(.32, 0, .24, 1);
-  }
-  84% {
-    transform:
-      translateY(calc(-.30 * var(--hold-lift, 0em)))
-      scale(calc(1 - .035 * var(--hold-spring, 0)),
-            calc(1 + .11 * var(--hold-spring, 0)));
-    animation-timing-function: cubic-bezier(.33, 0, .28, 1);
-  }
-  100% { transform: translateY(0) scale(1, 1); }
-}
-.play .spring .ink {
-  animation: word-hold-spring
-    calc(var(--hold-pre) + var(--hold-hold) + var(--hold-land))
-    linear calc(var(--d) - var(--hold-pre)) backwards;
-}
-
-@keyframes character-wave {
-  0%, 100% { transform: translateY(0) rotate(0deg) scale(1, 1); }
-  38% {
-    transform:
-      translateY(calc(
-        (-.05em - var(--group-lift-em, 0em)) * var(--char-wave, 1)))
-      rotate(calc(var(--char-tilt, 0deg) * var(--char-wave, 1)))
-      scale(
-        calc(1 - .022 * var(--char-wave, 1)),
-        calc(1 + .13 * var(--char-wave, 1))
-      );
-  }
-  72% {
-    transform:
-      translateY(calc(
-        (.014em + var(--group-lift-em, 0em) * .22) * var(--char-wave, 1)))
-      rotate(calc(var(--char-tilt, 0deg) * -.28 * var(--char-wave, 1)))
-      scale(
-        calc(1 + .010 * var(--char-wave, 1)),
-        calc(1 - .032 * var(--char-wave, 1))
-      );
-  }
-}
-.play .w .c {
-  animation:
-    word-color-turn var(--color-turn-ms) linear var(--ct, 600000ms) backwards,
-    character-wave var(--wave-span) cubic-bezier(.34,0,.28,1)
-      var(--cw, 600000ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .play .ph, .play .ph.hold { --phase: 0 !important; animation: none; }
-  .play .gl .glyph, .play .gl.hold .glyph, .play .spring .ink {
-    animation: none;
-  }
-  .play .w .c {
-    animation: word-color-turn var(--color-turn-ms) linear
-      var(--ct, 600000ms) backwards;
-  }
-}
-
-.stats {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 32px 24px; margin: 48px 0 0; padding-top: 32px; border-top: 1px solid var(--hair);
-}
-.stats dt { margin: 0 0 6px; font-size: 12px; font-weight: 400; letter-spacing: -.12px; color: var(--fg-2); }
-.stats dd { margin: 0; font-size: 34px; font-weight: 600; line-height: 1.1; letter-spacing: -.374px; color: var(--fg); }
-.stats dd small { display: block; margin-top: 6px; font-size: 12px; font-weight: 400; line-height: 1.3; letter-spacing: -.12px; color: var(--fg-2); }
-
-figure { margin: 36px 0 0; }
-.plate { background: var(--canvas); border: 1px solid var(--hairline); border-radius: 18px; padding: 40px 28px 36px; overflow-x: auto; }
-.plate.shot { padding: 0; overflow: hidden; border: 0; background: none; }
-.plate img, .plate svg { display: block; width: 100%; height: auto; }
-.plate.sheet { background: var(--canvas); padding: 26px 24px; }
-.t-dark .plate.sheet, .t-dark-2 .plate.sheet, .t-dark-3 .plate.sheet,
-.t-black .plate.sheet {
-  background: var(--canvas); border-color: transparent;
-  box-shadow: rgba(0, 0, 0, .38) 3px 5px 30px;
-}
-.t-light .plate.shot, .t-parchment .plate.shot { box-shadow: rgba(0, 0, 0, .22) 3px 5px 30px; }
-.blockfig { display: block; width: 100%; height: auto; min-width: 720px; }
-.blockfig text { font-family: var(--font-ui); fill: #0B0B0B; }
-.blockfig .bt { font-size: 15px; font-weight: 600; text-anchor: middle; letter-spacing: -.2px; }
-.blockfig .bs { font-size: 12.5px; text-anchor: middle; fill: #333333; }
-.blockfig .pt { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
-.blockfig .rl { font-size: 13px; }
-.blockfig .ax { font-size: 11.5px; fill: #86868B; text-anchor: middle; }
-.blockfig .key { font-size: 11.5px; fill: #333333; }
-.blockfig .ann { font-size: 12px; fill: #333333; }
-.blockfig .annc { font-size: 12px; fill: #333333; text-anchor: middle; }
-.blockfig .annk { font-size: 12px; font-weight: 600; fill: #0B0B0B; }
-.blockfig .phl { font-size: 11.5px; font-weight: 600; fill: #0B0B0B; text-anchor: middle; }
-.blockfig .foot { font-size: 12px; fill: #86868B; }
-.blockfig .mn { font-family: var(--mono); font-size: 11px; fill: #86868B; }
-.blockfig .end { text-anchor: end; }
-.blockfig .rule { stroke: #DCDCE1; }
-/* Recessive frame: the axis and grid must never out-weigh a mark. */
-.blockfig .axis { stroke: #C8C8CE; fill: none; }
-.blockfig .grid { stroke: #F2F2F5; fill: none; }
-.blockfig .brace { stroke: #C8C8CE; fill: none; }
-/* The data marks. `wash-*` is "and onwards", `tick-*` is the moment itself;
-   provisional carries a hatch so the state is never color alone. */
-.blockfig .spoken { fill: #0B0B0B; }
-.blockfig .wash-s { fill: url(#fade); }
-.blockfig .tick-s { fill: #0066CC; }
-.blockfig .wash-p { fill: url(#hatch); }
-.blockfig .tick-p { fill: #86868B; }
-.blockfig .whisk { stroke: #0066CC; fill: none; stroke-width: 1.5; }
-.blockfig .markf { fill: #0B0B0B; }
-.blockfig .marko { fill: #FFFFFF; stroke: #0B0B0B; }
-.blockfig .playhead { stroke: #0B0B0B; fill: none; stroke-width: 1.5; }
-.blockfig .flag { fill: #0B0B0B; }
-.blockfig g:hover rect { filter: brightness(.94); }
-
-.plate.toolpath { background: var(--black); padding: 8px 0 0; border: 0; }
-
-.t-dark .plate, .t-dark-2 .plate, .t-dark-3 .plate, .t-black .plate {
-  background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12);
-}
-figcaption { margin: 20px 0 0; font-size: 14px; line-height: 1.43; letter-spacing: -.224px; color: var(--fg-2); }
-figcaption b { color: var(--fg); font-weight: 600; }
-figcaption i { font-style: italic; }
-
-.sub-h {
-  margin: 44px 0 0; font-size: 21px; font-weight: 600; line-height: 1.19;
-  letter-spacing: .231px; color: var(--fg);
-}
-.sub-h + p { margin-top: 12px; }
-
-.scroll { overflow-x: auto; border: 1px solid var(--hair); border-radius: 18px; margin: 36px 0 0; background: var(--canvas); }
-.t-dark .scroll, .t-dark-2 .scroll, .t-dark-3 .scroll, .t-black .scroll {
-  background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12);
-}
-table { border-collapse: collapse; width: 100%; min-width: 520px; }
-th, td {
-  padding: 14px 20px; text-align: left; vertical-align: top;
-  border-bottom: 1px solid var(--hair);
-  font-size: 14px; line-height: 1.43; letter-spacing: -.224px;
-}
-th { font-weight: 600; color: var(--fg); white-space: nowrap; }
-td { color: var(--fg-2); }
-td:first-child { color: var(--fg); font-weight: 600; white-space: nowrap; }
-td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-tr:last-child td { border-bottom: 0; }
-td .sw { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 8px; }
-
-.foot { background: var(--parchment); }
-.foot .inner { padding: 56px 22px; }
-.foot p { margin: 0; font-size: 12px; line-height: 1.5; letter-spacing: -.12px; color: var(--ink-48); }
-
-.lang { display: flex; align-items: center; flex: 0 0 auto; margin-left: 10px; }
-.lang-btn {
-  border: 0; background: none; cursor: pointer; padding: 0 7px;
-  font-family: var(--font-ui); font-size: 12px; font-weight: 400;
-  letter-spacing: -.12px; line-height: var(--nav-h);
-  color: var(--on-dark-muted);
-}
-.lang-btn[aria-pressed="true"] { color: var(--on-dark); }
-.lang-btn:focus-visible { outline: 2px solid var(--action-focus); outline-offset: -4px; }
-
-/* The poster view. One screen, no scroll: the sheet is laid out at a fixed
-   1560px and then scaled down to whatever the viewport can give it, so the
-   composition is the same on a booth monitor and on a laptop. The motion
-   boxes and the two figures are MOVED here, never cloned -- the language pass
-   holds element references taken at load, and a clone would never translate. */
-.poster-btn {
-  border: 0; background: none; cursor: pointer; padding: 0 7px; margin-left: 4px;
-  font-family: var(--font-ui); font-size: 12px; font-weight: 400;
-  letter-spacing: -.12px; line-height: var(--nav-h); color: var(--on-dark-muted);
-}
-.poster-btn[aria-pressed="true"] { color: var(--on-dark); }
-.poster-btn:focus-visible { outline: 2px solid var(--action-focus); outline-offset: -4px; }
-
-html[data-view="poster"] { overflow: hidden; }
-html[data-view="poster"] .nav { display: none; }
-
-#poster { position: fixed; inset: 0; z-index: 50; overflow: hidden; }
-#poster-fit { position: absolute; top: 0; left: 0;
-              transform-origin: top left; }   /* width is solved at runtime */
-#poster-sheet { padding: 34px 40px 40px; }
-#poster figcaption { display: none; }
-#poster-boxes { display: grid; grid-template-columns: repeat(4, 1fr);
-                grid-auto-rows: 4px; grid-auto-flow: row dense;
-                column-gap: 14px; row-gap: 0; align-items: start; }
-#poster-boxes > * { margin: 0 0 14px; break-inside: auto; }
-#poster-boxes > figure:first-child { grid-column: span 2; }
-
-.poster-ctl { position: fixed; top: 0; right: 14px; z-index: 70; margin: 0;
-              opacity: .22; transition: opacity .18s ease; }
-.poster-ctl:hover, .poster-ctl:focus-within { opacity: 1; }
-
-
-/* The page's own type is sized for a scrolling column; a poster cell is a
-   quarter of that width, so every step down is set here rather than scaled. */
-#poster figure { margin: 0; }
-#poster .plate { padding: 18px 16px; border-radius: 14px; }
-#poster .blockfig { min-width: 0; }
-#poster .box { margin-top: 0; padding: 24px 22px; border-radius: 14px; }
-#poster .line { font-size: 26px; row-gap: .1em; }
-#poster .box-math { margin-top: 16px; font-size: 15px; overflow: hidden; }
-#poster .box-gloss { margin-top: 12px; font-size: 13px; line-height: 1.5; }
-#poster .box-syms { display: none; }
-#poster-boxes > .box { cursor: pointer; transition: outline-color .15s ease; }
-#poster-boxes > .box:hover { outline: 1px solid rgba(255,255,255,.34); outline-offset: -1px; }
-
-/* The card opens OUTSIDE #poster on purpose: none of the poster's own
-   shrinking applies there, so the popup is the card as the page sets it --
-   symbol list included. The node is moved, not copied, so it stays the one
-   the language pass knows, and a placeholder holds its slot in the grid. */
-#poster-modal { position: fixed; inset: 0; z-index: 80; display: grid;
-                place-items: center; padding: 4vh 4vw;
-                background: rgba(0,0,0,.66); }
-#poster[hidden], #poster-modal[hidden] { display: none; }
-#poster-boxes > figure:first-child { cursor: pointer; }
-#poster-modal[data-wide] #poster-modal-body { width: min(1240px, 95vw); }
-.legend .plate { margin-bottom: 22px; }
-.legend-syms { grid-template-columns: max-content 1fr; }
-@media (min-width: 900px) {
-  .legend-syms { grid-template-columns: max-content 1fr max-content 1fr; }
-}
-#poster-modal-body { width: min(860px, 92vw); max-height: 92vh; overflow: auto; }
-#poster-modal-body .box { margin: 0; }
-
-#poster-modal { opacity: 0; transition: opacity .18s ease; }
-#poster-modal[data-open] { opacity: 1; }
-#poster-modal-body { opacity: 0; transform: scale(.96) translateY(10px);
-                     transition: opacity .2s ease,
-                                 transform .24s cubic-bezier(.2, .7, .3, 1); }
-#poster-modal[data-open] #poster-modal-body { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  #poster-modal, #poster-modal-body { transition: none; }
-}
-#poster .box-foot { margin-top: 14px; }
-#poster .box-note { font-size: 13px; line-height: 1.4; }
-</style>
-<link rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<meta name="description" content="How Weave turns a microphone into Caption with Intention captions: the pipeline, the data contract, the playhead and the motion channels.">
+<link rel="preload" href="RobotoFlex.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="captions.css">
+<link rel="stylesheet" href="technical.css">
 </head>
-<body>
+<body class="doc">
 
-<nav class="nav" aria-label="Chapters">
-  <div class="nav-inner">
-    <div class="brand">Weave</div>
-    <div class="chapters" id="chapters">
-      <a href="#what">What</a>
-      <a href="#pipeline">Pipeline</a>
-      <a href="#internals">Internals</a>
-      <a href="#playhead">Constraints</a>
-      <a href="#motion">Motion</a>
-      <a href="#studio">Studio</a>
-    </div>
-    <button type="button" class="poster-btn" id="poster-btn" aria-pressed="false">Poster</button>
-  </div>
-</nav>
-
-<header class="tile t-black">
-  <div class="inner" style="padding-top:100px">
-    <p class="eyebrow">Live Caption with Intention</p>
-          <h1 class="line" id="hero">
-        <span class="w turn gl wv" style="--d:0ms;--sp:var(--y)"><span class="sizer">Live</span><span class="glyph"><span class="ink"><span class="c" style="--ct:0ms;--cw:0ms;--char-tilt:0.00deg;--group-lift-em:0em">L</span><span class="c" style="--ct:20ms;--cw:0ms;--char-tilt:0.91deg;--group-lift-em:0em">i</span><span class="c" style="--ct:40ms;--cw:40ms;--char-tilt:-1.35deg;--group-lift-em:0em">v</span><span class="c" style="--ct:60ms;--cw:40ms;--char-tilt:1.07deg;--group-lift-em:0em">e</span></span></span></span>
-        <span class="w turn gl wv" style="--d:400ms;--sp:var(--y)"><span class="sizer">captions</span><span class="glyph"><span class="ink"><span class="c" style="--ct:400ms;--cw:400ms;--char-tilt:0.00deg;--group-lift-em:.155em">c</span><span class="c" style="--ct:410ms;--cw:400ms;--char-tilt:0.91deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:420ms;--cw:400ms;--char-tilt:-1.35deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:430ms;--cw:430ms;--char-tilt:1.07deg;--group-lift-em:.155em">t</span><span class="c" style="--ct:440ms;--cw:430ms;--char-tilt:-0.23deg;--group-lift-em:.155em">i</span><span class="c" style="--ct:450ms;--cw:430ms;--char-tilt:-0.73deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:460ms;--cw:430ms;--char-tilt:1.31deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:470ms;--cw:430ms;--char-tilt:-1.19deg;--group-lift-em:.155em">s</span></span></span></span>
-        <span class="w turn gl wv" style="--d:800ms;--sp:var(--y)"><span class="sizer">that</span><span class="glyph"><span class="ink"><span class="c" style="--ct:800ms;--cw:800ms;--char-tilt:0.00deg;--group-lift-em:0em">t</span><span class="c" style="--ct:820ms;--cw:800ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:840ms;--cw:800ms;--char-tilt:-1.35deg;--group-lift-em:0em">a</span><span class="c" style="--ct:860ms;--cw:860ms;--char-tilt:1.07deg;--group-lift-em:0em">t</span></span></span></span>
-        <span class="w turn gl wv" style="--d:1200ms;--sp:var(--y)"><span class="sizer">show</span><span class="glyph"><span class="ink"><span class="c" style="--ct:1200ms;--cw:1200ms;--char-tilt:0.00deg;--group-lift-em:0em">s</span><span class="c" style="--ct:1220ms;--cw:1200ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:1240ms;--cw:1200ms;--char-tilt:-1.35deg;--group-lift-em:0em">o</span><span class="c" style="--ct:1260ms;--cw:1260ms;--char-tilt:1.07deg;--group-lift-em:0em">w</span></span></span></span>
-        <span class="w turn gl wv" style="--d:1600ms;--sp:var(--y)"><span class="sizer">who,</span><span class="glyph"><span class="ink"><span class="c" style="--ct:1600ms;--cw:1600ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:1620ms;--cw:1600ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:1640ms;--cw:1600ms;--char-tilt:-1.35deg;--group-lift-em:0em">o</span><span class="c" style="--ct:1660ms;--cw:1660ms;--char-tilt:1.07deg;--group-lift-em:0em">,</span></span></span></span>
-        <span class="w turn gl wv" style="--d:2000ms;--sp:var(--g)"><span class="sizer">when</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2000ms;--cw:2000ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:2020ms;--cw:2000ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:2040ms;--cw:2000ms;--char-tilt:-1.35deg;--group-lift-em:0em">e</span><span class="c" style="--ct:2060ms;--cw:2060ms;--char-tilt:1.07deg;--group-lift-em:0em">n</span></span></span></span>
-        <span class="w turn gl wv" style="--d:2400ms;--sp:var(--g)"><span class="sizer">and</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2400ms;--cw:2400ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span><span class="c" style="--ct:2427ms;--cw:2400ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:2453ms;--cw:2400ms;--char-tilt:-1.35deg;--group-lift-em:0em">d</span></span></span></span>
-        <span class="w turn gl wv" style="--d:2800ms;--sp:var(--b)"><span class="sizer">how.</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2800ms;--cw:2800ms;--char-tilt:0.00deg;--group-lift-em:0em">h</span><span class="c" style="--ct:2820ms;--cw:2800ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:2840ms;--cw:2840ms;--char-tilt:-1.35deg;--group-lift-em:0em">w</span><span class="c" style="--ct:2860ms;--cw:2840ms;--char-tilt:1.07deg;--group-lift-em:0em">.</span></span></span></span>
-      </h1>
-    <p class="lead">
-      Weave automates the Caption with Intention design system: a microphone
-      streams into captions that carry the speaker in color, the moment in
-      motion, and the voice in typography, entirely offline.
-    </p>
-
-    <dl class="stats">
-      <div><dt>Runs</dt><dd>Local<small>no cloud, no telemetry</small></dd></div>
-      <div><dt>Languages</dt><dd>EN · KO<small>chosen before capture</small></dd></div>
-      <div><dt>Read-ahead</dt><dd>1.75 s<small>plus a 420 ms floor</small></dd></div>
-      <div><dt>Speakers</dt><dd>12<small>CI colors</small></dd></div>
-    </dl>
+<header class="doc-bar">
+  <div class="bar">
+    <a class="wordmark" href="index.html">Weave</a>
+    <nav class="bar-links" aria-label="Chapters">
+      <span class="chapters" id="chapters">
+        <a href="#pipeline">Pipeline</a>
+        <a href="#internals">Internals</a>
+        <a href="#constraints">Constraints</a>
+        <a href="#motion">Motion</a>
+        <a href="#studio">Studio</a>
+      </span>
+      <a class="button button-quiet" href="https://github.com/ailuruth/Weave">GitHub</a>
+    </nav>
   </div>
 </header>
 
-<section class="tile t-light" id="what">
-  <div class="inner">
-    <h2>What it is</h2>
-    <p>
-      A subtitle keeps the words and discards the rest.
-      <strong>Caption with Intention</strong>, from the Chicago Hearing Society,
-      restores three: speaker as color, timing as motion, delivery as
-      typography, derived <strong>live</strong> from a microphone.
-    </p>
+<main>
+<section class="doc-title">
+  <h1 class="masked">
+    <span class="masked-line"><span>How Weave turns</span></span>
+    <span class="masked-line"><span>a voice into captions</span></span>
+  </h1>
+  <p class="lead rise">Weave automates the Caption with Intention design system. A microphone streams into captions that carry the speaker in color, the moment in motion, and the voice in typography, entirely offline.</p>
+  <ul class="facts rise">
+    <li><strong>Local</strong><span>no cloud, no telemetry</span></li>
+    <li><strong>English and Korean</strong><span>chosen before capture</span></li>
+    <li><strong>1.75 s</strong><span>of read-ahead, plus a 420 ms floor</span></li>
+    <li><strong>12 speakers</strong><span>each in a color of their own</span></li>
+  </ul>
+</section>
 
-    <div class="box">
-      <div class="line" id="d0">
+<section class="chapter split" id="what">
+  <div class="tell reveal">
+    <h2>What it is</h2>
+    <p>A subtitle keeps the words and discards the rest. <strong>Caption with Intention</strong>, from the Chicago Hearing Society, restores three things: the speaker as color, timing as motion, and delivery as typography. Weave derives all three <strong>live</strong> from a microphone.</p>
+    <p class="note">Color is who, the cue is when, size is how loud.</p>
+  </div>
+  <div class="show reveal"><div class="demo" data-ui><div class="strip"><div class="line" id="d0">
         <span class="w turn ph gl wv" style="--d:0ms;--sp:var(--y)"><span class="sizer">two</span><span class="glyph"><span class="ink"><span class="c" style="--ct:0ms;--cw:0ms;--char-tilt:0.00deg;--group-lift-em:0em">t</span><span class="c" style="--ct:27ms;--cw:0ms;--char-tilt:0.91deg;--group-lift-em:0em">w</span><span class="c" style="--ct:53ms;--cw:0ms;--char-tilt:-1.35deg;--group-lift-em:0em">o</span></span></span></span>
         <span class="w turn ph gl wv" style="--d:400ms;--sp:var(--y)"><span class="sizer">people</span><span class="glyph"><span class="ink"><span class="c" style="--ct:400ms;--cw:400ms;--char-tilt:0.00deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:413ms;--cw:400ms;--char-tilt:0.91deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:427ms;--cw:427ms;--char-tilt:-1.35deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:440ms;--cw:427ms;--char-tilt:1.07deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:453ms;--cw:427ms;--char-tilt:-0.23deg;--group-lift-em:.155em">l</span><span class="c" style="--ct:467ms;--cw:427ms;--char-tilt:-0.73deg;--group-lift-em:.155em">e</span></span></span></span>
         <span class="w turn ph gl wv hold" style="--d:800ms;--sp:var(--y);--scale:1.24;--sync-pop:1.076;--char-wave:0.42"><span class="sizer">talking</span><span class="glyph"><span class="ink"><span class="c" style="--ct:800ms;--cw:800ms;--char-tilt:0.00deg;--group-lift-em:.155em">t</span><span class="c" style="--ct:811ms;--cw:800ms;--char-tilt:0.91deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:823ms;--cw:800ms;--char-tilt:-1.35deg;--group-lift-em:.155em">l</span><span class="c" style="--ct:834ms;--cw:834ms;--char-tilt:1.07deg;--group-lift-em:.155em">k</span><span class="c" style="--ct:846ms;--cw:834ms;--char-tilt:-0.23deg;--group-lift-em:.155em">i</span><span class="c" style="--ct:857ms;--cw:834ms;--char-tilt:-0.73deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:869ms;--cw:834ms;--char-tilt:1.31deg;--group-lift-em:.155em">g</span></span></span></span>
@@ -669,69 +63,35 @@ html[data-view="poster"] .nav { display: none; }
         <span class="w turn ph gl wv" style="--d:1600ms;--sp:var(--g)"><span class="sizer">you</span><span class="glyph"><span class="ink"><span class="c" style="--ct:1600ms;--cw:1600ms;--char-tilt:0.00deg;--group-lift-em:0em">y</span><span class="c" style="--ct:1627ms;--cw:1600ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:1653ms;--cw:1600ms;--char-tilt:-1.35deg;--group-lift-em:0em">u</span></span></span></span>
         <span class="w turn ph gl wv hold" style="--d:2000ms;--sp:var(--g);--scale:1.425;--sync-pop:1.076;--char-wave:0.3"><span class="sizer">know</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2000ms;--cw:2000ms;--char-tilt:0.00deg;--group-lift-em:0em">k</span><span class="c" style="--ct:2020ms;--cw:2000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:2040ms;--cw:2000ms;--char-tilt:-1.35deg;--group-lift-em:0em">o</span><span class="c" style="--ct:2060ms;--cw:2060ms;--char-tilt:1.07deg;--group-lift-em:0em">w</span></span></span></span>
         <span class="w turn ph gl wv" style="--d:2400ms;--sp:var(--g)"><span class="sizer">which</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2400ms;--cw:2400ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:2416ms;--cw:2400ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:2432ms;--cw:2400ms;--char-tilt:-1.35deg;--group-lift-em:0em">i</span><span class="c" style="--ct:2448ms;--cw:2448ms;--char-tilt:1.07deg;--group-lift-em:0em">c</span><span class="c" style="--ct:2464ms;--cw:2448ms;--char-tilt:-0.23deg;--group-lift-em:0em">h</span></span></span></span>
-      </div>
-      <div class="box-foot">
-        <p class="box-note">
-          Color is who, the cue is when, size is how loud.
-        </p>
-      </div>
-    </div>
-  </div>
+      </div></div></div></div>
 </section>
 
-<section class="tile t-dark" id="pipeline">
-  <div class="inner">
+<section class="chapter" id="pipeline">
+  <div class="tell reveal">
     <h2>The pipeline</h2>
-    <figure>
-      <div class="plate sheet">
-        <img src="figure/fig1.png" width="2600" height="1003" loading="lazy"
-             alt="The live path. Inside the wearable, four microphones feed echo
-                  cancellation, beamforming and direction of arrival on a
-                  ReSpeaker board, which passes to a Raspberry Pi Zero 2 W. The
-                  Pi sends the direction of arrival straight down to the left and
-                  right vibration motors, and sends audio plus direction on to
-                  the computer, which returns power. On the computer a lossless
-                  deadline batcher splits into a true signal for prosody and a
-                  gained copy for recognition, feeding four independent stages:
-                  voice for prosody, speaker for diarization, text for
-                  recognition and sound for tagging. They join per word into
-                  CaptionSpec. CaptionSpec goes over SSE to the browser, where a
-                  web app applies revisions and a playhead presents them to the
-                  stage, and also to a salience stage whose cue reaches the
-                  motors on an optional dashed path.">
-      </div>
-      <figcaption>
-        <b>Figure 1.</b> The live path. The motors are driven on the Pi, straight
-        from the array&rsquo;s own direction of arrival, with a 100&nbsp;ms pulse every
-        300&nbsp;ms, gated on the board hearing speech. The salience cue from the
-        computer is the dashed, optional path: it rides durable words, so it
-        waits on the endpoint verifier, which measures 1.1 to 3.2&nbsp;s.
-      </figcaption>
+    <p>The live path. The motors are driven on the Pi, straight from the array&rsquo;s own direction of arrival, with a 100&nbsp;ms pulse every 300&nbsp;ms, gated on the board hearing speech. The salience cue from the computer is the dashed, optional path: it rides durable words, so it waits on the endpoint verifier, which measures 1.1 to 3.2&nbsp;s.</p>
+  </div>
+  <figure class="plate plate-light reveal">
+    <img src="figure/fig1.png" width="2600" height="1003" loading="lazy" alt="The live path. Inside the wearable, four microphones feed echo cancellation, beamforming and direction of arrival on a ReSpeaker board, which passes to a Raspberry Pi Zero 2 W. The Pi sends the direction of arrival straight down to the left and right vibration motors, and sends audio plus direction on to the computer, which returns power. On the computer a lossless deadline batcher splits into a true signal for prosody and a gained copy for recognition, feeding four independent stages: voice for prosody, speaker for diarization, text for recognition and sound for tagging. They join per word into CaptionSpec. CaptionSpec goes over SSE to the browser, where a web app applies revisions and a playhead presents them to the stage, and also to a salience stage whose cue reaches the motors on an optional dashed path.">
+  </figure>
+  <dl class="glossary reveal"><div><dt>Microphone &times;4</dt><dd>the ReSpeaker array&rsquo;s four capsules</dd></div><div><dt>AEC</dt><dd>cancels what the device is itself playing back</dd></div><div><dt>BF</dt><dd>beamforming: the four mics combined into one directional signal</dd></div><div><dt>DoA</dt><dd>direction of arrival, the bearing the sound came from</dd></div><div><dt>Raspberry Pi Zero 2 W</dt><dd>captures and actuates, and analyses nothing: 512 MB of memory against 600 MB for one model</dd></div><div><dt>Vibration Motor L/R</dt><dd>driven on the Pi straight from DoA. A 100&nbsp;ms pulse every 300&nbsp;ms, silent when the board hears no speech</dd></div><div><dt>Lossless Deadline Batcher</dt><dd>paces audio by deadline and drains any backlog into catch-up batches, so no block is dropped</dd></div><div><dt>True Signal</dt><dd>the ungained copy. Loudness is measured here, or a whisper and a shout reach the same type size</dd></div><div><dt>Gained Copy</dt><dd>the only copy input gain is applied to</dd></div><div><dt>Voice</dt><dd>per-word loudness, pitch and vocal effort</dd></div><div><dt>Speaker</dt><dd>who spoke, and the colour the caption is set in</dd></div><div><dt>Text</dt><dd>the streaming recognizer</dd></div><div><dt>Sound</dt><dd>non-speech events: laughter, applause, music, the room itself</dd></div><div><dt>CaptionSpec</dt><dd>the versioned contract. Renderers read this and never the models</dd></div><div><dt>SSE</dt><dd>the event stream to the browser</dd></div><div><dt>Salience</dt><dd>decides which words are worth a haptic cue</dd></div><div><dt>Web App</dt><dd>the studio, running in the browser</dd></div><div><dt>Revisions</dt><dd>endpoint corrections reconciled word by word, never a rebuild</dd></div><div><dt>Playhead</dt><dd>presents from a clock 1.75&nbsp;s behind the acoustic one</dd></div><div><dt>The Stage</dt><dd>the caption rows themselves</dd></div><div><dt>Optional</dt><dd>the computer&rsquo;s cue lane, dashed because it is opt-in. It waits on the endpoint verifier, 1.1 to 3.2&nbsp;s</dd></div></dl>
+  <div class="split wearable">
+    <div class="tell reveal">
+      <h3>The wearable</h3>
+      <p>The wearable, drawn from the outer wall of its own print toolpath. The two cylinders are the left and right motor pods.</p>
+    </div>
+    <figure class="plate reveal">
+      <img src="figure/fig2.svg" width="389" height="201" loading="lazy" alt="The printed parts of the wearable, drawn as stacked layer contours: a neckband arch carrying a left and a right motor pod, the enclosure body and its lid, a vent grille and two spacers.">
     </figure>
-
-    <figure>
-      <div class="plate toolpath">
-        <img src="figure/fig2.svg" width="389" height="201" loading="lazy"
-             alt="The printed parts of the wearable, drawn as stacked layer
-                  contours: a neckband arch carrying a left and a right motor
-                  pod, the enclosure body and its lid, a vent grille and two
-                  spacers.">
-      </div>
-      <figcaption>
-        <b>Figure 2.</b> The wearable, drawn from the outer wall of its own
-        print toolpath. The two cylinders are the left and right motor pods.
-      </figcaption>
-    </figure>
-
   </div>
 </section>
 
-<section class="tile t-light" id="internals">
-  <div class="inner">
+<section class="chapter" id="internals">
+  <div class="tell reveal">
     <h2>Internals</h2>
-    <figure>
-      <div class="plate sheet">
-        <svg class="blockfig" viewBox="0 0 1040 384" role="img"
+    <p>One word, from the air to its color turn. The turn lands at 1.75&nbsp;s, while the speaker is still provisional and nearly three seconds before the durable decision.</p>
+  </div>
+  <figure class="plate plate-light plate-scroll reveal"><svg class="blockfig" viewBox="0 0 1040 384" role="img"
              aria-label="A time axis from the moment a word is spoken to five seconds later. The sound itself is about 280 milliseconds. Its text and prosody arrive at a median 0.62 seconds. The speaker is provisional from 0.62 seconds and durable only at 4.48 seconds. Verified text lands somewhere between 1.1 and 3.2 seconds. The playhead stands at 1.75 seconds: the word turns color there, while its speaker is still provisional.">
           <defs>
             <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse"
@@ -807,187 +167,122 @@ html[data-view="poster"] .nav { display: none; }
           <rect class="tick-p" x="120" y="346" width="3" height="12"/>
           <text class="key" x="154" y="356">provisional</text>
           <text class="foot" x="6" y="378">The turn is a fixed moment on the acoustic timeline, so it happens on time in whatever color is known. Attribution never gates it.</text>
-        </svg>
-      </div>
-      <figcaption>
-        <b>Figure 3.</b> One word, from the air to its color turn. The turn lands
-        at 1.75&nbsp;s, while the speaker is still provisional and nearly three seconds
-        before the durable decision.
-      </figcaption>
-    </figure>
+        </svg></figure>
 
-    <div class="sub-h">The contract</div>
-    <figure>
-      <div class="scroll">
-        <table>
-          <thead><tr><th>Field</th><th>Holds</th></tr></thead>
-          <tbody>
-            <tr><td><code>words[]</code>: what was said</td><td><code>text</code> &middot; <code>start</code> &middot; <code>end</code>: the word, and the moment it begins and ends</td></tr>
-            <tr><td><code>words[]</code>: who said it</td><td>the speaker, and whether that is settled or still a guess</td></tr>
-            <tr><td><code>words[]</code>: how it was said</td><td>loudness and pitch, each placed within that speaker&rsquo;s own range</td></tr>
-            <tr><td class="nt"><code>speakers</code></td><td>S1 … S12, each given a color from the palette below</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <figcaption>
-        <b>Figure 4.</b> What one word carries, from <code>schema.py</code>.
-        <code>start</code> and <code>end</code> are the pair everything else is
-        keyed to: prosody, the motion clock, the read-ahead floor and the haptic
-        cue all read them, which is why a recognizer that cannot supply them is
-        no use here.
-      </figcaption>
-    </figure>
-
-    <div class="scroll">
+  <div class="split">
+    <div class="tell reveal">
+      <h3>The contract</h3>
+      <p>What one word carries, from <code>schema.py</code>. <code>start</code> and <code>end</code> are the pair everything else is keyed to: prosody, the motion clock, the read-ahead floor and the haptic cue all read them, which is why a recognizer that cannot supply them is no use here.</p>
+    </div>
+    <div class="show reveal">
       <table>
-        <thead><tr><th colspan="4">The palette, by order of first appearance</th></tr></thead>
+        <thead><tr><th>Field</th><th>Holds</th></tr></thead>
         <tbody>
-          <tr>
-            <td><span class="sw" style="background:var(--y)"></span>S1</td><td class="num">#E5E517</td>
-            <td><span class="sw" style="background:var(--p)"></span>S4</td><td class="num">#E517E5</td>
-          </tr>
-          <tr>
-            <td><span class="sw" style="background:var(--g)"></span>S2</td><td class="num">#17E517</td>
-            <td><span class="sw" style="background:var(--r)"></span>S5</td><td class="num">#E51717</td>
-          </tr>
-          <tr>
-            <td><span class="sw" style="background:var(--b)"></span>S3</td><td class="num">#17E5E5</td>
-            <td><span class="sw" style="background:var(--o)"></span>S6</td><td class="num">#E58017</td>
-          </tr>
-          <tr>
-            <td><span class="sw" style="background:linear-gradient(90deg,#E85C2E,#5EEDC9,#CC6BED)"></span>S7+</td>
-            <td>twelve supporting hues</td>
-            <td><span class="sw" style="background:var(--unknown)"></span>none</td>
-            <td>unknown</td>
-          </tr>
+          <tr><td>words[]: what was said</td><td>text, start and end: the word, and the moment it begins and ends</td></tr>
+          <tr><td>words[]: who said it</td><td>the speaker, and whether that is settled or still a guess</td></tr>
+          <tr><td>words[]: how it was said</td><td>loudness and pitch, each placed within that speaker&rsquo;s own range</td></tr>
+          <tr><td>speakers</td><td>S1 to S12, each given a color from the palette</td></tr>
         </tbody>
       </table>
     </div>
+  </div>
 
-    <div class="sub-h">The event stream</div>
-    <p>
-      Eight kinds of event travel the stream; these are the four a renderer acts
-      on. A corrected word comes back under the same id, so it replaces the old
-      one rather than adding to it.
-    </p>
+  <div class="tell reveal">
+    <h3>The palette, by order of first appearance</h3>
+  </div>
+  <ul class="palette reveal">
+    <li style="--field:#E5E517"><strong>S1</strong><span>#E5E517</span></li>
+    <li style="--field:#17E517"><strong>S2</strong><span>#17E517</span></li>
+    <li style="--field:#17E5E5"><strong>S3</strong><span>#17E5E5</span></li>
+    <li style="--field:#E517E5"><strong>S4</strong><span>#E517E5</span></li>
+    <li style="--field:#E51717"><strong>S5</strong><span>#E51717</span></li>
+    <li style="--field:#E58017"><strong>S6</strong><span>#E58017</span></li>
+    <li style="--field:#f4f3ef"><strong>none</strong><span>unknown</span></li>
+  </ul>
+  <p class="note reveal">From the seventh speaker on, twelve supporting hues take over.</p>
 
-    <div class="scroll">
+  <div class="split">
+    <div class="tell reveal">
+      <h3>The event stream</h3>
+      <p>Eight kinds of event travel the stream; these are the four a renderer acts on. A corrected word comes back under the same id, so it replaces the old one and does not add to it.</p>
+    </div>
+    <div class="show reveal">
       <table>
         <thead><tr><th>Event</th><th>Carries</th></tr></thead>
         <tbody>
-          <tr><td class="nt"><code>word</code></td><td>text, span, speaker, loudness, pitch, and the salience flags the haptics read</td></tr>
-          <tr><td class="nt"><code>verification</code></td><td>a finished phrase, re-recognized and corrected word by word</td></tr>
-          <tr><td class="nt"><code>sound</code></td><td>a non-speech sound: laughter, applause, music, the room itself</td></tr>
-          <tr><td class="nt"><code>level</code></td><td>input level, noise floor, gain, and the bearing when an array supplies one</td></tr>
+          <tr><td>word</td><td>text, span, speaker, loudness, pitch, and the salience flags the haptics read</td></tr>
+          <tr><td>verification</td><td>a finished phrase, re-recognized and corrected word by word</td></tr>
+          <tr><td>sound</td><td>a non-speech sound: laughter, applause, music, the room itself</td></tr>
+          <tr><td>level</td><td>input level, noise floor, gain, and the bearing when an array supplies one</td></tr>
         </tbody>
       </table>
     </div>
-
   </div>
 </section>
 
-<section class="tile t-parchment" id="playhead">
-  <div class="inner">
+<section class="chapter" id="constraints">
+  <div class="tell reveal">
     <h2>Constraints</h2>
-    <p>
-      The design system needs the line on screen <em>before</em> it is spoken, and a live
-      recognizer cannot produce text early. So captions present from a clock
-      running <strong>behind</strong> the acoustic one.
-    </p>
-
-    <div class="scroll">
-      <table>
-        <thead><tr><th>Rule</th><th>Figure</th><th>Explanation</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>The playhead trails the acoustic clock</td>
-            <td class="num">1.75 s</td>
-            <td>The color turn runs 1.75&nbsp;s behind the voice, so recognized words are on screen well before they are colored.</td>
-          </tr>
-          <tr>
-            <td>Read-ahead is a per-word floor</td>
-            <td class="num">420 ms</td>
-            <td>Words arrive in bursts, so a fixed delay guarantees nothing. Every word gets at least 420&nbsp;ms on screen before its color turns.</td>
-          </tr>
-          <tr>
-            <td>The turn is never gated on the speaker</td>
-            <td class="num">none</td>
-            <td>Text arrives long before a durable speaker decision, so the turn happens on time in whatever color is known.</td>
-          </tr>
-          <tr>
-            <td>Gain is applied to the recognizer's copy only</td>
-            <td class="num">none</td>
-            <td>Loudness is measured from the original signal. Amplify it first and a whisper and a shout end up the same size.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
+    <p>The design system needs the line on screen <em>before</em> it is spoken, and a live recognizer cannot produce text early. So captions present from a clock running <strong>behind</strong> the acoustic one.</p>
   </div>
+  <ol class="rules">
+    <li class="reveal"><strong class="figure">1.75 s</strong><div><h3>The playhead trails the acoustic clock</h3><p>The color turn runs 1.75&nbsp;s behind the voice, so recognized words are on screen well before they are colored.</p></div></li>
+    <li class="reveal"><strong class="figure">420 ms</strong><div><h3>Read-ahead is a per-word floor</h3><p>Words arrive in bursts, so a fixed delay guarantees nothing. Every word gets at least 420&nbsp;ms on screen before its color turns.</p></div></li>
+    <li class="reveal"><strong class="figure">on time</strong><div><h3>The turn is never gated on the speaker</h3><p>Text arrives long before a durable speaker decision, so the turn happens on time in whatever color is known.</p></div></li>
+    <li class="reveal"><strong class="figure">one copy</strong><div><h3>Gain is applied to the recognizer&rsquo;s copy only</h3><p>Loudness is measured from the original signal. Amplify it first and a whisper and a shout end up the same size.</p></div></li>
+  </ol>
 </section>
 
-<section class="tile t-dark-3" id="motion">
-  <div class="inner">
+<section class="chapter" id="motion">
+  <div class="tell reveal">
     <h2>Motion</h2>
-    
-
-    
-
-    <div class="box">
-      <div class="line" id="d1">
+    <p>Eight channels move a word. Each one below plays on its own, with the formula that drives it.</p>
+  </div>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Color turn</h3>
+      <p class="note">Read-ahead ink until the spoken onset, then wiped across the letters rather than switched.</p>
+      <p>The 80 ms is split evenly across the letters, so the color sweeps from the first to the last at a constant rate. The last letter turns exactly 80 ms after the first, however long the word is.</p>
+      <dl class="syms"><dt>\(i\)</dt><dd>the letter's position in the word, counted from zero</dd>
+        <dt>\(n\)</dt><dd>how many letters the word has</dd></dl>
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d1">
         <span class="w turn" style="--d:0ms;--sp:var(--y)"><span class="sizer">as</span><span class="glyph"><span class="ink"><span class="c" style="--ct:0ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span><span class="c" style="--ct:40ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">s</span></span></span></span>
         <span class="w turn" style="--d:400ms;--sp:var(--y)"><span class="sizer">each</span><span class="glyph"><span class="ink"><span class="c" style="--ct:400ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">e</span><span class="c" style="--ct:420ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">a</span><span class="c" style="--ct:440ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">c</span><span class="c" style="--ct:460ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">h</span></span></span></span>
         <span class="w turn" style="--d:800ms;--sp:var(--y)"><span class="sizer">word</span><span class="glyph"><span class="ink"><span class="c" style="--ct:800ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:820ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:840ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">r</span><span class="c" style="--ct:860ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">d</span></span></span></span>
         <span class="w turn" style="--d:1200ms;--sp:var(--y)"><span class="sizer">is</span><span class="glyph"><span class="ink"><span class="c" style="--ct:1200ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">i</span><span class="c" style="--ct:1240ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">s</span></span></span></span>
         <span class="w turn" style="--d:1600ms;--sp:var(--y)"><span class="sizer">spoken</span><span class="glyph"><span class="ink"><span class="c" style="--ct:1600ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">s</span><span class="c" style="--ct:1613ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:1627ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:1640ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">k</span><span class="c" style="--ct:1653ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:1667ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">n</span></span></span></span>
-      </div>
-      <div class="box-math">$$\Delta t_i \;=\; \frac{i}{n-1}\cdot 80\ \mathrm{ms}$$</div>
-      <p class="box-gloss">The 80 ms is split evenly across the letters, so the color sweeps from the first to the last at a constant rate. The last letter turns exactly 80 ms after the first, however long the word is.</p>
-      <dl class="box-syms">
-        <dt>\(i\)</dt><dd>the letter's position in the word, counted from zero</dd>
-        <dt>\(n\)</dt><dd>how many letters the word has</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Color turn.</b> Read-ahead ink until the spoken onset, then wiped
-          across the letters rather than switched.
-        </p>
-      </div>
+      </div></div></div>
+      <div class="math">$$\Delta t_i \;=\; \frac{i}{n-1}\cdot 80\ \mathrm{ms}$$</div>
     </div>
-
-    <div class="box">
-      <div class="line" id="d2">
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Pop and lift</h3>
+      <p class="note">One animation. Every word rises <i>0.16 em</i> and every word grows, in proportion to its crest.</p>
+      <p>Half the pop is given to every word outright and the other half is earned by how much that word swelled. A word with no growth still moves 1.038×, and the most emphatic one reaches the full 1.076×.</p>
+      <dl class="syms"><dt>\(s_{\mathrm{pop}}\)</dt><dd>the size the word reaches at the top of its pop</dd>
+        <dt>\(e\)</dt><dd>how far this word's crest sits up the reachable range, 0 at no growth and 1 at the largest the system allows</dd></dl>
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d2">
         <span class="w gl" style="--d:0ms;--sp:var(--y)"><span class="sizer">most</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">m</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">s</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">t</span></span></span></span>
         <span class="w gl" style="--d:400ms;--sp:var(--y)"><span class="sizer">words</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">d</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:0em">s</span></span></span></span>
         <span class="w gl" style="--d:800ms;--sp:var(--y)"><span class="sizer">only</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">y</span></span></span></span>
         <span class="w gl" style="--d:1200ms;--sp:var(--y)"><span class="sizer">lift</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">f</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">t</span></span></span></span>
         <span class="w gl ph hold" style="--d:1600ms;--sp:var(--y);--scale:1.24;--sync-pop:1.076"><span class="sizer">THIS</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">T</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">H</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">I</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">S</span></span></span></span>
         <span class="w gl" style="--d:2000ms;--sp:var(--y)"><span class="sizer">pops</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">p</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">p</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">s</span></span></span></span>
-      </div>
-      <div class="box-math">$$s_{\mathrm{pop}} = 1 + 0.076\,\bigl(0.5 + 0.5\,e\bigr),\qquad e = \frac{s_{\mathrm{crest}}-1}{0.425}$$</div>
-      <p class="box-gloss">Half the pop is given to every word outright and the other half is earned by how much that word swelled. A word with no growth still moves 1.038×, and the most emphatic one reaches the full 1.076×.</p>
-      <dl class="box-syms">
-        <dt>\(s_{\mathrm{pop}}\)</dt><dd>the size the word reaches at the top of its pop</dd>
-        <dt>\(e\)</dt><dd>how far this word's crest sits up the reachable range, 0 at no growth and 1 at the largest the system allows</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Pop and lift.</b> One animation. Every word rises <i>0.16 em</i>
-          and every word grows, in proportion to its crest.
-        </p>
-      </div>
+      </div></div></div>
+      <div class="math">$$s_{\mathrm{pop}} = 1 + 0.076\,\bigl(0.5 + 0.5\,e\bigr),\qquad e = \frac{s_{\mathrm{crest}}-1}{0.425}$$</div>
     </div>
-
-    <div class="box">
-      <div class="line" id="d3">
-        <span class="w ph" style="--d:0ms;--sp:var(--y);--scale:1"><span class="sizer">normal</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">m</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">l</span></span></span></span>
-        <span class="w ph" style="--d:400ms;--sp:var(--y);--scale:1.2"><span class="sizer">or</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">r</span></span></span></span>
-        <span class="w ph hold" style="--d:800ms;--sp:var(--y);--scale:1.425;--char-wave:0.3"><span class="sizer">louder</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">u</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">d</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">r</span></span></span></span>
-      </div>
-      <div class="box-math">$$s_{\mathrm{crest}} = 1 + \mathrm{PWL}(L),\qquad L = \operatorname{clip}\!\left(\frac{db - lo}{hi - lo} + E,\; 0,\; 1\right)$$$$E = 0.75\,\tau + 0.25\,\bar{\tau} + 20\log_{10}\frac{F_0}{\tilde{F_0}}$$</div>
-      <p class="box-gloss">The fraction places this word’s level between that speaker’s quiet and loud ends, 0 at one and 1 at the other, with emphasis added on top and clip holding the result inside them. PWL turns that into how much to grow: nothing at all below 0.21, and at most 0.425 above it.</p>
-      <dl class="box-syms">
-        <dt>\(s_{\mathrm{crest}}\)</dt><dd>the size the word swells to: 1.000 at no growth, 1.425 at the largest the system allows</dd>
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Crest</h3>
+      <p class="note">A real font-size, not a transform, and the row does not move. Upward only, to <i>1.425×</i>.</p>
+      <p>The fraction places this word’s level between that speaker’s quiet and loud ends, 0 at one and 1 at the other, with emphasis added on top and clip holding the result inside them. PWL turns that into how much to grow: nothing at all below 0.21, and at most 0.425 above it.</p>
+      <dl class="syms"><dt>\(s_{\mathrm{crest}}\)</dt><dd>the size the word swells to: 1.000 at no growth, 1.425 at the largest the system allows</dd>
         <dt>\(L\)</dt><dd>loudness: where this word sits in that speaker's recent range, 0 to 1</dd>
         <dt>\(db\)</dt><dd>the level of this word's own span, taken as the 90th percentile of its frame RMS in dB</dd>
         <dt>\(lo,\ hi\)</dt><dd>the 10th and 95th percentile of that speaker's recent levels; the two are held at least 18 dB apart so a monotone passage is not stretched</dd>
@@ -997,29 +292,23 @@ html[data-view="poster"] .nav { display: none; }
         <dt>\(F_0\)</dt><dd>the fundamental frequency of this word, that is its pitch</dd>
         <dt>\(\tilde{F_0}\)</dt><dd>the median pitch that speaker has been producing lately</dd>
         <dt>\(\mathrm{PWL}\)</dt><dd>a piecewise-linear curve fitted to the reference film, through six control points, topping out at 0.425</dd>
-        <dt>\(\operatorname{clip}\)</dt><dd>clips the value to the range that follows it; anything outside becomes the nearest end</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Crest.</b> A real font-size, not a transform, and the row does not
-          move. Upward only, to <i>1.425×</i>.
-        </p>
-      </div>
+        <dt>\(\operatorname{clip}\)</dt><dd>clips the value to the range that follows it; anything outside becomes the nearest end</dd></dl>
     </div>
-
-    <div class="box">
-      <div class="line" id="d4">
-        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">a</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span></span></span></span>
-        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">high</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">h</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">g</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">h</span></span></span></span>
-        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">voice</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">v</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">c</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:0em">e</span></span></span></span>
-        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">a</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span></span></span></span>
-        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">low</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">w</span></span></span></span>
-        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">one</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">e</span></span></span></span>
-      </div>
-      <div class="box-math">$$w = \operatorname{clip}\bigl(400 + r'\,\Delta_w + p,\; 200,\; 900\bigr)$$$$r = r_v + k\,(r_w - r_v)$$$$p = 460\,\operatorname{clip}\!\left(\frac{L - 0.222}{1 - 0.222},\; 0,\; 1\right)$$$$r' = \begin{cases} r, & r \ge 0 \\ r\,\bigl(1 - p/460\bigr), & r < 0\end{cases}$$</div>
-      <p class="box-gloss">Weight starts at the neutral 400 and is moved by two pushes that add: where the pitch sits, and how loud this word is right now. Pitch alone cannot tell a habitually high voice from one that is shouting, which is why it is split in two.</p>
-      <dl class="box-syms">
-        <dt>\(w\)</dt><dd>the rendered font weight, between 200 and 900</dd>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d3">
+        <span class="w ph" style="--d:0ms;--sp:var(--y);--scale:1"><span class="sizer">normal</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">m</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">l</span></span></span></span>
+        <span class="w ph" style="--d:400ms;--sp:var(--y);--scale:1.2"><span class="sizer">or</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">r</span></span></span></span>
+        <span class="w ph hold" style="--d:800ms;--sp:var(--y);--scale:1.425;--char-wave:0.3"><span class="sizer">louder</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">u</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">d</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">r</span></span></span></span>
+      </div></div></div>
+      <div class="math">$$s_{\mathrm{crest}} = 1 + \mathrm{PWL}(L),\qquad L = \operatorname{clip}\!\left(\frac{db - lo}{hi - lo} + E,\; 0,\; 1\right)$$$$E = 0.75\,\tau + 0.25\,\bar{\tau} + 20\log_{10}\frac{F_0}{\tilde{F_0}}$$</div>
+    </div>
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Weight</h3>
+      <p class="note">The speaker&rsquo;s habitual pitch sets where a word starts: the lower the voice, the heavier. This word&rsquo;s own pitch moves it from there, and a loud or pressed word climbs further.</p>
+      <p>Weight starts at the neutral 400 and is moved by two pushes that add: where the pitch sits, and how loud this word is right now. Pitch alone cannot tell a habitually high voice from one that is shouting, which is why it is split in two.</p>
+      <dl class="syms"><dt>\(w\)</dt><dd>the rendered font weight, between 200 and 900</dd>
         <dt>\(r\)</dt><dd>where this word&rsquo;s pitch sits, −1…1: +1 at 80 Hz and below, 0 right across the neutral 175 to 190 Hz band, −1 at 250 Hz and above</dd>
         <dt>\(r_v\)</dt><dd>the same mapping applied to the speaker&rsquo;s running median pitch, which is the voice rather than the word</dd>
         <dt>\(r_w\)</dt><dd>&hellip;and applied to this one word&rsquo;s own pitch</dd>
@@ -1028,85 +317,85 @@ html[data-view="poster"] .nav { display: none; }
         <dt>\(\Delta_w\)</dt><dd>how far there is to go from 400 to the end: 500 going heavier, 200 going lighter. The light half is the shorter one, which is why it is what limits how much of this channel you can see</dd>
         <dt>\(p\)</dt><dd>this word&rsquo;s own loudness, counted upward from ordinary speaking level only: 0 at or below it, adding at most 460 of weight at the loudest. It never subtracts</dd>
         <dt>\(L\)</dt><dd>the same 0-to-1 loudness the crest reads; 0.222 is where ordinary speaking level sits on it</dd>
-        <dt>\(\operatorname{clip}\)</dt><dd>clips the value to the range that follows it; anything outside becomes the nearest end</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Weight.</b> The speaker&rsquo;s habitual pitch sets where a word
-          starts: the lower the voice, the heavier. This word&rsquo;s
-          own pitch moves it from there, and a loud or pressed word climbs
-          further.
-        </p>
-      </div>
+        <dt>\(\operatorname{clip}\)</dt><dd>clips the value to the range that follows it; anything outside becomes the nearest end</dd></dl>
     </div>
-
-    <div class="box">
-      <div class="line" id="d6">
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d4">
+        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">a</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span></span></span></span>
+        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">high</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">h</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">g</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">h</span></span></span></span>
+        <span class="w ph" style="--d:0ms;--sp:var(--b);--wt:200;--ytlc:556;--ytuc:748;--ytas:828"><span class="sizer">voice</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">v</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">c</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:0em">e</span></span></span></span>
+        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">a</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span></span></span></span>
+        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">low</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">w</span></span></span></span>
+        <span class="w ph" style="--d:400ms;--sp:var(--g);--wt:900;--ytlc:441;--ytuc:566;--ytas:674"><span class="sizer">one</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">e</span></span></span></span>
+      </div></div></div>
+      <div class="math">$$w = \operatorname{clip}\bigl(400 + r'\,\Delta_w + p,\; 200,\; 900\bigr)$$$$r = r_v + k\,(r_w - r_v)$$$$p = 460\,\operatorname{clip}\!\left(\frac{L - 0.222}{1 - 0.222},\; 0,\; 1\right)$$$$r' = \begin{cases} r, & r \ge 0 \\ r\,\bigl(1 - p/460\bigr), & r < 0\end{cases}$$</div>
+    </div>
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Width</h3>
+      <p class="note">Driven by the word&rsquo;s own pitch, with a breathiness reading blended in. The quietest of the eight channels.</p>
+      <p>Seven tenths of the width comes from the word&rsquo;s own pitch and three tenths from breathiness: the lower the pitch the wider, the breathier the voice the narrower. It never leaves 82 to 124 percent.</p>
+      <dl class="syms"><dt>\(W\)</dt><dd>the rendered font width, in percent, between 82 and 124</dd>
+        <dt>\(t\)</dt><dd>the pitch of this word itself, not the speaker&rsquo;s median: +1 when low, −1 when high</dd>
+        <dt>\(\theta\)</dt><dd>how much air escapes with the voice. Whispering, or speaking on a sigh, leaves the folds open enough that the sound drifts from a steady vibration; that drift is seven tenths of the reading and how much high-frequency energy there is the other three</dd>
+        <dt>\(h\)</dt><dd>breathiness on a −1 to 1 scale: the more air in the voice, the closer to −1</dd>
+        <dt>\(\Delta_W\)</dt><dd>how far there is to go from the neutral 100% to the end of the range</dd></dl>
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d6">
         <span class="w ph" style="--d:0ms;--sp:var(--p);--wd:82%"><span class="sizer">thin</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">t</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">h</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">n</span></span></span></span>
         <span class="w ph" style="--d:0ms;--sp:var(--p);--wd:82%"><span class="sizer">and</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">d</span></span></span></span>
         <span class="w ph" style="--d:0ms;--sp:var(--p);--wd:82%"><span class="sizer">reedy</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">d</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:0em">y</span></span></span></span>
         <span class="w ph" style="--d:400ms;--sp:var(--o);--wd:124%"><span class="sizer">full</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">f</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">u</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">l</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">l</span></span></span></span>
         <span class="w ph" style="--d:400ms;--sp:var(--o);--wd:124%"><span class="sizer">and</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">n</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">d</span></span></span></span>
         <span class="w ph" style="--d:400ms;--sp:var(--o);--wd:124%"><span class="sizer">warm</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">m</span></span></span></span>
-      </div>
-      <div class="box-math">$$W = 100 + \operatorname{clip}\bigl(0.7\,t + 0.3\,h,\; -1,\; 1\bigr)\,\Delta_W,\qquad h = \operatorname{clip}\bigl(2(0.5 - \theta),\, -1,\, 1\bigr)$$</div>
-      <p class="box-gloss">Seven tenths of the width comes from the word&rsquo;s own pitch and three tenths from breathiness: the lower the pitch the wider, the breathier the voice the narrower. It never leaves 82 to 124 percent.</p>
-      <dl class="box-syms">
-        <dt>\(W\)</dt><dd>the rendered font width, in percent, between 82 and 124</dd>
-        <dt>\(t\)</dt><dd>the pitch of this word itself, not the speaker&rsquo;s median: +1 when low, −1 when high</dd>
-        <dt>\(\theta\)</dt><dd>how much air escapes with the voice. Whispering, or speaking on a sigh, leaves the folds open enough that the sound drifts from a steady vibration; that drift is seven tenths of the reading and how much high-frequency energy there is the other three</dd>
-        <dt>\(h\)</dt><dd>breathiness on a −1 to 1 scale: the more air in the voice, the closer to −1</dd>
-        <dt>\(\Delta_W\)</dt><dd>how far there is to go from the neutral 100% to the end of the range</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Width.</b> Driven by the word&rsquo;s own pitch, with a breathiness
-          reading blended in. The quietest of the eight channels.
-        </p>
-      </div>
+      </div></div></div>
+      <div class="math">$$W = 100 + \operatorname{clip}\bigl(0.7\,t + 0.3\,h,\; -1,\; 1\bigr)\,\Delta_W,\qquad h = \operatorname{clip}\bigl(2(0.5 - \theta),\, -1,\, 1\bigr)$$</div>
     </div>
-
-    <div class="box">
-      <div class="line" id="d5">
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Hold lift</h3>
+      <p class="note">Silence either side lifts a word, and it lands on its turn. Isolation, not sustain.</p>
+      <p>A constant. The only decision this channel makes is whether it applies at all, and that depends on silence sitting on both sides of the word.</p>
+      <dl class="syms"><dt>\(\ell\)</dt><dd>how far the word leaves the line, in em, when there is silence on both sides of it</dd></dl>
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="d5">
         <span class="w" style="--d:0ms;--sp:var(--y)"><span class="sizer">as</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">s</span></span></span></span>
         <span class="w" style="--d:400ms;--sp:var(--y)"><span class="sizer">each</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">a</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">c</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">h</span></span></span></span>
         <span class="w" style="--d:800ms;--sp:var(--y)"><span class="sizer">word</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:0em">r</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:0em">d</span></span></span></span>
         <span class="w spring" style="--d:1200ms;--sp:var(--y);--hold-spring:1"><span class="sizer">is</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:0em">i</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:0em">s</span></span></span></span>
         <span class="w" style="--d:1600ms;--sp:var(--y)"><span class="sizer">spoken</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.00deg;--group-lift-em:.155em">s</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:0.91deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-1.35deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:1.07deg;--group-lift-em:.155em">k</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.23deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:-600000ms;--cw:600000ms;--char-tilt:-0.73deg;--group-lift-em:.155em">n</span></span></span></span>
-      </div>
-      <div class="box-math">$$\ell = 0.525\ \mathrm{em}$$</div>
-      <p class="box-gloss">A constant. The only decision this channel makes is whether it applies at all, and that depends on silence sitting on both sides of the word.</p>
-      <dl class="box-syms">
-        <dt>\(\ell\)</dt><dd>how far the word leaves the line, in em, when there is silence on both sides of it</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Hold lift.</b> Silence either side lifts a word, and it lands on its
-          turn. Isolation, not sustain.
-        </p>
-      </div>
+      </div></div></div>
+      <div class="math">$$\ell = 0.525\ \mathrm{em}$$</div>
     </div>
-
-    <div class="box">
-      <div class="line" id="dw">
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>Character wave</h3>
+      <p class="note">One syllable at a time: <i>se</i>+<i>en</i>, <i>but</i>+<i>ton</i>. Never one letter.</p>
+      <p>The same 80 ms as the color turn, split across syllable groups instead of letters. A two-syllable word therefore takes two steps where a six-letter word would take six.</p>
+      <dl class="syms"><dt>\(g\)</dt><dd>the syllable group's position in the word, counted from zero</dd>
+        <dt>\(G\)</dt><dd>how many syllable groups the word splits into</dd></dl>
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="dw">
         <span class="w wv" style="--d:0ms;--sp:var(--y)"><span class="sizer">animation</span><span class="glyph"><span class="ink"><span class="c" style="--ct:-600000ms;--cw:0ms;--char-tilt:0.00deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:-600000ms;--cw:9ms;--char-tilt:0.91deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:-600000ms;--cw:9ms;--char-tilt:-1.35deg;--group-lift-em:.155em">i</span><span class="c" style="--ct:-600000ms;--cw:27ms;--char-tilt:1.07deg;--group-lift-em:.155em">m</span><span class="c" style="--ct:-600000ms;--cw:27ms;--char-tilt:-0.23deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:-600000ms;--cw:44ms;--char-tilt:-0.73deg;--group-lift-em:.155em">t</span><span class="c" style="--ct:-600000ms;--cw:44ms;--char-tilt:1.31deg;--group-lift-em:.155em">i</span><span class="c" style="--ct:-600000ms;--cw:44ms;--char-tilt:-1.19deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:-600000ms;--cw:44ms;--char-tilt:0.45deg;--group-lift-em:.155em">n</span></span></span></span>
-      </div>
-      <div class="box-math">$$\Delta t_g \;=\; \frac{g}{G-1}\cdot 80\ \mathrm{ms}$$</div>
-      <p class="box-gloss">The same 80 ms as the color turn, split across syllable groups instead of letters. A two-syllable word therefore takes two steps where a six-letter word would take six.</p>
-      <dl class="box-syms">
-        <dt>\(g\)</dt><dd>the syllable group's position in the word, counted from zero</dd>
-        <dt>\(G\)</dt><dd>how many syllable groups the word splits into</dd>
-      </dl>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>Character wave.</b> One syllable at a time: <i>se</i>+<i>en</i>,
-          <i>but</i>+<i>ton</i>. Never one letter.
-        </p>
-      </div>
+      </div></div></div>
+      <div class="math">$$\Delta t_g \;=\; \frac{g}{G-1}\cdot 80\ \mathrm{ms}$$</div>
     </div>
-
-    <div class="box">
-      <div class="line" id="dall">
+  </article>
+  <article class="channel reveal">
+    <div class="channel-say">
+      <h3>All of it, on one line</h3>
+      <p class="note">Every channel together, on the studio&rsquo;s own clocks. A swelling word <i>overlaps</i> its neighbors rather than shoving them along.</p>
+      
+      
+    </div>
+    <div class="channel-show">
+      <div class="demo" data-ui><div class="strip"><div class="line" id="dall">
         <span class="w turn ph gl wv" style="--d:0ms;--sp:var(--y)"><span class="sizer">so</span><span class="glyph"><span class="ink"><span class="c" style="--ct:0ms;--cw:0ms;--char-tilt:0.00deg;--group-lift-em:0em">s</span><span class="c" style="--ct:40ms;--cw:0ms;--char-tilt:0.91deg;--group-lift-em:0em">o</span></span></span></span>
         <span class="w turn ph gl wv" style="--d:400ms;--sp:var(--y)"><span class="sizer">we</span><span class="glyph"><span class="ink"><span class="c" style="--ct:400ms;--cw:400ms;--char-tilt:0.00deg;--group-lift-em:0em">w</span><span class="c" style="--ct:440ms;--cw:400ms;--char-tilt:0.91deg;--group-lift-em:0em">e</span></span></span></span>
         <span class="w turn ph gl wv hold" style="--d:800ms;--sp:var(--y);--scale:1.28;--wt:560;--sync-pop:1.076;--char-wave:0.42"><span class="sizer">stopped</span><span class="glyph"><span class="ink"><span class="c" style="--ct:800ms;--cw:800ms;--char-tilt:0.00deg;--group-lift-em:.155em">s</span><span class="c" style="--ct:811ms;--cw:800ms;--char-tilt:0.91deg;--group-lift-em:.155em">t</span><span class="c" style="--ct:823ms;--cw:800ms;--char-tilt:-1.35deg;--group-lift-em:.155em">o</span><span class="c" style="--ct:834ms;--cw:800ms;--char-tilt:1.07deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:846ms;--cw:846ms;--char-tilt:-0.23deg;--group-lift-em:.155em">p</span><span class="c" style="--ct:857ms;--cw:846ms;--char-tilt:-0.73deg;--group-lift-em:.155em">e</span><span class="c" style="--ct:869ms;--cw:846ms;--char-tilt:1.31deg;--group-lift-em:.155em">d</span></span></span></span>
@@ -1116,386 +405,31 @@ html[data-view="poster"] .nav { display: none; }
         <span class="w turn ph gl wv" style="--d:2800ms;--sp:var(--g)"><span class="sizer">never</span><span class="glyph"><span class="ink"><span class="c" style="--ct:2800ms;--cw:2800ms;--char-tilt:0.00deg;--group-lift-em:0em">n</span><span class="c" style="--ct:2816ms;--cw:2800ms;--char-tilt:0.91deg;--group-lift-em:0em">e</span><span class="c" style="--ct:2832ms;--cw:2832ms;--char-tilt:-1.35deg;--group-lift-em:0em">v</span><span class="c" style="--ct:2848ms;--cw:2832ms;--char-tilt:1.07deg;--group-lift-em:0em">e</span><span class="c" style="--ct:2864ms;--cw:2832ms;--char-tilt:-0.23deg;--group-lift-em:0em">r</span></span></span></span>
         <span class="w turn ph gl wv" style="--d:3200ms;--sp:var(--g)"><span class="sizer">said</span><span class="glyph"><span class="ink"><span class="c" style="--ct:3200ms;--cw:3200ms;--char-tilt:0.00deg;--group-lift-em:0em">s</span><span class="c" style="--ct:3220ms;--cw:3200ms;--char-tilt:0.91deg;--group-lift-em:0em">a</span><span class="c" style="--ct:3240ms;--cw:3240ms;--char-tilt:-1.35deg;--group-lift-em:0em">i</span><span class="c" style="--ct:3260ms;--cw:3240ms;--char-tilt:1.07deg;--group-lift-em:0em">d</span></span></span></span>
         <span class="w turn ph gl wv hold" style="--d:3600ms;--sp:var(--g);--scale:1.12;--sync-pop:1.076;--char-wave:0.6"><span class="sizer">anything</span><span class="glyph"><span class="ink"><span class="c" style="--ct:3600ms;--cw:3600ms;--char-tilt:0.00deg;--group-lift-em:.155em">a</span><span class="c" style="--ct:3610ms;--cw:3610ms;--char-tilt:0.91deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:3620ms;--cw:3610ms;--char-tilt:-1.35deg;--group-lift-em:.155em">y</span><span class="c" style="--ct:3630ms;--cw:3610ms;--char-tilt:1.07deg;--group-lift-em:.155em">t</span><span class="c" style="--ct:3640ms;--cw:3640ms;--char-tilt:-0.23deg;--group-lift-em:.155em">h</span><span class="c" style="--ct:3650ms;--cw:3640ms;--char-tilt:-0.73deg;--group-lift-em:.155em">i</span><span class="c" style="--ct:3660ms;--cw:3640ms;--char-tilt:1.31deg;--group-lift-em:.155em">n</span><span class="c" style="--ct:3670ms;--cw:3640ms;--char-tilt:-1.19deg;--group-lift-em:.155em">g</span></span></span></span>
-      </div>
-      <div class="box-foot">
-        <p class="box-note">
-          <b>All of it, on one line.</b> Every channel together, on the studio&rsquo;s
-          own clocks. A swelling word <i>overlaps</i> its neighbors rather than
-          shoving them along.
-        </p>
-      </div>
+      </div></div></div>
+      
     </div>
-  </div>
+  </article>
 </section>
 
-<section class="tile t-parchment" id="studio">
-  <div class="inner">
+<section class="chapter" id="studio">
+  <div class="tell reveal">
     <h2>The studio</h2>
-    <figure>
-      <div class="plate shot">
-        <img src="figure/fig5.png" width="2067" height="1187" loading="lazy"
-             alt="The studio running. A dark stage carries rolling captions,
-                  each word colored by speaker and the newest line ruled off
-                  below the history; a right-hand rail shows the input level,
-                  a compass ring with one arc per speaker and a needle on the
-                  current bearing, and a live waveform.">
-      </div>
-      <figcaption>
-        <b>Figure 5.</b> A live capture. History recedes by age above the ruled
-        live line; each speaker holds an arc of the ring.
-      </figcaption>
-    </figure>
+    <p>A recording in the studio. The picture sits in its own frame, the timeline shows three speaker rows that follow whoever is speaking, and the editor has one shouted word picked.</p>
   </div>
+  <figure class="plate reveal">
+    <img src="figure/studio.png" width="2400" height="1350" loading="lazy" alt="The Weave studio. A black picture frame carries the caption Loud in yellow. Below it a timeline shows an audio waveform and two speaker rows with tinted caption blocks. On the right the caption editor shows Caption 3 with the word Loud picked and the Shout style selected, above a list of five captions.">
+  </figure>
 </section>
+</main>
 
-<footer class="tile foot">
-  <div class="inner">
-    <p>
-      The Caption with Intention design system is authored by the Chicago
-      Hearing Society and is the final word wherever this page and it disagree.
-      This is an independent implementation, not affiliated with or endorsed
-      by them.
-    </p>
-  </div>
+<footer class="doc-foot">
+  <p>The Caption with Intention design system is authored by the Chicago Hearing Society and is the final word wherever this page and it disagree. This is an independent implementation, not affiliated with or endorsed by them.</p>
+  <p><a href="index.html">Weave</a> &middot; <a href="https://github.com/ailuruth/Weave">GitHub</a></p>
 </footer>
 
-<div class="tile t-dark-3" id="poster" hidden>
-  <div class="lang poster-ctl">
-    <button type="button" class="lang-btn" id="poster-close" aria-label="Close poster">&#10005;</button>
-  </div>
-  <div id="poster-fit">
-    <div id="poster-sheet">
-      <div id="poster-boxes"></div>
-    </div>
-  </div>
-</div>
-
-<div id="fig1-legend" hidden>
-  <div class="box legend">
-    <div class="plate sheet">
-      <img src="figure/fig1.png" width="2600" height="1003" loading="lazy" alt="">
-    </div>
-    <dl class="box-syms legend-syms">
-      <dt>Microphone &times;4</dt><dd>the ReSpeaker array&rsquo;s four capsules</dd>
-      <dt>AEC</dt><dd>cancels what the device is itself playing back</dd>
-      <dt>BF</dt><dd>beamforming: the four mics combined into one directional signal</dd>
-      <dt>DoA</dt><dd>direction of arrival, the bearing the sound came from</dd>
-      <dt>Raspberry Pi Zero 2 W</dt><dd>captures and actuates, and analyses nothing: 512 MB of memory against 600 MB for one model</dd>
-      <dt>Vibration Motor L/R</dt><dd>driven on the Pi straight from DoA. A 100&nbsp;ms pulse every 300&nbsp;ms, silent when the board hears no speech</dd>
-      <dt>Lossless Deadline Batcher</dt><dd>paces audio by deadline and drains any backlog into catch-up batches, so no block is dropped</dd>
-      <dt>True Signal</dt><dd>the ungained copy. Loudness is measured here, or a whisper and a shout reach the same type size</dd>
-      <dt>Gained Copy</dt><dd>the only copy input gain is applied to</dd>
-      <dt>Voice</dt><dd>per-word loudness, pitch and vocal effort</dd>
-      <dt>Speaker</dt><dd>who spoke, and the colour the caption is set in</dd>
-      <dt>Text</dt><dd>the streaming recognizer</dd>
-      <dt>Sound</dt><dd>non-speech events: laughter, applause, music, the room itself</dd>
-      <dt>CaptionSpec</dt><dd>the versioned contract. Renderers read this and never the models</dd>
-      <dt>SSE</dt><dd>the event stream to the browser</dd>
-      <dt>Salience</dt><dd>decides which words are worth a haptic cue</dd>
-      <dt>Web App</dt><dd>the studio, running in the browser</dd>
-      <dt>Revisions</dt><dd>endpoint corrections reconciled word by word, never a rebuild</dd>
-      <dt>Playhead</dt><dd>presents from a clock 1.75&nbsp;s behind the acoustic one</dd>
-      <dt>The Stage</dt><dd>the caption rows themselves</dd>
-      <dt>Optional</dt><dd>the computer&rsquo;s cue lane, dashed because it is opt-in. It waits on the endpoint verifier, 1.1 to 3.2&nbsp;s</dd>
-    </dl>
-  </div>
-</div>
-
-<div class="tile t-dark-3" id="poster-modal" hidden>
-  <div id="poster-modal-body"></div>
-</div>
-
-<script>
-(function () {
-  var lines = document.querySelectorAll(".line");
-  var still = window.matchMedia
-    ? window.matchMedia("(prefers-reduced-motion: reduce)")
-    : null;
-
-  // --ct and --cw park an animation 600000ms out when the word must not run
-  // it; those never play, so they must not decide how long a cycle is.
-  var PARKED_MS = 60000;
-  // A beat of stillness on the finished line before it runs again.
-  var TAIL_MS = 900;
-  var FALLBACK_MS = 4200;
-
-  function run(line) {
-    if (!line) return;
-    line.classList.remove("play");
-    void line.offsetWidth;
-    line.classList.add("play");
-  }
-
-  // The choreography is the CSS: every delay, duration and stagger already
-  // lives there, so a cycle is wherever the last live animation ends. Read
-  // it back rather than restating any of those numbers here.
-  function cycleMs(line) {
-    var end = 0;
-    if (line.getAnimations) {
-      line.getAnimations({ subtree: true }).forEach(function (a) {
-        var t = a.effect && a.effect.getComputedTiming
-          ? a.effect.getComputedTiming()
-          : null;
-        if (!t || (t.delay || 0) >= PARKED_MS) return;
-        var at = t.endTime;
-        if (typeof at === "number" && isFinite(at) && at > end) end = at;
-      });
-    }
-    return (end > 0 ? end : FALLBACK_MS) + TAIL_MS;
-  }
-
-  function stop(line) {
-    if (!line) return;
-    line.weaveLooping = false;
-    if (line.weaveTimer) {
-      clearTimeout(line.weaveTimer);
-      line.weaveTimer = null;
-    }
-  }
-
-  function loop(line) {
-    if (!line.weaveLooping) return;
-    run(line);
-    // Reduced motion keeps the color turn, but does not want it on repeat.
-    if (still && still.matches) { line.weaveLooping = false; return; }
-    line.weaveTimer = setTimeout(function () { loop(line); }, cycleMs(line));
-  }
-
-  function start(line, delay) {
-    if (!line || line.weaveLooping) return;
-    line.weaveLooping = true;
-    line.weaveTimer = setTimeout(function () { loop(line); }, delay);
-  }
-
-  if ("IntersectionObserver" in window) {
-    // Loops while any part of the line is on screen; a line scrolled fully
-    // away stops, so the demos are not animating behind the viewport.
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.intersectionRatio >= 0.55) start(e.target, 160);
-        else if (!e.isIntersecting) stop(e.target);
-      });
-    }, { threshold: [0, 0.55] });
-    lines.forEach(function (l) { io.observe(l); });
-  } else {
-    lines.forEach(function (l) { start(l, 160); });
-  }
-
-  var links = {};
-  document.querySelectorAll("#chapters a").forEach(function (a) {
-    links[a.getAttribute("href").slice(1)] = a;
-  });
-  var sections = Array.prototype.filter.call(
-    document.querySelectorAll("section[id]"),
-    function (s) { return links[s.id]; }
-  );
-
-  function mark(id) {
-    Object.keys(links).forEach(function (key) {
-      if (key === id) links[key].setAttribute("aria-current", "true");
-      else links[key].removeAttribute("aria-current");
-    });
-  }
-
-  if ("IntersectionObserver" in window && sections.length) {
-    var visible = {};
-    var spy = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
-      for (var i = 0; i < sections.length; i++) {
-        if (visible[sections[i].id]) { mark(sections[i].id); return; }
-      }
-    }, { rootMargin: "-30% 0px -60% 0px" });
-    sections.forEach(function (s) { spy.observe(s); });
-  }
-})();
-
-/* ---- poster ---------------------------------------------------------- *
- * Borrows the motion boxes and the two figures into one fixed-width sheet
- * and scales that sheet to the viewport. Borrowed, not copied.              */
-(function () {
-  var btn = document.getElementById('poster-btn');
-  var poster = document.getElementById('poster');
-  var fit = document.getElementById('poster-fit');
-  var sheet = document.getElementById('poster-sheet');
-  var boxHost = document.getElementById('poster-boxes');
-  if (!btn || !poster || !fit || !sheet || !boxHost) return;
-
-  var borrowed = [];
-
-  function borrow(el, host) {
-    borrowed.push({ el: el, parent: el.parentNode, next: el.nextSibling });
-    host.appendChild(el);
-  }
-
-  function giveBack() {
-    for (var i = borrowed.length - 1; i >= 0; i -= 1) {
-      borrowed[i].parent.insertBefore(borrowed[i].el, borrowed[i].next);
-    }
-    borrowed = [];
-  }
-
-  /* KaTeX display math does not wrap, so a long formula in a quarter-width
-     column is simply cut off. Scaling the .box-math around it does nothing --
-     the clip box scales with it -- so each formula is scaled inside its own
-     full-width, non-clipping .katex-display, which centres it back to fit. */
-  function fitMath() {
-    var rows = poster.querySelectorAll('.box-math .katex-display');
-    for (var i = 0; i < rows.length; i += 1) {
-      var row = rows[i];
-      row.style.transform = 'none';
-      var room = row.clientWidth;
-      var need = row.scrollWidth;
-      if (room && need > room + 1) {
-        row.style.transformOrigin = 'left top';
-        row.style.transform = 'scale(' + (room / need) + ')';
-      }
-    }
-  }
-
-  /* Row spans, measured. `align-items: start` keeps every item at its own
-     content height whatever track it lands in, so the height read here is the
-     real one and the span can be computed from it. */
-  function layout() {
-    var items = boxHost.children;
-    for (var i = 0; i < items.length; i += 1) {
-      var h = items[i].getBoundingClientRect().height;
-      items[i].style.gridRowEnd = 'span ' + Math.ceil((h + 14) / 4);
-    }
-  }
-
-  function rescale() {
-    if (poster.hidden) return;
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    if (!vw || !vh) return;
-    fit.style.transform = 'none';
-
-    var want = vh / vw;
-    var lo = 1300;
-    var hi = 2100;
-    for (var i = 0; i < 12; i += 1) {
-      var mid = (lo + hi) / 2;
-      sheet.style.width = mid + 'px';
-      fit.style.width = mid + 'px';
-      fitMath();
-      layout();
-      if (sheet.offsetHeight / mid > want) lo = mid; else hi = mid;
-    }
-    sheet.style.width = hi + 'px';
-    fit.style.width = hi + 'px';
-    fitMath();
-    layout();
-
-    var h = sheet.offsetHeight;
-    // The height term is what keeps a tall sheet on screen when the search
-    // ran into its ceiling.
-    fit.style.transform = 'scale(' + Math.min(vw / hi, h ? vh / h : 1) + ')';
-  }
-
-  function open() {
-    var figures = document.querySelectorAll('#pipeline figure');
-    for (var i = 0; i < figures.length; i += 1) borrow(figures[i], boxHost);
-    var boxes = document.querySelectorAll('#motion .box');
-    for (var j = 0; j < boxes.length; j += 1) borrow(boxes[j], boxHost);
-    poster.hidden = false;
-    document.documentElement.setAttribute('data-view', 'poster');
-    btn.setAttribute('aria-pressed', 'true');
-    rescale();
-    // KaTeX renders on a deferred script, so the first open can measure a
-    // sheet whose formulas have not been laid out yet.
-    window.setTimeout(rescale, 60);
-  }
-
-  function close() {
-    closeCard();
-    poster.hidden = true;
-    document.documentElement.removeAttribute('data-view');
-    btn.setAttribute('aria-pressed', 'false');
-    giveBack();
-  }
-
-  btn.addEventListener('click', function () {
-    if (poster.hidden) open(); else close();
-  });
-
-  var modal = document.getElementById('poster-modal');
-  var modalBody = document.getElementById('poster-modal-body');
-  var legend = document.getElementById('fig1-legend');
-  var shownFrom = null;
-  var hideTimer = 0;
-
-  /* A COPY, and the card stays where it is. Moving the node left a hole in the
-     grid behind the scrim, which read as the card vanishing. The copy is not
-     on the language pass's list, so it is rebuilt whenever the language
-     changes while it is open. */
-  function paint(card) {
-    var copy = card.cloneNode(true);
-    copy.style.gridRowEnd = '';
-    copy.style.cursor = 'auto';
-    modalBody.innerHTML = '';
-    modalBody.appendChild(copy);
-  }
-
-  function openCard(card, wide) {
-    if (hideTimer) { window.clearTimeout(hideTimer); hideTimer = 0; }
-    shownFrom = card;
-    paint(card);
-    if (wide) modal.setAttribute('data-wide', ''); else modal.removeAttribute('data-wide');
-    modal.hidden = false;
-    // Two frames: the element has to be displayed and painted at its start
-    // state before the attribute that transitions away from it is set.
-    window.requestAnimationFrame(function () {
-      window.requestAnimationFrame(function () { modal.setAttribute('data-open', ''); });
-    });
-  }
-
-  function closeCard() {
-    if (!shownFrom) return;
-    shownFrom = null;
-    modal.removeAttribute('data-open');
-    hideTimer = window.setTimeout(function () {
-      modal.hidden = true;
-      modalBody.innerHTML = '';
-      hideTimer = 0;
-    }, 240);
-  }
-
-  if (modal && modalBody) {
-    boxHost.addEventListener('click', function (e) {
-      if (!e.target.closest) return;
-      var card = e.target.closest('.box');
-      if (card && card.parentNode === boxHost) { openCard(card); return; }
-      // Figure 1 is a raster diagram, so there is nothing to hit-test inside
-      // it: the whole figure opens the list of what its boxes are.
-      var fig = e.target.closest('figure');
-      if (fig && fig === boxHost.firstElementChild && legend) {
-        openCard(legend.firstElementChild, true);
-      }
-    });
-    modal.addEventListener('click', function (e) {
-      if (!modalBody.contains(e.target)) closeCard();
-    });
-  }
-
-  var closeBtn = document.getElementById('poster-close');
-  if (closeBtn) closeBtn.addEventListener('click', close);
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
-    if (held) closeCard();
-    else if (!poster.hidden) close();
-  });
-
-  window.addEventListener('resize', rescale);
-})();
-</script>
-
-<script defer
-        src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-<script defer
-        src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
-        onload="renderMathInElement(document.body, {delimiters:[
-          {left:'$$', right:'$$', display:true},
-          {left:'\\(', right:'\\)', display:false}], throwOnError:false});"></script>
+<script src="technical.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {delimiters:[{left:'$$', right:'$$', display:true}, {left:'\\(', right:'\\)', display:false}], throwOnError:false});"></script>
 </body>
 </html>
