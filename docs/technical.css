@@ -156,10 +156,6 @@ h3 {
   background: #f5f5f7;
 }
 
-.plate-scroll {
-  overflow-x: auto;
-}
-
 .glossary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -316,39 +312,245 @@ h3 {
   margin: 0 0 12px;
 }
 
-.blockfig { display: block; width: 100%; height: auto; min-width: 720px; }
-.blockfig text { font-family: var(--font); fill: #0B0B0B; }
-.blockfig .bt { font-size: 15px; font-weight: 600; text-anchor: middle; letter-spacing: -.2px; }
-.blockfig .bs { font-size: 12.5px; text-anchor: middle; fill: #333333; }
-.blockfig .pt { font-size: 15px; font-weight: 600; letter-spacing: -.2px; }
-.blockfig .rl { font-size: 13px; }
-.blockfig .ax { font-size: 11.5px; fill: #86868B; text-anchor: middle; }
-.blockfig .key { font-size: 11.5px; fill: #333333; }
-.blockfig .ann { font-size: 12px; fill: #333333; }
-.blockfig .annc { font-size: 12px; fill: #333333; text-anchor: middle; }
-.blockfig .annk { font-size: 12px; font-weight: 600; fill: #0B0B0B; }
-.blockfig .phl { font-size: 11.5px; font-weight: 600; fill: #0B0B0B; text-anchor: middle; }
-.blockfig .foot { font-size: 12px; fill: #86868B; }
-.blockfig .mn { font-family: var(--font); font-size: 11px; fill: #86868B; }
-.blockfig .end { text-anchor: end; }
-.blockfig .rule { stroke: #DCDCE1; }
-/* Recessive frame: the axis and grid must never out-weigh a mark. */
-.blockfig .axis { stroke: #C8C8CE; fill: none; }
-.blockfig .grid { stroke: #F2F2F5; fill: none; }
-.blockfig .brace { stroke: #C8C8CE; fill: none; }
-/* The data marks. `wash-*` is "and onwards", `tick-*` is the moment itself;
-   provisional carries a hatch so the state is never color alone. */
-.blockfig .spoken { fill: #0B0B0B; }
-.blockfig .wash-s { fill: url(#fade); }
-.blockfig .tick-s { fill: #0066CC; }
-.blockfig .wash-p { fill: url(#hatch); }
-.blockfig .tick-p { fill: #86868B; }
-.blockfig .whisk { stroke: #0066CC; fill: none; stroke-width: 1.5; }
-.blockfig .markf { fill: #0B0B0B; }
-.blockfig .marko { fill: #FFFFFF; stroke: #0B0B0B; }
-.blockfig .playhead { stroke: #0B0B0B; fill: none; stroke-width: 1.5; }
-.blockfig .flag { fill: #0B0B0B; }
-.blockfig g:hover rect { filter: brightness(.94); }
+.lifeline {
+  --span: 5.3;
+  padding: 40px 32px 36px;
+}
+
+.lifeline-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  gap: 18px 0;
+  align-items: center;
+}
+
+.lifeline-axis {
+  position: relative;
+  grid-column: 2;
+  height: 64px;
+  color: var(--soft);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.lifeline-axis span {
+  position: absolute;
+  white-space: nowrap;
+  bottom: 0;
+  left: calc(var(--at) / var(--span) * 100%);
+  padding-left: 8px;
+  border-left: 1px solid var(--rule);
+  line-height: 1.6;
+}
+
+.doc p.lifeline-name {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-body);
+  line-height: 1.3;
+}
+
+.lifeline-track {
+  position: relative;
+  height: 36px;
+}
+
+.lifeline .bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--from) / var(--span) * 100%);
+  width: calc((var(--to) - var(--from)) / var(--span) * 100%);
+  background: #4a4a4a;
+}
+
+.lifeline .bar.guess {
+  background: none;
+  box-shadow: inset 0 0 0 1px #707070;
+}
+
+.lifeline .bar.ahead {
+  background: #ffffff;
+}
+
+.lifeline .bar.turned {
+  background: #E5E517;
+}
+
+.lifeline em {
+  position: absolute;
+  top: 0;
+  left: calc(var(--at) / var(--span) * 100%);
+  padding-left: 10px;
+  color: var(--soft);
+  font-size: var(--text-small);
+  font-style: normal;
+  line-height: 36px;
+  white-space: nowrap;
+}
+
+.lifeline em.in {
+  color: var(--ink);
+}
+
+.lifeline .ahead ~ em {
+  color: #000000;
+}
+
+.lifeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(168px + (100% - 168px) * var(--at) / var(--span));
+  width: 2px;
+  background: #E5E517;
+  pointer-events: none;
+}
+
+.lifeline-playhead span {
+  position: absolute;
+  top: 0;
+  left: 10px;
+  color: #E5E517;
+  font-size: var(--text-small);
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.exchanges {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 88px;
+  max-width: 44rem;
+  margin: 96px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exchanges p {
+  max-width: 60ch;
+  margin: 16px 0 0;
+  font-size: var(--text-lead);
+  line-height: 1.45;
+}
+
+.call {
+  margin: 20px 0 0;
+  padding: 20px;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--panel);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+.call code {
+  font: inherit;
+}
+
+.answer {
+  margin: 20px 0 0 56px;
+}
+
+.files {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.files li {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.files strong {
+  font-weight: 600;
+}
+
+.files span {
+  color: var(--soft);
+}
+
+.adjust {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.doc p.adjust-strip {
+  display: flex;
+  align-items: baseline;
+  gap: .3em;
+  min-height: 96px;
+  margin: 0;
+  padding: 20px;
+  border-radius: 4px;
+  background: #000000;
+  color: #E5E517;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.adjust-word {
+  display: inline-block;
+  font-weight: 400;
+  font-stretch: 100%;
+  transition: font-size 220ms var(--ease-out), font-weight 220ms var(--ease-out), font-stretch 220ms var(--ease-out), letter-spacing 220ms var(--ease-out);
+}
+
+.adjust-word[data-style="shout"] {
+  font-size: 1.9em;
+  font-weight: 900;
+  font-stretch: 118%;
+}
+
+.adjust-word[data-style="whisper"] {
+  font-size: .62em;
+  font-weight: 300;
+}
+
+.adjust-word[data-style="slow"] {
+  font-size: 1.35em;
+  letter-spacing: .08em;
+}
+
+.adjust-switch {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: #0a0a0a;
+}
+
+.adjust-switch button {
+  height: 40px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--soft);
+  font: 500 var(--text-small)/1 var(--font);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.adjust-switch button:hover {
+  color: var(--ink);
+}
+
+.adjust-switch button[aria-pressed="true"] {
+  background: #303030;
+  color: var(--ink);
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .js .reveal {
@@ -389,6 +591,62 @@ h3 {
 
   .glossary {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lifeline {
+    padding: 24px 16px;
+  }
+
+  .lifeline-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px 0;
+  }
+
+  .lifeline-axis {
+    grid-column: 1;
+  }
+
+  .lifeline-axis span:last-child {
+    display: none;
+  }
+
+  .lifeline-track {
+    height: auto;
+    margin-bottom: 14px;
+    padding-top: 30px;
+  }
+
+  .lifeline .bar {
+    bottom: auto;
+    height: 22px;
+  }
+
+  .lifeline em,
+  .lifeline .ahead ~ em {
+    position: static;
+    display: block;
+    padding-left: 0;
+    color: var(--soft);
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .lifeline-playhead {
+    left: calc(100% * var(--at) / var(--span));
+  }
+
+  .lifeline-playhead span {
+    width: 11rem;
+    white-space: normal;
+  }
+
+  .answer {
+    margin-left: 0;
+  }
+
+  .files li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 
   .palette {

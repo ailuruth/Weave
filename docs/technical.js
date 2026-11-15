@@ -56,6 +56,15 @@
   }, {rootMargin: "0px 0px -10% 0px"});
   document.querySelectorAll(".reveal").forEach((el) => revealing.observe(el));
 
+  const picked = document.getElementById("adjust-word");
+  const styles = [...document.querySelectorAll(".adjust-switch button")];
+  styles.forEach((button) => {
+    button.addEventListener("click", () => {
+      picked.dataset.style = button.dataset.style;
+      styles.forEach((other) => other.setAttribute("aria-pressed", other === button ? "true" : "false"));
+    });
+  });
+
   const links = new Map([...document.querySelectorAll("#chapters a")]
     .map((link) => [link.getAttribute("href").slice(1), link]));
   const seen = new Map();
