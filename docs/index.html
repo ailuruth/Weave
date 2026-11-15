@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-lang="en">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,11 +23,7 @@
   <div class="bar">
     <a class="wordmark" href="#top">Weave</a>
     <nav class="bar-links" aria-label="Site">
-      <a href="technical.html" data-ko="기술 문서">Technical notes</a>
-      <span class="lang" role="group" aria-label="Language">
-        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-set-lang="ko" aria-pressed="false">KO</button>
-      </span>
+      <a href="technical.html">Technical notes</a>
       <a class="button button-quiet" href="https://github.com/ailuruth/Weave">GitHub</a>
     </nav>
   </div>
@@ -35,10 +31,10 @@
   <div class="hero-main">
   <div class="hero-copy" id="hero-copy">
     <h1 class="masked">
-      <span class="masked-line"><span data-ko="어떻게 말했는지">Captions that show</span></span>
-      <span class="masked-line"><span data-ko="보이는 자막">how it was said</span></span>
+      <span class="masked-line"><span>Captions that show</span></span>
+      <span class="masked-line"><span>how it was said</span></span>
     </h1>
-    <p class="lead rise" data-ko="Weave는 실시간 음성을 자막으로 바꾸면서 누가 말하는지는 색으로, 언제 말하는지는 움직임으로, 얼마나 크게 말하는지는 글자의 굵기로 보여 줍니다.">Weave turns live speech into captions that carry who is speaking in colour, when in motion, and how loud in the weight of the type.</p>
+    <p class="lead rise">Weave turns live speech into captions that carry who is speaking in colour, when in motion, and how loud in the weight of the type.</p>
   </div>
 
   <div class="word-frame" id="word-frame" data-ui>
@@ -48,18 +44,18 @@
 
   <div class="say rise" data-ui>
     <div class="say-ways">
-      <p class="label" id="say-label" data-ko="이 단어를 말해 보세요">Say the word</p>
+      <p class="label" id="say-label">Say the word</p>
       <div class="ways" role="group" aria-labelledby="say-label">
-        <button type="button" class="way" data-level="0" data-ink="#17E5E5" aria-pressed="false" data-ko="속삭임">Whisper</button>
-        <button type="button" class="way" data-level="0.45" data-ink="#FFFFFF" aria-pressed="false" data-ko="말하기">Speak</button>
-        <button type="button" class="way" data-level="1" data-ink="#E5E517" aria-pressed="false" data-ko="외침">Shout</button>
+        <button type="button" class="way" data-level="0" data-ink="#17E5E5" aria-pressed="false">Whisper</button>
+        <button type="button" class="way" data-level="0.45" data-ink="#FFFFFF" aria-pressed="false">Speak</button>
+        <button type="button" class="way" data-level="1" data-ink="#E5E517" aria-pressed="false">Shout</button>
       </div>
     </div>
     <div class="say-voice">
-      <p class="label" id="voice-note" aria-live="polite" data-ko="직접 들려주기" data-idle="Or let it hear you" data-idle-ko="직접 들려주기" data-on="Listening. The sound stays in this page." data-on-ko="듣는 중입니다. 소리는 이 페이지 밖으로 나가지 않습니다." data-off="No microphone. Pick one of the three." data-off-ko="마이크를 쓸 수 없습니다. 세 가지 중에서 골라 보세요.">Or let it hear you</p>
+      <p class="label" id="voice-note" aria-live="polite" data-idle="Or let it hear you" data-on="Listening. The sound stays in this page." data-off="No microphone. Pick one of the three.">Or let it hear you</p>
       <button type="button" class="button" id="voice" aria-pressed="false" aria-describedby="voice-note">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span id="voice-text" data-ko="내 목소리로 해 보기" data-start="Use your voice" data-start-ko="내 목소리로 해 보기" data-stop="Stop listening" data-stop-ko="그만 듣기">Use your voice</span>
+        <span id="voice-text" data-start="Use your voice" data-stop="Stop listening">Use your voice</span>
       </button>
     </div>
   </div>

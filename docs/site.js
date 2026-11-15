@@ -102,18 +102,13 @@
     if (still) paint(performance.now());
   };
 
-  const text = (el, key) => {
-    const ko = document.documentElement.dataset.lang === "ko";
-    return el.dataset[ko ? `${key}Ko` : key];
-  };
-
   const stopMic = () => {
     if (!mic) return;
     mic.stop();
     mic = null;
     voice.setAttribute("aria-pressed", "false");
-    voiceText.textContent = text(voiceText, "start");
-    voiceNote.textContent = text(voiceNote, "idle");
+    voiceText.textContent = voiceText.dataset.start;
+    voiceNote.textContent = voiceNote.dataset.idle;
     if (source === "mic") source = still ? "held" : "idle";
   };
 
@@ -145,10 +140,10 @@
       ways.forEach((way) => way.setAttribute("aria-pressed", "false"));
       word.style.removeProperty("--word-ink");
       voice.setAttribute("aria-pressed", "true");
-      voiceText.textContent = text(voiceText, "stop");
-      voiceNote.textContent = text(voiceNote, "on");
+      voiceText.textContent = voiceText.dataset.stop;
+      voiceNote.textContent = voiceNote.dataset.on;
     } catch {
-      voiceNote.textContent = text(voiceNote, "off");
+      voiceNote.textContent = voiceNote.dataset.off;
     }
   };
 
@@ -163,40 +158,6 @@
     else void startMic();
   });
   window.addEventListener("pagehide", stopMic);
-
-  const translatable = [...document.querySelectorAll("[data-ko]")].map((el) => ({
-    el, en: el.textContent, ko: el.dataset.ko,
-  }));
-  const langButtons = [...document.querySelectorAll("[data-set-lang]")];
-  const setLang = (lang) => {
-    const ko = lang === "ko";
-    document.documentElement.lang = lang;
-    document.documentElement.dataset.lang = lang;
-    translatable.forEach((item) => {
-      item.el.textContent = ko ? item.ko : item.en;
-    });
-    voiceText.textContent = text(voiceText, mic ? "stop" : "start");
-    voiceNote.textContent = text(voiceNote, mic ? "on" : "idle");
-    langButtons.forEach((button) => {
-      button.setAttribute("aria-pressed", button.dataset.setLang === lang ? "true" : "false");
-    });
-    try {
-      localStorage.setItem("weave-lang", lang);
-    } catch {
-      return;
-    }
-  };
-  langButtons.forEach((button) => {
-    button.addEventListener("click", () => setLang(button.dataset.setLang));
-  });
-  let chosen = null;
-  try {
-    chosen = localStorage.getItem("weave-lang");
-  } catch {
-    chosen = null;
-  }
-  if (chosen !== "en" && chosen !== "ko") chosen = /^ko\b/i.test(navigator.language || "") ? "ko" : "en";
-  if (chosen === "ko") setLang("ko");
 
   void document.fonts.ready.then(() => {
     word.style.setProperty("--fit", `${size}px`);
